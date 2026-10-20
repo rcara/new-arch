@@ -5,10 +5,19 @@ L’accès public passe par un **Cloudflare Tunnel** (`cloudflared`) vers le loo
 
 ```
 GitHub Actions (main + CI OK)
-  → SSH → VPS → deploy/deploy.sh (git reset + pip + systemctl restart foyer)
+  → SSH → VPS → deploy/deploy.sh
+      (git reset + pip + systemctl stop → wait bind 127.0.0.1:8765 → start)
   → cloudflared → http://127.0.0.1:8765
-  → HTTPS sur votre domaine Cloudflare
+    → HTTPS sur votre domaine Cloudflare
 ```
+
+**Redémarrage et TIME-WAIT :** un `systemctl restart` trop rapide peut laisser le
+port `8765` en TIME-WAIT ; le probe de `launcher.py` échoue alors, systemd
+boucle (`Restart=on-failure`), et Cloudflare renvoie 502. `deploy/deploy.sh`
+fait donc `stop`, purge `data/foyer.pid`, tue un launcher orphelin si besoin,
+attend qu’un bind sur `127.0.0.1:8765` réussisse (timeout
+`FOYER_PORT_WAIT_SECS`, défaut 90 s), puis `start`. Ne pas remplacer ça par un
+`restart` aveugle.
 
 VPS cible prévu : `188.245.26.201`. Chemin d’install par défaut : `/opt/foyer`.
 

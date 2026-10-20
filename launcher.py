@@ -14,7 +14,14 @@ ROOT = Path(__file__).resolve().parent
 
 
 def port_is_free(port):
+    """True si 127.0.0.1:port est libre pour Waitress.
+
+    SO_REUSEADDR aligne le probe sur Waitress : un socket en TIME-WAIT ne
+    compte pas comme conflit. Un listener actif fait toujours échouer bind()
+    sur Linux — on ne masque pas une vraie occupation.
+    """
     probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         probe.bind(("127.0.0.1", port))
     except OSError:
