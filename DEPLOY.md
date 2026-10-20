@@ -108,9 +108,11 @@ Environment=FOYER_PUBLIC_ORIGIN=https://new-arch.arscodicis.net
 
 **Pare-feu :** laissez 80/443 fermés si tout passe par le Tunnel. Gardez SSH (22 ou votre port) restreint (idéalement IP admin / fail2ban).
 
-L’app continue d’exiger `REMOTE_ADDR == 127.0.0.1` (cloudflared en loopback). Seuls Host/Origin acceptés changent via ces variables.
+L’app continue d’exiger `REMOTE_ADDR == 127.0.0.1` (cloudflared en loopback). Host doit matcher `FOYER_PUBLIC_HOST`.
 
-> Cookie de session sans attribut `Secure` : l’app a été conçue pour HTTP local. Derrière Cloudflare en HTTPS, prévoyez éventuellement un ajustement cookie plus tard ; ce n’est pas requis pour le premier tunnel.
+Sur les POST : `Origin` doit égaler `FOYER_PUBLIC_ORIGIN`. Si `Origin` est **vide** (certains navigateurs / chemins same-site) **et** que l’origine publique est en HTTPS, un `Referer` qui commence par `FOYER_PUBLIC_ORIGIN` est accepté — même logique que le hotfix VPS.
+
+Quand `FOYER_PUBLIC_ORIGIN` commence par `https://`, les cookies `foyer_session` / `foyer_setup` / `foyer_msg` sont posés avec l’attribut **Secure**. En local HTTP (`127.0.0.1`), `Secure` reste désactivé.
 
 ---
 

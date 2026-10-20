@@ -28,6 +28,27 @@ def expected_host():
     return request.environ.get("HTTP_HOST", "")
 
 
+def _public_https_origin(expected_origin):
+    """True si EXPECTED_ORIGIN est en HTTPS public (Tunnel Cloudflare)."""
+    return str(expected_origin).startswith("https:")
+
+
+def _cookie_secure():
+    from flask import current_app
+    return _public_https_origin(current_app.config.get("EXPECTED_ORIGIN", ""))
+
+
+def _origin_allowed(expected_origin, origin, referer):
+    """Origin exacte OK ; en HTTPS public, Origin vide + Referer préfixé aussi."""
+    if origin == expected_origin:
+        return True
+    if origin:
+        return False
+    if not _public_https_origin(expected_origin):
+        return False
+    return bool(referer) and referer.startswith(expected_origin)
+
+
 def guard_local():
     from flask import current_app
     remote = request.remote_addr or ""
@@ -37,8 +58,10 @@ def guard_local():
     if host != current_app.config["EXPECTED_HOST"]:
         raise AppError(400, "validation", "Hôte refusé.")
     if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        expected_origin = current_app.config["EXPECTED_ORIGIN"]
         origin = request.headers.get("Origin", "")
-        if origin != current_app.config["EXPECTED_ORIGIN"]:
+        referer = request.headers.get("Referer", "")
+        if not _origin_allowed(expected_origin, origin, referer):
             raise AppError(400, "validation", "Origine refusée.")
         submitted = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token") or ""
         if g.get("person"):
@@ -76,22 +99,25 @@ def content_disposition(name):
 
 
 def cookie_session(response, token):
+    secure = _cookie_secure()
     response.set_cookie(
-        "foyer_session", token, max_age=8 * 3600, httponly=True, samesite="Strict", path="/", secure=False,
+        "foyer_session", token, max_age=8 * 3600, httponly=True, samesite="Strict", path="/", secure=secure,
     )
-    response.delete_cookie("foyer_setup", path="/")
+    response.delete_cookie("foyer_setup", path="/", secure=secure, samesite="Strict")
     return response
 
 
 def cookie_setup(response, token):
+    secure = _cookie_secure()
     response.set_cookie(
-        "foyer_setup", token, max_age=1800, httponly=True, samesite="Strict", path="/", secure=False,
+        "foyer_setup", token, max_age=1800, httponly=True, samesite="Strict", path="/", secure=secure,
     )
     return response
 
 
 def cookie_message(response, code):
+    secure = _cookie_secure()
     response.set_cookie(
-        "foyer_msg", code, max_age=30, httponly=True, samesite="Strict", path="/", secure=False,
+        "foyer_msg", code, max_age=30, httponly=True, samesite="Strict", path="/", secure=secure,
     )
     return response
