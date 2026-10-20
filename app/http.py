@@ -39,18 +39,19 @@ def _cookie_secure():
 
 
 def _origin_allowed(expected_origin, origin, referer):
-    """Origin exacte OK ; en HTTPS public, Origin vide/null + Referer préfixé aussi.
+    """Origin exacte OK ; en HTTPS public, Origin vide/null accepté sans Referer.
 
-    Origin literal ``null`` (privacy / some clients) is treated like empty.
-    Host is already validated by the caller; CSRF remains required afterward.
+    Origin literal ``null`` (privacy / Referrer-Policy: no-referrer) is treated
+    like empty. Host is already validated by the caller; CSRF remains required.
+    ``referer`` is unused but kept for call-site compatibility.
     """
     if origin == expected_origin:
         return True
     if origin not in ("", "null"):
         return False
-    if not _public_https_origin(expected_origin):
-        return False
-    return bool(referer) and referer.startswith(expected_origin)
+    # Public HTTPS: Host already checked; empty/null Origin is fine without Referer
+    # (browsers send no Referer under Referrer-Policy: no-referrer).
+    return _public_https_origin(expected_origin)
 
 
 def guard_local():
