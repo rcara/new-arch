@@ -434,6 +434,122 @@ def test_hote_local_par_defaut(tmp_path, clock, monkeypatch):
     assert client.get("/initialisation", headers={"Host": HOST}).status_code == 200
 
 
+def _csrf_from(response):
+    token = response.headers.get("X-CSRF-Token") or ""
+    if token:
+        return token
+    import re
+    found = re.search(br'name="csrf_token" value="([^"]+)"', response.data) or re.search(
+        br'name="csrf-token" content="([^"]+)"', response.data
+    )
+    return found.group(1).decode() if found else ""
+
+
+def test_origine_publique_vide_avec_referer(tmp_path, clock, monkeypatch):
+    """Tunnel : Origin vide + Referer matching (hotfix VPS) ; cookies Secure sous HTTPS."""
+    public_host = "new-arch.arscodicis.net"
+    public_origin = "https://new-arch.arscodicis.net"
+    monkeypatch.setenv("FOYER_PUBLIC_HOST", public_host)
+    monkeypatch.setenv("FOYER_PUBLIC_ORIGIN", public_origin)
+    app = create_app(home=tmp_path / "origin-relax", clock=clock, testing=True)
+    client = app.test_client()
+    page = client.get(
+        "/initialisation",
+        headers={"Host": public_host},
+        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    assert page.status_code == 200
+    setup = page.headers.getlist("Set-Cookie")
+    assert any("foyer_setup=" in c for c in setup)
+    assert any("Secure" in c for c in setup if "foyer_setup=" in c)
+    token = _csrf_from(page)
+    form = {
+        "csrf_token": token,
+        "household_name": "Foyer",
+        "timezone": "Europe/Berlin",
+        "display_name": "Roger",
+        "username": "roger",
+        "password": PASSWORD,
+        "password_confirm": PASSWORD,
+    }
+    # Origin absente, Referer OK → accepté (comportement navigateur / edge)
+    via_referer = client.post(
+        "/initialisation",
+        data=form,
+        headers={"Host": public_host, "Referer": public_origin + "/initialisation"},
+        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    assert via_referer.status_code in {200, 302}
+    assert "Origine refusée" not in via_referer.data.decode()
+
+
+def test_origine_publique_refusee_sans_referer(tmp_path, clock, monkeypatch):
+    public_host = "new-arch.arscodicis.net"
+    public_origin = "https://new-arch.arscodicis.net"
+    monkeypatch.setenv("FOYER_PUBLIC_HOST", public_host)
+    monkeypatch.setenv("FOYER_PUBLIC_ORIGIN", public_origin)
+    app = create_app(home=tmp_path / "origin-deny", clock=clock, testing=True)
+    client = app.test_client()
+    page = client.get(
+        "/initialisation",
+        headers={"Host": public_host},
+        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    token = _csrf_from(page)
+    denied = client.post(
+        "/initialisation",
+        data={
+            "csrf_token": token,
+            "household_name": "Foyer",
+            "timezone": "Europe/Berlin",
+            "display_name": "Roger",
+            "username": "roger2",
+            "password": PASSWORD,
+            "password_confirm": PASSWORD,
+        },
+        headers={"Host": public_host},  # pas d'Origin ni Referer
+        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    assert denied.status_code == 400
+    assert "Origine refusée" in denied.data.decode()
+    evil = client.post(
+        "/initialisation",
+        data={"csrf_token": token, "household_name": "X", "timezone": "Europe/Berlin",
+              "display_name": "X", "username": "x", "password": PASSWORD, "password_confirm": PASSWORD},
+        headers={"Host": public_host, "Origin": "https://evil.example"},
+        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    assert evil.status_code == 400
+    assert "Origine refusée" in evil.data.decode()
+
+
+def test_origine_locale_exige_toujours_origin(tmp_path, clock, monkeypatch):
+    monkeypatch.delenv("FOYER_PUBLIC_HOST", raising=False)
+    monkeypatch.delenv("FOYER_PUBLIC_ORIGIN", raising=False)
+    app = create_app(home=tmp_path / "local-origin", clock=clock, testing=True)
+    client = app.test_client()
+    page = client.get("/initialisation", headers={"Host": HOST})
+    token = _csrf_from(page)
+    # Cookie setup non Secure en local HTTP
+    assert any("foyer_setup=" in c and "Secure" not in c for c in page.headers.getlist("Set-Cookie"))
+    denied = client.post(
+        "/initialisation",
+        data={
+            "csrf_token": token,
+            "household_name": "Foyer",
+            "timezone": "Europe/Berlin",
+            "display_name": "Roger",
+            "username": "roger",
+            "password": PASSWORD,
+            "password_confirm": PASSWORD,
+        },
+        headers={"Host": HOST, "Referer": ORIGIN + "/initialisation"},  # Origin vide
+        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    assert denied.status_code == 400
+    assert "Origine refusée" in denied.data.decode()
+
+
 def test_sauvegarde_et_restauration(world, tmp_path):
     web, app, home, clock = world
     holder = _json(web.api("GET", "/api/people"))["items"][0]["id"]
