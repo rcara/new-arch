@@ -7,7 +7,7 @@
 # L'app reste sur 127.0.0.1:8765 (launcher.py). Exposition publique = Cloudflare Tunnel.
 
 [Unit]
-Description=Plateforme foyer (locale, 127.0.0.1)
+Description=New Arch (locale, 127.0.0.1)
 After=network.target
 Wants=network-online.target
 

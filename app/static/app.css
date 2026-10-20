@@ -1,4 +1,4 @@
-/* Plateforme foyer — langage visuel Ars Codicis (arscodicis.net) */
+/* New Arch — langage visuel Ars Codicis (arscodicis.net) */
 
 @font-face{
   font-family:"Roboto";
@@ -97,6 +97,7 @@ a:hover{color:var(--accent);text-decoration-color:var(--accent)}
   letter-spacing:-.025em;
   color:var(--paper);
 }
+.brand-dot{color:var(--accent)}
 .site-header .context{
   margin:0;
   font-family:var(--font-mono);
