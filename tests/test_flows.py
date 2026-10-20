@@ -449,8 +449,8 @@ def _csrf_from(response):
     return found.group(1).decode() if found else ""
 
 
-def test_origine_publique_vide_avec_referer(tmp_path, clock, monkeypatch):
-    """Tunnel : Origin vide + Referer matching (hotfix VPS) ; cookies Secure sous HTTPS."""
+def test_origine_publique_vide_sans_referer(tmp_path, clock, monkeypatch):
+    """Tunnel : Origin vide, sans Referer (Referrer-Policy: no-referrer) ; cookies Secure."""
     public_host = "new-arch.arscodicis.net"
     public_origin = "https://new-arch.arscodicis.net"
     monkeypatch.setenv("FOYER_PUBLIC_HOST", public_host)
@@ -476,19 +476,19 @@ def test_origine_publique_vide_avec_referer(tmp_path, clock, monkeypatch):
         "password": PASSWORD,
         "password_confirm": PASSWORD,
     }
-    # Origin absente, Referer OK → accepté (comportement navigateur / edge)
-    via_referer = client.post(
+    # Origin absente, pas de Referer → accepté (Host déjà validé ; CSRF requis)
+    via_empty = client.post(
         "/initialisation",
         data=form,
-        headers={"Host": public_host, "Referer": public_origin + "/initialisation"},
+        headers={"Host": public_host},
         environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
     )
-    assert via_referer.status_code in {200, 302}
-    assert "Origine refusée" not in via_referer.data.decode()
+    assert via_empty.status_code in {200, 302}
+    assert "Origine refusée" not in via_empty.data.decode()
 
 
-def test_origine_publique_null_avec_referer(tmp_path, clock, monkeypatch):
-    """Tunnel : Origin littéral null (privacy) + Referer matching → passe le garde."""
+def test_origine_publique_null_sans_referer(tmp_path, clock, monkeypatch):
+    """Tunnel : Origin littéral null sans Referer (logout/login sous no-referrer)."""
     public_host = "new-arch.arscodicis.net"
     public_origin = "https://new-arch.arscodicis.net"
     monkeypatch.setenv("FOYER_PUBLIC_HOST", public_host)
@@ -514,18 +514,15 @@ def test_origine_publique_null_avec_referer(tmp_path, clock, monkeypatch):
     via_null = client.post(
         "/initialisation",
         data=form,
-        headers={
-            "Host": public_host,
-            "Origin": "null",
-            "Referer": public_origin + "/initialisation",
-        },
+        headers={"Host": public_host, "Origin": "null"},
         environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
     )
     assert via_null.status_code in {200, 302}
     assert "Origine refusée" not in via_null.data.decode()
 
 
-def test_origine_publique_refusee_sans_referer(tmp_path, clock, monkeypatch):
+def test_origine_publique_refusee_origin_etrangere(tmp_path, clock, monkeypatch):
+    """Tunnel : Origin étrangère toujours refusée ; Host seul ne suffit pas si Origin est mauvais."""
     public_host = "new-arch.arscodicis.net"
     public_origin = "https://new-arch.arscodicis.net"
     monkeypatch.setenv("FOYER_PUBLIC_HOST", public_host)
@@ -538,22 +535,6 @@ def test_origine_publique_refusee_sans_referer(tmp_path, clock, monkeypatch):
         environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
     )
     token = _csrf_from(page)
-    denied = client.post(
-        "/initialisation",
-        data={
-            "csrf_token": token,
-            "household_name": "Foyer",
-            "timezone": "Europe/Berlin",
-            "display_name": "Roger",
-            "username": "roger2",
-            "password": PASSWORD,
-            "password_confirm": PASSWORD,
-        },
-        headers={"Host": public_host},  # pas d'Origin ni Referer
-        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
-    )
-    assert denied.status_code == 400
-    assert "Origine refusée" in denied.data.decode()
     evil = client.post(
         "/initialisation",
         data={"csrf_token": token, "household_name": "X", "timezone": "Europe/Berlin",
