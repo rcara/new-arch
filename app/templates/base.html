@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}Foyer{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <a class="skip" href="#contenu">Aller au contenu</a>
+  <header>
+    <b>Plateforme foyer</b>
+    {% if person %}
+    <p>{{ household.name }} · {{ person.display_name }} · {% if person.is_principal %}compte principal{% else %}compte secondaire{% endif %}</p>
+    {% else %}
+    <p>Installation locale</p>
+    {% endif %}
+  </header>
+  <div class="layout {% if not person %}guest{% endif %}">
+    {% if person %}
+    <nav aria-label="Écrans">
+      <a href="{{ url_for('pages.today') }}" {% if nav == 'today' %}aria-current="page"{% endif %}>Aujourd'hui</a>
+      <a href="{{ url_for('pages.milestones_get') }}" {% if nav == 'reperes' %}aria-current="page"{% endif %}>Repères</a>
+      <a href="{{ url_for('pages.decisions_get') }}" {% if nav == 'decisions' %}aria-current="page"{% endif %}>Décision</a>
+      <a href="{{ url_for('pages.vault_get') }}" {% if nav == 'coffre' %}aria-current="page"{% endif %}>Coffre</a>
+      {% if person.is_principal %}
+      <a href="{{ url_for('pages.people_get') }}" {% if nav == 'personnes' %}aria-current="page"{% endif %}>Personnes</a>
+      <a href="{{ url_for('pages.access_index') }}" {% if nav == 'acces' %}aria-current="page"{% endif %}>Accès</a>
+      {% endif %}
+      <form method="post" action="{{ url_for('pages.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Se déconnecter</button>
+      </form>
+    </nav>
+    {% endif %}
+    <main id="contenu">
+      {% if message %}<p class="status" role="status">{{ message }}</p>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

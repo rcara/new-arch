@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Initialisation{% endblock %}
+{% block content %}
+<h1>Créer le foyer</h1>
+<p class="muted">Une seule fois, sur cette machine. Le premier compte est le compte principal.</p>
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Nom du foyer <input name="household_name" required value="{{ form.get('household_name', '') }}" {% if errors.household_name %}aria-invalid="true"{% endif %}></label>
+  {% if errors.household_name %}<p class="error">{{ errors.household_name }}</p>{% endif %}
+  <label>Fuseau <input name="timezone" required value="{{ form.get('timezone', 'Europe/Berlin') }}"></label>
+  {% if errors.timezone %}<p class="error">{{ errors.timezone }}</p>{% endif %}
+  <label>Votre nom <input name="display_name" required value="{{ form.get('display_name', '') }}"></label>
+  {% if errors.display_name %}<p class="error">{{ errors.display_name }}</p>{% endif %}
+  <label>Identifiant <input name="username" required autocomplete="username" value="{{ form.get('username', '') }}"></label>
+  {% if errors.username %}<p class="error">{{ errors.username }}</p>{% endif %}
+  <label>Mot de passe <input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label>
+  {% if errors.password %}<p class="error">{{ errors.password }}</p>{% endif %}
+  <label>Mot de passe, une seconde fois <input name="password_confirm" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label>
+  {% if errors.password_confirm %}<p class="error">{{ errors.password_confirm }}</p>{% endif %}
+  <button type="submit">Créer le foyer</button>
+</form>
+{% endblock %}

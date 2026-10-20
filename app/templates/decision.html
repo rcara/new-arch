@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Décision{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('pages.decisions_get') }}">Retour aux décisions</a></p>
+<article class="paper">
+  <p class="badge">{% if item.sealed_at %}Scellée le {{ item.sealed_at|frtime }}{% else %}Brouillon{% endif %}</p>
+  {% if item.milestone_name is defined %}<p class="muted">Repère : {{ item.milestone_name }} · {{ item.milestone_due_date|frdate }}</p>{% endif %}
+  <h1>Le choix</h1>
+  <p>{{ item.choice or "Non renseigné" }}</p>
+  <h2>Les options</h2>
+  <ul>{% for option in item.options %}<li>{{ option }}</li>{% endfor %}</ul>
+  <h2>Ce qu'on attend</h2>
+  <p>{{ item.expected or "Non renseigné" }}</p>
+  <h2>Ce qui ferait changer d'avis</h2>
+  <p>{{ item.reconsider_if or "Non renseigné" }}</p>
+  <h2>Règle facultative</h2>
+  {% if item.rule %}
+  <p>{{ item.rule.name }}</p>
+  <dl>{% for line in item.rule.lines %}<dt>{{ line.label }}</dt><dd>{{ line.value }}</dd>{% endfor %}</dl>
+  {% else %}<p>Aucune règle ajoutée.</p>{% endif %}
+  <hr>
+  <h2>Résultat ultérieur</h2>
+  {% if item.result %}
+  <p>{{ item.result.body }}</p>
+  <p class="muted">Ajouté le {{ item.result.created_at|frtime }}</p>
+  {% else %}<p>Pas encore renseigné.</p>{% endif %}
+  {% if person.is_principal and not item.sealed_at %}
+  <p class="toolbar">
+    <a href="{{ url_for('pages.decision_edit', decision_id=item.id) }}">Modifier le brouillon</a>
+    <a href="{{ url_for('pages.decision_seal_get', decision_id=item.id) }}">Sceller</a>
+  </p>
+  {% endif %}
+  {% if person.is_principal and item.sealed_at and not item.result %}
+  <p><a href="{{ url_for('pages.decision_result_get', decision_id=item.id) }}">Ajouter le résultat</a></p>
+  {% endif %}
+</article>
+{% endblock %}

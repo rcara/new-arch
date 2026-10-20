@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Coffre{% endblock %}
+{% block content %}
+<h1>Coffre</h1>
+<p>Les fichiers s'ouvrent ici, selon les accès accordés.</p>
+{% if errors.form %}<p class="error" role="alert">{{ errors.form }}</p>{% endif %}
+{% if errors.file %}<p class="error">{{ errors.file }}</p>{% endif %}
+{% if errors.milestone_id %}<p class="error">{{ errors.milestone_id }}</p>{% endif %}
+{% if person.is_principal %}
+<form class="upload" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <b>Déposer une pièce</b>
+  <p class="muted">PDF, JPEG ou PNG · 20 Mio maximum</p>
+  <label>Échéance
+    <select name="milestone_id" required>
+      <option value="">Choisir</option>
+      {% for choice in choices %}
+      <option value="{{ choice.id }}">{{ choice.name }} — {{ choice.holder_name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Fichier <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required></label>
+  <button type="submit" name="confirm" value="oui">Déposer</button>
+</form>
+{% endif %}
+<h2>Fichiers accessibles</h2>
+{% if not items %}<p>Aucun fichier accessible.</p>{% endif %}
+{% for item in items %}
+<div class="row">
+  <b>{{ item.original_name }}</b>
+  <span>Déposé le {{ item.created_at|frtime }}</span>
+  {% if item.milestone_name is defined %}<span>{{ item.milestone_name }}</span>{% endif %}
+  <a href="{{ url_for('pages.file_open', file_id=item.id) }}">Ouvrir</a>
+  {% if person.is_principal %}
+  <a href="{{ url_for('pages.file_replace_get', file_id=item.id) }}">Remplacer</a>
+  <a href="{{ url_for('pages.file_delete_get', file_id=item.id) }}">Retirer</a>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

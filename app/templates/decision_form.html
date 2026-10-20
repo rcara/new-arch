@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifier la décision' if editing else 'Nouvelle décision' }}{% endblock %}
+{% block content %}
+<h1>{{ 'Modifier la décision' if editing else 'Nouvelle décision' }}</h1>
+{% if form.get('milestone_name') %}<p class="muted">Repère : {{ form.get('milestone_name') }}</p>{% endif %}
+<form method="post" action="{{ url_for('pages.decision_update', decision_id=item.id) if editing else url_for('pages.decision_create') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="milestone_id" value="{{ form.get('milestone_id', '') }}">
+  {% if editing %}<input type="hidden" name="draft_version" value="{{ form.get('draft_version', '') }}">{% endif %}
+  <label>Le choix <textarea name="choice" maxlength="1000">{{ form.get('choice', '') }}</textarea></label>
+  {% if errors.choice %}<p class="error">{{ errors.choice }}</p>{% endif %}
+  <fieldset>
+    <legend>Les options</legend>
+    <p>« Ne rien faire » est toujours conservée. Elle ne se retire pas.</p>
+    {% for index in range(19) %}
+    {% if index < 8 or form.get('option_' ~ index) %}
+    <label>Option {{ index + 1 }} <input name="option_{{ index }}" maxlength="500" value="{{ form.get('option_' ~ index, '') }}"></label>
+    {% endif %}
+    {% endfor %}
+    {% if errors.options %}<p class="error">{{ errors.options }}</p>{% endif %}
+  </fieldset>
+  <label>Ce qu'on attend <textarea name="expected" maxlength="2000">{{ form.get('expected', '') }}</textarea></label>
+  {% if errors.expected %}<p class="error">{{ errors.expected }}</p>{% endif %}
+  <label>Ce qui ferait changer d'avis <textarea name="reconsider_if" maxlength="2000">{{ form.get('reconsider_if', '') }}</textarea></label>
+  {% if errors.reconsider_if %}<p class="error">{{ errors.reconsider_if }}</p>{% endif %}
+  <fieldset>
+    <legend>Règle facultative</legend>
+    <label>Nom de la règle <input name="rule_name" maxlength="200" value="{{ form.get('rule_name', '') }}"></label>
+    {% for index in range(10) %}
+    {% if index < 4 or form.get('rule_label_' ~ index) or form.get('rule_value_' ~ index) %}
+    <div class="toolbar">
+      <label>Libellé <input name="rule_label_{{ index }}" maxlength="300" value="{{ form.get('rule_label_' ~ index, '') }}"></label>
+      <label>Valeur <input name="rule_value_{{ index }}" maxlength="1000" value="{{ form.get('rule_value_' ~ index, '') }}"></label>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% if errors.rule %}<p class="error">{{ errors.rule }}</p>{% endif %}
+  </fieldset>
+  <button type="submit">Enregistrer le brouillon</button>
+</form>
+{% endblock %}

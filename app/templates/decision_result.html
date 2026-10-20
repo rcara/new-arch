@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Résultat{% endblock %}
+{% block content %}
+<h1>Ajouter le résultat</h1>
+<p class="muted">Le texte scellé reste inchangé. Le résultat ne pourra plus être modifié.</p>
+<article class="paper">
+  <h2>Le choix scellé</h2>
+  <p>{{ item.choice }}</p>
+</article>
+{% if review %}
+<h2>Résultat à enregistrer</h2>
+<p>{{ form.get('body', '') }}</p>
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="step" value="commit">
+  <input type="hidden" name="body" value="{{ form.get('body', '') }}">
+  <button type="submit" name="confirm" value="oui">Enregistrer le résultat</button>
+  <a href="{{ url_for('pages.decision_result_get', decision_id=item.id) }}">Annuler</a>
+</form>
+{% else %}
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="step" value="review">
+  <label>Résultat <textarea name="body" maxlength="4000" required>{{ form.get('body', '') }}</textarea></label>
+  {% if errors.body %}<p class="error">{{ errors.body }}</p>{% endif %}
+  <button type="submit">Relire avant enregistrement</button>
+</form>
+{% endif %}
+{% endblock %}

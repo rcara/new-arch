@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Créer un compte{% endblock %}
+{% block content %}
+<h1>Compte de {{ target.display_name }}</h1>
+<p class="muted">La personne saisit son mot de passe ici, sur cette machine.</p>
+{% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Identifiant <input name="username" required autocomplete="off" value="{{ form.get('username', '') }}"></label>
+  {% if errors.username %}<p class="error">{{ errors.username }}</p>{% endif %}
+  <label>Mot de passe <input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label>
+  {% if errors.password %}<p class="error">{{ errors.password }}</p>{% endif %}
+  <label>Mot de passe, une seconde fois <input name="password_confirm" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label>
+  {% if errors.password_confirm %}<p class="error">{{ errors.password_confirm }}</p>{% endif %}
+  <button type="submit">Créer le compte</button>
+</form>
+{% endblock %}

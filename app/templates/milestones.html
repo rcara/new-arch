@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Repères{% endblock %}
+{% block content %}
+<h1>Repères</h1>
+<form class="toolbar" method="get">
+  <label>Rechercher <input name="q" value="{{ args.get('q', '') }}" placeholder="Nom, catégorie, titulaire"></label>
+  <label>Catégorie
+    <select name="category">
+      <option value="">Toutes</option>
+      {% for category in categories %}
+      <option value="{{ category }}" {% if args.get('category') == category %}selected{% endif %}>{{ category }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Statut
+    <select name="statut">
+      <option value="">Tous</option>
+      {% for key, label in status_label.items() %}
+      <option value="{{ key }}" {% if args.get('statut') == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label><input type="checkbox" name="archives" value="1" {% if args.get('archives') == '1' %}checked{% endif %}> Afficher les archives</label>
+  <button type="submit">Filtrer</button>
+</form>
+{% if person.is_principal %}<p><a href="{{ url_for('pages.milestone_new') }}">Nouveau repère</a></p>{% endif %}
+{% if not listed['items'] %}<p>Aucun repère dans cette liste.</p>{% endif %}
+{% for item in listed['items'] %}
+<div class="row">
+  <b><a href="{{ url_for('pages.milestone_get', milestone_id=item.id) }}">{{ item.name }}</a></b>
+  <span>{{ item.holder_name }}{% if not item.holder_active %} (retirée){% endif %}</span>
+  <span>{{ item.category }}</span>
+  <span>{{ item.due_date|frdate }}</span>
+  <span>{{ status_label[item.status] }}</span>
+  {% if item.archived %}<span>Archivé</span>{% endif %}
+</div>
+{% endfor %}
+{% if listed.total > listed.page_size %}
+<p class="toolbar">
+  {% if listed.page > 1 %}<a href="{{ url_for('pages.milestones_get', page=listed.page-1, q=args.get('q',''), category=args.get('category',''), statut=args.get('statut',''), archives=args.get('archives','')) }}">Page précédente</a>{% endif %}
+  <span>Page {{ listed.page }}</span>
+  {% if listed.page * listed.page_size < listed.total %}<a href="{{ url_for('pages.milestones_get', page=listed.page+1, q=args.get('q',''), category=args.get('category',''), statut=args.get('statut',''), archives=args.get('archives','')) }}">Page suivante</a>{% endif %}
+</p>
+{% endif %}
+{% endblock %}

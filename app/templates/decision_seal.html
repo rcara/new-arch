@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Sceller la page{% endblock %}
+{% block content %}
+<h1>Sceller cette page</h1>
+<p>Le scellement fige le texte dans l'application. Ce n'est ni une signature électronique ni un horodatage certifié. Le résultat pourra être ajouté plus tard, en dessous, sans modifier ce texte.</p>
+<article class="paper">
+  <h2>Le choix</h2><p>{{ item.choice or "Non renseigné" }}</p>
+  <h2>Les options</h2><ul>{% for option in item.options %}<li>{{ option }}</li>{% endfor %}</ul>
+  <h2>Ce qu'on attend</h2><p>{{ item.expected or "Non renseigné" }}</p>
+  <h2>Ce qui ferait changer d'avis</h2><p>{{ item.reconsider_if or "Non renseigné" }}</p>
+  {% if item.rule %}<h2>Règle</h2><p>{{ item.rule.name }}</p>{% endif %}
+</article>
+{% if item.choice and item.expected and item.reconsider_if %}
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="draft_version" value="{{ item.draft_version }}">
+  <button type="submit" name="confirm" value="oui">Sceller maintenant</button>
+  <a href="{{ url_for('pages.decision_get', decision_id=item.id) }}">Annuler</a>
+</form>
+{% else %}
+<p class="error">La page est incomplète. Renseignez les quatre parties avant de sceller.</p>
+<p><a href="{{ url_for('pages.decision_edit', decision_id=item.id) }}">Revenir au brouillon</a></p>
+{% endif %}
+{% endblock %}

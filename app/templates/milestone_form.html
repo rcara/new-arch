@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifier le repère' if editing else 'Nouveau repère' }}{% endblock %}
+{% block content %}
+<h1>{{ 'Modifier le repère' if editing else 'Nouveau repère' }}</h1>
+<form method="post" action="{{ url_for('pages.milestone_update', milestone_id=form.get('milestone_id')) if editing else url_for('pages.milestone_create') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if editing %}<input type="hidden" name="updated_at" value="{{ form.get('updated_at', '') }}">{% endif %}
+  <label>Nom <input name="name" required maxlength="160" value="{{ form.get('name', '') }}"></label>
+  {% if errors.name %}<p class="error">{{ errors.name }}</p>{% endif %}
+  <label>Catégorie
+    <select name="category" required>
+      <option value="">Choisir</option>
+      {% for category in categories %}
+      <option value="{{ category }}" {% if form.get('category') == category %}selected{% endif %}>{{ category }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% if errors.category %}<p class="error">{{ errors.category }}</p>{% endif %}
+  <label>Titulaire
+    <select name="holder_id" required>
+      <option value="">Choisir</option>
+      {% for p in people %}
+      {% if p.active or form.get('holder_id')|string == p.id|string %}
+      <option value="{{ p.id }}" {% if form.get('holder_id')|string == p.id|string %}selected{% endif %}>{{ p.display_name }}{% if not p.active %} (retirée){% endif %}</option>
+      {% endif %}
+      {% endfor %}
+    </select>
+  </label>
+  {% if errors.holder_id %}<p class="error">{{ errors.holder_id }}</p>{% endif %}
+  <label>Responsable, s'il est distinct du titulaire
+    <select name="responsible_id">
+      <option value="">Le titulaire</option>
+      {% for p in people %}
+      {% if p.active or form.get('responsible_id')|string == p.id|string %}
+      <option value="{{ p.id }}" {% if form.get('responsible_id')|string == p.id|string %}selected{% endif %}>{{ p.display_name }}{% if not p.active %} (retirée){% endif %}</option>
+      {% endif %}
+      {% endfor %}
+    </select>
+  </label>
+  {% if errors.responsible_id %}<p class="error">{{ errors.responsible_id }}</p>{% endif %}
+  <label>Emplacement <input name="location" maxlength="250" value="{{ form.get('location', '') }}"></label>
+  {% if errors.location %}<p class="error">{{ errors.location }}</p>{% endif %}
+  <label>Montant en euros, facultatif <input name="amount" inputmode="decimal" value="{{ form.get('amount', '') }}"></label>
+  <p class="muted">Aucun total n'est calculé.</p>
+  {% if errors.amount %}<p class="error">{{ errors.amount }}</p>{% endif %}
+  <label>Date <input name="due_date" type="date" value="{{ form.get('due_date', '') }}"></label>
+  {% if errors.due_date %}<p class="error">{{ errors.due_date }}</p>{% endif %}
+  <label>Préavis en jours <input name="notice_days" inputmode="numeric" value="{{ form.get('notice_days', '0') }}"></label>
+  <p class="muted">Le préavis est informatif. Il ne change pas le statut et n'envoie aucun rappel.</p>
+  {% if errors.notice_days %}<p class="error">{{ errors.notice_days }}</p>{% endif %}
+  <label>Note <textarea name="note" maxlength="2000">{{ form.get('note', '') }}</textarea></label>
+  <p class="muted">N'inscrivez ni mot de passe ni numéro de compte complet. L'application ne peut pas garantir cette précaution.</p>
+  {% if errors.note %}<p class="error">{{ errors.note }}</p>{% endif %}
+  <button type="submit">Enregistrer</button>
+</form>
+{% endblock %}

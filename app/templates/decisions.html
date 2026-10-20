@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Décision{% endblock %}
+{% block content %}
+<h1>Décision</h1>
+{% if not items %}<p>Aucune décision accessible.</p>{% endif %}
+{% for item in items %}
+<div class="row">
+  <a href="{{ url_for('pages.decision_get', decision_id=item.id) }}">Page du {{ item.created_at|frtime }}</a>
+  {% if item.sealed_at %}<span>Scellée</span>{% else %}<span>Brouillon</span>{% endif %}
+  {% if item.milestone_name is defined %}<span>{{ item.milestone_name }}</span>{% endif %}
+</div>
+{% endfor %}
+{% endblock %}

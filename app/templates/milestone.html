@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('pages.milestones_get') }}">Retour aux repères</a></p>
+<article>
+  <h1>{{ item.name }}</h1>
+  {% if item.archived %}<p class="badge">Archivé</p>{% endif %}
+  <dl>
+    <dt>Catégorie</dt><dd>{{ item.category }}</dd>
+    <dt>Titulaire</dt><dd>{{ item.holder_name }}{% if not item.holder_active %} (retirée){% endif %}</dd>
+    <dt>Responsable</dt><dd>{% if item.responsible_name %}{{ item.responsible_name }}{% if not item.responsible_active %} (retirée){% endif %}{% else %}{{ item.holder_name }}{% endif %}</dd>
+    <dt>Emplacement</dt><dd>{{ item.location or "Non renseigné" }}</dd>
+    <dt>Montant</dt><dd>{{ item.amount_cents|frcents }}</dd>
+    <dt>Date</dt><dd>{{ item.due_date|frdate }} · {{ status_label[item.status] }}</dd>
+    <dt>Préavis</dt><dd>{{ item.notice_days }} jours{% if item.notice_date %} · {{ item.notice_date|frdate }}{% endif %}</dd>
+    <dt>Note</dt><dd>{{ item.note or "Aucune" }}</dd>
+    <dt>Pièce au coffre</dt><dd>{% if item.has_file %}Oui{% else %}Non{% endif %}</dd>
+    <dt>Décisions</dt>
+    <dd>
+      {% if not item.decisions %}Aucune page.{% endif %}
+      <ul>
+      {% for decision in item.decisions %}
+        <li>
+          {% if decision.can_read %}
+          <a href="{{ url_for('pages.decision_get', decision_id=decision.id) }}">Page du {{ decision.created_at|frtime }}</a>
+          {% else %}
+          Page du {{ decision.created_at|frtime }}
+          {% endif %}
+        </li>
+      {% endfor %}
+      </ul>
+    </dd>
+  </dl>
+  {% if person.is_principal %}
+  <p class="toolbar">
+    <a href="{{ url_for('pages.milestone_edit', milestone_id=item.id) }}">Modifier</a>
+    <a href="{{ url_for('pages.decision_new', repere=item.id) }}">Écrire une décision</a>
+    {% if item.archived %}
+    <a href="{{ url_for('pages.milestone_restore_get', milestone_id=item.id) }}">Restaurer</a>
+    {% else %}
+    <a href="{{ url_for('pages.milestone_archive_get', milestone_id=item.id) }}">Archiver</a>
+    {% endif %}
+  </p>
+  {% endif %}
+</article>
+{% endblock %}

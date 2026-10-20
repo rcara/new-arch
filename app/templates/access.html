@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Accès de {{ target.display_name }}{% endblock %}
+{% block content %}
+<h1>Accès de {{ target.display_name }}</h1>
+<p>Les trois sections sont indépendantes. Un changement est pris en compte à la prochaine requête.</p>
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2>Repères du foyer</h2>
+  <label><input type="checkbox" name="index" value="oui" {% if state.can_view_index %}checked{% endif %}> Voir les repères</label>
+  <h2>Décisions, page par page</h2>
+  {% if not state.decisions %}<p>Aucune page.</p>{% endif %}
+  {% for decision in state.decisions %}
+  <label class="permission"><input type="checkbox" name="decision" value="{{ decision.id }}" {% if decision.granted %}checked{% endif %}> Page du {{ decision.created_at|frtime }} — {{ decision.milestone_name }}</label>
+  {% endfor %}
+  <h2>Fichiers, pièce par pièce</h2>
+  {% if not state.files %}<p>Aucune pièce.</p>{% endif %}
+  {% for file in state.files %}
+  <label class="permission"><input type="checkbox" name="file" value="{{ file.id }}" {% if file.granted %}checked{% endif %}> {{ file.original_name }}</label>
+  {% endfor %}
+  <button type="submit">Enregistrer les accès</button>
+</form>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Accès{% endblock %}
+{% block content %}
+<h1>Accès</h1>
+{% if not items %}<p>Aucun compte secondaire actif.</p>{% endif %}
+<ul>
+{% for item in items %}
+  <li><a href="{{ url_for('pages.access_get', person_id=item.id) }}">{{ item.display_name }}</a></li>
+{% endfor %}
+</ul>
+{% endblock %}

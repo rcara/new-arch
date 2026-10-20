@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Remplacer la pièce{% endblock %}
+{% block content %}
+<h1>Remplacer {{ item.original_name }}</h1>
+<p>La pièce précédente quitte l'application. Les personnes à qui elle avait été accordée ne reçoivent pas le nouveau fichier : il faudra le leur accorder à nouveau.</p>
+{% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+{% if errors.file %}<p class="error">{{ errors.file }}</p>{% endif %}
+<form method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="version" value="{{ item.version }}">
+  <label>Nouveau fichier <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required></label>
+  <button type="submit" name="confirm" value="oui">Remplacer</button>
+  <a href="{{ url_for('pages.vault_get') }}">Annuler</a>
+</form>
+{% endblock %}

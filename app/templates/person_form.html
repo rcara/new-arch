@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Ajouter quelqu'un{% endblock %}
+{% block content %}
+<h1>Ajouter quelqu'un</h1>
+{% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+{% if errors.with_account %}<p class="error">{{ errors.with_account }}</p>{% endif %}
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Nom <input name="display_name" required value="{{ form.get('display_name', '') }}"></label>
+  {% if errors.display_name %}<p class="error">{{ errors.display_name }}</p>{% endif %}
+  <label>Lien de parenté, descriptif <input name="relationship" value="{{ form.get('relationship', '') }}"></label>
+  {% if errors.relationship %}<p class="error">{{ errors.relationship }}</p>{% endif %}
+  <label><input type="checkbox" name="with_account" value="oui" {% if form.get('with_account') == 'oui' %}checked{% endif %}> Créer un compte maintenant</label>
+  <p class="muted">La personne saisit son mot de passe sur cette machine. Aucune invitation n'est envoyée.</p>
+  <label>Identifiant <input name="username" autocomplete="off" value="{{ form.get('username', '') }}"></label>
+  {% if errors.username %}<p class="error">{{ errors.username }}</p>{% endif %}
+  <label>Mot de passe <input name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password"></label>
+  {% if errors.password %}<p class="error">{{ errors.password }}</p>{% endif %}
+  <label>Mot de passe, une seconde fois <input name="password_confirm" type="password" minlength="12" maxlength="128" autocomplete="new-password"></label>
+  {% if errors.password_confirm %}<p class="error">{{ errors.password_confirm }}</p>{% endif %}
+  <button type="submit">Ajouter</button>
+</form>
+{% endblock %}

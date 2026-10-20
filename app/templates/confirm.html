@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+<h1>{{ heading }}</h1>
+<p>{{ text }}</p>
+<form method="post" action="{{ action }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% for key, value in hidden.items() %}
+  <input type="hidden" name="{{ key }}" value="{{ value }}">
+  {% endfor %}
+  <button type="submit" name="confirm" value="oui">{{ label }}</button>
+  <a href="{{ cancel }}">Annuler</a>
+</form>
+{% endblock %}
