@@ -1,4 +1,4 @@
-# Plateforme foyer
+# New Arch
 
 Application locale pour un foyer : repères, décisions scellées, pièces au coffre.
 Le nom est provisoire. Ce dossier ne modifie aucun site existant.

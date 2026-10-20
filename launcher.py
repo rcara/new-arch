@@ -50,7 +50,7 @@ def main():
 
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
-    print(f"Plateforme foyer écoute sur {url}", flush=True)
+    print(f"New Arch écoute sur {url}", flush=True)
     try:
         server.run()
     finally:

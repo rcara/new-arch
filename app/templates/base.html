@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="color-scheme" content="dark">
-  <title>{% block title %}Foyer{% endblock %}</title>
+  <title>{% block title %}Accueil{% endblock %} · New Arch</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body>
@@ -13,7 +13,7 @@
   <header class="site-header">
     <div class="header-inner">
       <div class="brand-block">
-        <p class="brand">Plateforme foyer.</p>
+        <p class="brand">New Arch<span class="brand-dot">.</span></p>
         {% if person %}
         <p class="context">{{ household.name }} · {{ person.display_name }} · {% if person.is_principal %}compte principal{% else %}compte secondaire{% endif %}</p>
         {% else %}
