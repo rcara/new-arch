@@ -1,0 +1,11 @@
+# Copier vers /etc/cloudflared/config.yml sur le VPS (ne pas committer de credentials).
+# Remplacer TUNNEL_UUID et le chemin credentials.json fournis par Cloudflare.
+
+tunnel: TUNNEL_UUID
+credentials-file: /etc/cloudflared/TUNNEL_UUID.json
+
+ingress:
+  # Hostname public (DNS Cloudflare → CNAME du tunnel)
+  - hostname: foyer.example.com
+    service: http://127.0.0.1:8765
+  - service: http_status:404

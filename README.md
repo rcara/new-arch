@@ -6,6 +6,7 @@ Le nom est provisoire. Ce dossier ne modifie aucun site existant.
 Le guide d'usage, de sauvegarde et les limites du MVP sont dans [GUIDE.md](GUIDE.md).
 La matrice exigences → modules → tests est dans [MATRICE.md](MATRICE.md).
 Le compte rendu d'exécution est dans [RAPPORT-TESTS.md](RAPPORT-TESTS.md).
+Déploiement GitHub Actions → VPS + Cloudflare Tunnel : [DEPLOY.md](DEPLOY.md).
 
 ## Démarrage
 

@@ -1,0 +1,30 @@
+# Exemple d'unité systemd — à installer sur le VPS :
+#   sudo cp deploy/foyer.service /etc/systemd/system/foyer.service
+#   # adapter User=, WorkingDirectory=, Environment=FOYER_HOME=
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now foyer
+#
+# L'app reste sur 127.0.0.1:8765 (launcher.py). Exposition publique = Cloudflare Tunnel.
+
+[Unit]
+Description=Plateforme foyer (locale, 127.0.0.1)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=foyer
+Group=foyer
+WorkingDirectory=/opt/foyer
+Environment=FOYER_HOME=/opt/foyer
+Environment=FOYER_PORT=8765
+Environment=FOYER_NO_BROWSER=1
+ExecStart=/opt/foyer/.venv/bin/python /opt/foyer/launcher.py
+Restart=on-failure
+RestartSec=3
+# Pas d'écoute publique : le tunnel Cloudflare se connecte en local.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

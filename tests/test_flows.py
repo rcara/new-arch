@@ -3,6 +3,7 @@
 import io
 import sqlite3
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -364,7 +365,9 @@ def test_securite_des_requetes(world):
     assert other.login("roger").status_code == 200
     text = (home / "logs" / "audit.log").read_text(encoding="utf-8")
     assert PASSWORD not in text
-    assert "0.0.0.0" not in (home.parent.parent / "launcher.py").read_text(encoding="utf-8") if False else "127.0.0.1" in open("/srv/apps/plateforme-foyer/launcher.py", encoding="utf-8").read()
+    launcher = Path(__file__).resolve().parents[1].joinpath("launcher.py").read_text(encoding="utf-8")
+    assert "127.0.0.1" in launcher
+    assert "0.0.0.0" not in launcher
 
 
 def test_sauvegarde_et_restauration(world, tmp_path):

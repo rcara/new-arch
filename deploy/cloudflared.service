@@ -1,0 +1,27 @@
+# Exemple d'unité systemd pour cloudflared (Tunnel Cloudflare).
+# Installer le binaire cloudflared (paquet Cloudflare ou release GitHub),
+# puis :
+#   sudo cp deploy/cloudflared.service /etc/systemd/system/cloudflared.service
+#   sudo mkdir -p /etc/cloudflared
+#   # placer credentials + config (voir cloudflared.yml.example et DEPLOY.md)
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now cloudflared
+#
+# Ne pas ouvrir les ports 80/443 sur le VPS si le Tunnel est utilisé.
+
+[Unit]
+Description=Cloudflare Tunnel (foyer → 127.0.0.1:8765)
+After=network-online.target foyer.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cloudflared
+Group=cloudflared
+ExecStart=/usr/local/bin/cloudflared tunnel --config /etc/cloudflared/config.yml run
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
