@@ -142,14 +142,16 @@ button,input,select,textarea{
   padding:10px 12px;
 }
 input,select,textarea{width:100%;max-width:28rem;margin-top:6px;display:block}
+input,select{height:42px;padding-top:0;padding-bottom:0}
 input[type=checkbox],input[type=radio]{
   display:inline-block;
   width:auto;
+  height:auto;
   margin:0 8px 0 0;
   accent-color:var(--accent);
   vertical-align:middle;
 }
-input[type=file]{padding:8px}
+input[type=file]{height:auto;padding:8px}
 input:hover,select:hover,textarea:hover{border-color:var(--paper)}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline-offset:0;border-color:var(--accent)}
 
