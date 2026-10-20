@@ -112,6 +112,9 @@ def list_milestones(ctx, person, *, q="", category="", statut="", archives=False
     }
 
 
+URGENT_STATUSES = frozenset({"expire", "sous_30"})
+
+
 def today_items(ctx, person):
     summary = counters(ctx, person)
     rows = ctx.conn.execute(
@@ -129,6 +132,8 @@ def today_items(ctx, person):
         for row in rows
     ]
     summary["total"] = len(summary["items"])
+    summary["urgent_items"] = [item for item in summary["items"] if item["status"] in URGENT_STATUSES]
+    summary["other_count"] = summary["total"] - len(summary["urgent_items"])
     return summary
 
 

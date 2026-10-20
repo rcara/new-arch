@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_status.html" import status_chip, vault_mark with context %}
 {% block title %}Repères{% endblock %}
 {% block content %}
 <h1>Repères</h1>
@@ -31,8 +32,9 @@
   <span>{{ item.holder_name }}{% if not item.holder_active %} (retirée){% endif %}</span>
   <span>{{ item.category }}</span>
   <span>{{ item.due_date|frdate }}</span>
-  <span>{{ status_label[item.status] }}</span>
-  {% if item.archived %}<span>Archivé</span>{% endif %}
+  {{ status_chip(item.status) }}
+  {{ vault_mark(item.has_file) }}
+  {% if item.archived %}<span class="badge">Archivé</span>{% endif %}
 </div>
 {% endfor %}
 {% if listed.total > listed.page_size %}
