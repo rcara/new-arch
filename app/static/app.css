@@ -259,6 +259,89 @@ article,.upload{
   border-radius:var(--radius);
 }
 .badge{display:inline-block;padding:5px 9px;background:var(--moss-soft);border-radius:4px}
+
+/* Pastilles de statut — angle pierre, pas de pill candy */
+.chip{
+  display:inline-block;
+  padding:3px 9px;
+  font-family:var(--font-body);
+  font-size:.82rem;
+  font-weight:600;
+  letter-spacing:.01em;
+  line-height:1.35;
+  border:1px solid var(--line);
+  border-radius:3px;
+  white-space:nowrap;
+  vertical-align:middle;
+}
+.chip--expire{
+  color:#fff;
+  background:var(--danger);
+  border-color:var(--danger);
+}
+.chip--sous_30{
+  color:var(--moss-deep);
+  background:var(--moss-soft);
+  border-color:var(--moss);
+}
+.chip--sous_90{
+  color:var(--ink);
+  background:var(--stone);
+  border-color:var(--stone-deep);
+}
+.chip--a_jour{
+  color:var(--moss-deep);
+  background:var(--moss-soft);
+  border-color:#9bb5a6;
+}
+.chip--sans_date{
+  color:var(--ink-muted);
+  background:rgba(255,255,255,.55);
+  border-color:var(--line);
+}
+
+.vault-mark{
+  font-size:.9rem;
+  white-space:nowrap;
+}
+.vault-mark--yes{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:3px 10px;
+  color:var(--moss-deep);
+  background:var(--moss-soft);
+  border:1px solid #9bb5a6;
+  border-radius:3px;
+  text-decoration:none;
+  font-weight:600;
+}
+.vault-mark--yes::before{
+  content:"";
+  width:7px;
+  height:7px;
+  border-radius:1px;
+  background:var(--moss);
+  flex-shrink:0;
+}
+.vault-mark--yes:hover{
+  color:#fff;
+  background:var(--moss);
+  border-color:var(--moss);
+}
+.vault-mark--no{
+  color:var(--ink-muted);
+}
+
+.today-panel{margin:22px 0 8px;max-width:42rem}
+.today-panel--empty{
+  padding:22px 0 8px;
+  border-top:2px solid var(--moss);
+}
+.today-panel h2{margin-top:0}
+.today-more{margin-top:18px}
+.row--today .row-date{color:var(--ink-muted);min-width:8.5rem}
+
 dl{display:grid;grid-template-columns:180px 1fr;gap:10px}
 dt{color:var(--ink-muted)}
 dd{margin:0}
@@ -290,8 +373,10 @@ dd{margin:0}
   to{opacity:1;transform:none}
 }
 
+.vault-mark--yes{transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+
 @media(prefers-reduced-motion:reduce){
-  body,h1,.status,nav a,button{animation:none;transition:none}
+  body,h1,.status,nav a,button,.vault-mark--yes{animation:none;transition:none}
 }
 
 @media(max-width:720px){

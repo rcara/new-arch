@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_status.html" import status_chip, vault_mark with context %}
 {% block title %}{{ item.name }}{% endblock %}
 {% block content %}
 <p><a href="{{ url_for('pages.milestones_get') }}">Retour aux repères</a></p>
@@ -11,10 +12,10 @@
     <dt>Responsable</dt><dd>{% if item.responsible_name %}{{ item.responsible_name }}{% if not item.responsible_active %} (retirée){% endif %}{% else %}{{ item.holder_name }}{% endif %}</dd>
     <dt>Emplacement</dt><dd>{{ item.location or "Non renseigné" }}</dd>
     <dt>Montant</dt><dd>{{ item.amount_cents|frcents }}</dd>
-    <dt>Date</dt><dd>{{ item.due_date|frdate }} · {{ status_label[item.status] }}</dd>
+    <dt>Date</dt><dd>{{ item.due_date|frdate }} · {{ status_chip(item.status) }}</dd>
     <dt>Préavis</dt><dd>{{ item.notice_days }} jours{% if item.notice_date %} · {{ item.notice_date|frdate }}{% endif %}</dd>
     <dt>Note</dt><dd>{{ item.note or "Aucune" }}</dd>
-    <dt>Pièce au coffre</dt><dd>{% if item.has_file %}Oui{% else %}Non{% endif %}</dd>
+    <dt>Pièce au coffre</dt><dd>{{ vault_mark(item.has_file) }}</dd>
     <dt>Décisions</dt>
     <dd>
       {% if not item.decisions %}Aucune page.{% endif %}

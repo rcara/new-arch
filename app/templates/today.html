@@ -1,30 +1,43 @@
 {% extends "base.html" %}
+{% from "_status.html" import status_chip, vault_mark with context %}
 {% block title %}Aujourd'hui{% endblock %}
 {% block content %}
 <h1>Aujourd'hui</h1>
 <p class="muted">{{ summary.household_name }} · {{ summary.today|frdate }}</p>
-<div class="metrics">
-  <a href="{{ url_for('pages.milestones_get', statut='expire') }}"><strong>{{ summary.counters.expire }}</strong><span>Expirées</span></a>
-  <a href="{{ url_for('pages.milestones_get', statut='sous_30') }}"><strong>{{ summary.counters.sous_30 }}</strong><span>Sous 30 jours</span></a>
-  <a href="{{ url_for('pages.milestones_get', statut='sous_90') }}"><strong>{{ summary.counters.sous_90 }}</strong><span>Sous 90 jours</span></a>
-  <a href="{{ url_for('pages.milestones_get', statut='a_jour') }}"><strong>{{ summary.counters.a_jour }}</strong><span>À jour</span></a>
-</div>
-<p><a href="{{ url_for('pages.milestones_get', statut='sans_date') }}">Sans date : {{ summary.counters.sans_date }}</a></p>
+
 {% if summary.total == 0 %}
-<p>Aucun repère pour le moment.</p>
-{% elif summary.urgent %}
-<p>Rien d'urgent aujourd'hui.</p>
+<section class="today-panel today-panel--empty" aria-labelledby="today-empty">
+  <h2 id="today-empty">Rien à traiter</h2>
+  <p>Aucun repère pour le moment. Les échéances expirées ou sous 30 jours apparaîtront ici en premier.</p>
+  {% if person.is_principal %}
+  <p><a href="{{ url_for('pages.milestone_new') }}">Créer un repère</a></p>
+  {% endif %}
+</section>
+{% else %}
+<section class="today-panel" aria-labelledby="today-focus">
+  {% if summary.urgent_items %}
+  <h2 id="today-focus">À traiter</h2>
+  <p class="muted">Expiré ou sous 30 jours — le reste est sur Repères.</p>
+  {% for item in summary.urgent_items %}
+  <div class="row row--today">
+    <b><a href="{{ url_for('pages.milestone_get', milestone_id=item.id) }}">{{ item.name }}</a></b>
+    <span class="row-date">{{ item.due_date|frdate }}</span>
+    {{ status_chip(item.status) }}
+    {{ vault_mark(item.has_file) }}
+  </div>
+  {% endfor %}
+  {% else %}
+  <h2 id="today-focus">Rien d'urgent aujourd'hui</h2>
+  <p>Aucune échéance expirée ni sous 30 jours.</p>
+  {% endif %}
+  {% if summary.other_count %}
+  <p class="today-more">
+    <a href="{{ url_for('pages.milestones_get') }}">{{ summary.other_count }} autre{% if summary.other_count > 1 %}s{% endif %} sur Repères</a>
+  </p>
+  {% endif %}
+</section>
+{% if person.is_principal %}
+<p><a href="{{ url_for('pages.milestone_new') }}">Créer un repère</a></p>
 {% endif %}
-{% if summary['items'] %}
-<h2>Repères</h2>
-{% for item in summary['items'] %}
-<div class="row">
-  <b><a href="{{ url_for('pages.milestone_get', milestone_id=item.id) }}">{{ item.name }}</a></b>
-  <span>{{ item.due_date|frdate }}</span>
-  <span>{{ status_label[item.status] }}</span>
-  <span>{% if item.has_file %}Une pièce au coffre{% else %}Pas de pièce au coffre{% endif %}</span>
-</div>
-{% endfor %}
 {% endif %}
-{% if person.is_principal %}<p><a href="{{ url_for('pages.milestone_new') }}">Créer un repère</a></p>{% endif %}
 {% endblock %}

@@ -208,7 +208,11 @@ def test_statuts_archives_et_couches(world):
     today = web.get("/").data.decode()
     fiche = web.get(f"/reperes/{milestone_id}").data.decode()
     assert choice not in today and choice not in fiche
-    assert "Rien d'urgent" not in today or "Expir" in today
+    # sans_date après la boucle : pas dans « À traiter », message calme
+    assert "Passeport" not in today
+    assert "Rien d'urgent" in today
+    assert "chip--sans_date" in fiche
+    assert "Sans date" in fiche
 
 
 def test_scellement_resultat_et_nouvelle_page(world):

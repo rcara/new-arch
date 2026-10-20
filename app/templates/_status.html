@@ -1,0 +1,12 @@
+{# Pastilles de statut et marque coffre — rendu serveur, pas de JS. #}
+{% macro status_chip(status) -%}
+<span class="chip chip--{{ status }}">{{ status_label[status] }}</span>
+{%- endmacro %}
+
+{% macro vault_mark(has_file) -%}
+{% if has_file %}
+<a class="vault-mark vault-mark--yes" href="{{ url_for('pages.vault_get') }}">Pièce au coffre</a>
+{% else %}
+<span class="vault-mark vault-mark--no">Pas de pièce au coffre</span>
+{% endif %}
+{%- endmacro %}
