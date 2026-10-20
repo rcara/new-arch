@@ -36,22 +36,39 @@ Sur le VPS, la clé **publique** correspondante va dans `~/.ssh/authorized_keys`
 Sur le serveur (Ubuntu typique) :
 
 ```bash
-# paquets de base
+# paquets de base (git suffit ; le script installe python3.X-venv si besoin)
 sudo apt-get update
-sudo apt-get install -y git python3 python3-venv
+sudo apt-get install -y git python3
+
+# Python 3.14+ : le métapaquet python3-venv ne suffit souvent pas —
+# il faut python3.14-venv (ensurepip). bootstrap-vps.sh le fait via apt,
+# ou manuellement : sudo apt-get install -y python3.14-venv
 
 # cloner + user système + systemd
 export FOYER_REPO_URL=https://github.com/rcara/new-arch.git
 export FOYER_APP_DIR=/opt/foyer
 export FOYER_DEPLOY_USER=deploy   # utilisateur SSH utilisé par Actions
-sudo -E bash -c 'git clone "$FOYER_REPO_URL" /tmp/foyer-src && bash /tmp/foyer-src/deploy/bootstrap-vps.sh'
+# Tant que deploy/ n'est pas sur main, pointer la branche/PR :
+export FOYER_GIT_REF=cursor/github-vps-deploy-3fe0
+sudo -E bash -c 'git clone "$FOYER_REPO_URL" /tmp/foyer-src && \
+  git -C /tmp/foyer-src checkout "$FOYER_GIT_REF" && \
+  bash /tmp/foyer-src/deploy/bootstrap-vps.sh'
 ```
+
+`FOYER_GIT_REF` (optionnel) : après clone dans `FOYER_APP_DIR`, le script fait
+`fetch` + checkout de cette branche / tag / SHA. Sans ref, on garde le défaut du
+clone (`main`). Si `deploy/deploy.sh` ou `foyer.service` manquent, le script
+s’arrête avec un message clair (cas typique : `main` avant le merge de cette PR).
 
 Ou, si le dépôt est déjà présent :
 
 ```bash
 cd /opt/foyer
-sudo -E FOYER_DEPLOY_USER=deploy bash deploy/bootstrap-vps.sh
+sudo -E FOYER_DEPLOY_USER=deploy FOYER_GIT_REF=cursor/github-vps-deploy-3fe0 \
+  bash deploy/bootstrap-vps.sh
+# si deploy/ est encore absent sur le checkout actuel, récupérez le script depuis la branche :
+#   git fetch origin cursor/github-vps-deploy-3fe0
+#   sudo -E FOYER_GIT_REF=... bash <(git show origin/cursor/github-vps-deploy-3fe0:deploy/bootstrap-vps.sh)
 ```
 
 Vérification locale sur le VPS :
@@ -66,7 +83,7 @@ Fichiers utiles dans `deploy/` :
 
 - `foyer.service` — unité systemd (User=`foyer`, `FOYER_NO_BROWSER=1`)
 - `deploy.sh` — script idempotent appelé par Actions
-- `bootstrap-vps.sh` — première installation
+- `bootstrap-vps.sh` — première installation (`FOYER_GIT_REF`, apt `python3.X-venv`)
 - `cloudflared.service` + `cloudflared.yml.example`
 
 ---
