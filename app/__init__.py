@@ -44,8 +44,11 @@ def create_app(home=None, clock=None, testing=False, port=8765):
     app.config["LOCK"] = OpLock(home / "data" / "op.lock")
     app.config["LIMITER"] = AttemptLimiter()
     app.config["DUMMY_HASH"] = hash_password(new_token())
-    app.config["EXPECTED_HOST"] = f"127.0.0.1:{port}"
-    app.config["EXPECTED_ORIGIN"] = f"http://127.0.0.1:{port}"
+    # Derrière Cloudflare Tunnel : Host/Origin publics (REMOTE_ADDR reste 127.0.0.1).
+    public_host = (os.environ.get("FOYER_PUBLIC_HOST") or "").strip()
+    public_origin = (os.environ.get("FOYER_PUBLIC_ORIGIN") or "").strip()
+    app.config["EXPECTED_HOST"] = public_host or f"127.0.0.1:{port}"
+    app.config["EXPECTED_ORIGIN"] = public_origin or f"http://127.0.0.1:{port}"
     app.config["PORT"] = port
     app.json.ensure_ascii = False
     app.secret_key = new_token()

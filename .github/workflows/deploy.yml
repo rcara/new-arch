@@ -1,0 +1,44 @@
+name: Deploy
+
+# Déploie sur le VPS après un CI réussi sur main.
+# Secrets requis : VPS_HOST, VPS_USER, VPS_SSH_KEY
+# Secret optionnel : VPS_SSH_PORT (défaut 22 via appleboy)
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: SSH deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'main'
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            APP_DIR="${FOYER_APP_DIR:-/opt/foyer}"
+            cd "$APP_DIR"
+            if [ ! -f deploy/deploy.sh ]; then
+              echo "deploy/deploy.sh introuvable dans $APP_DIR — bootstrap VPS manquant (voir DEPLOY.md)." >&2
+              exit 1
+            fi
+            chmod +x deploy/deploy.sh
+            FOYER_APP_DIR="$APP_DIR" ./deploy/deploy.sh

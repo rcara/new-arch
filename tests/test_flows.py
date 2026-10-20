@@ -3,6 +3,7 @@
 import io
 import sqlite3
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -364,7 +365,73 @@ def test_securite_des_requetes(world):
     assert other.login("roger").status_code == 200
     text = (home / "logs" / "audit.log").read_text(encoding="utf-8")
     assert PASSWORD not in text
-    assert "0.0.0.0" not in (home.parent.parent / "launcher.py").read_text(encoding="utf-8") if False else "127.0.0.1" in open("/srv/apps/plateforme-foyer/launcher.py", encoding="utf-8").read()
+    launcher = Path(__file__).resolve().parents[1].joinpath("launcher.py").read_text(encoding="utf-8")
+    assert "127.0.0.1" in launcher
+    assert "0.0.0.0" not in launcher
+
+
+def test_hote_public_via_tunnel(tmp_path, clock, monkeypatch):
+    """Cloudflare Tunnel : Host/Origin publics, REMOTE_ADDR reste 127.0.0.1."""
+    public_host = "new-arch.arscodicis.net"
+    public_origin = "https://new-arch.arscodicis.net"
+    monkeypatch.setenv("FOYER_PUBLIC_HOST", public_host)
+    monkeypatch.setenv("FOYER_PUBLIC_ORIGIN", public_origin)
+    app = create_app(home=tmp_path / "tunnel", clock=clock, testing=True)
+    assert app.config["EXPECTED_HOST"] == public_host
+    assert app.config["EXPECTED_ORIGIN"] == public_origin
+    client = app.test_client()
+    ok = client.get(
+        "/initialisation",
+        headers={"Host": public_host},
+        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    assert ok.status_code == 200
+    assert b"csrf" in ok.data.lower() or b"csrf_token" in ok.data or ok.headers.get("X-CSRF-Token")
+    bad_host = client.get(
+        "/initialisation",
+        headers={"Host": "evil.example"},
+        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    assert bad_host.status_code == 400
+    remote = client.get(
+        "/initialisation",
+        headers={"Host": public_host},
+        environ_overrides={"REMOTE_ADDR": "8.8.8.8"},
+    )
+    assert remote.status_code == 403
+    # POST avec Origin public (CSRF setup cookie)
+    token = ok.headers.get("X-CSRF-Token") or ""
+    if not token:
+        import re
+        found = re.search(br'name="csrf_token" value="([^"]+)"', ok.data) or re.search(
+            br'name="csrf-token" content="([^"]+)"', ok.data
+        )
+        token = found.group(1).decode() if found else ""
+    posted = client.post(
+        "/initialisation",
+        data={
+            "csrf_token": token,
+            "household_name": "Foyer",
+            "timezone": "Europe/Berlin",
+            "display_name": "Roger",
+            "username": "roger",
+            "password": PASSWORD,
+            "password_confirm": PASSWORD,
+        },
+        headers={"Host": public_host, "Origin": public_origin},
+        environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    assert posted.status_code in {200, 302}
+
+
+def test_hote_local_par_defaut(tmp_path, clock, monkeypatch):
+    monkeypatch.delenv("FOYER_PUBLIC_HOST", raising=False)
+    monkeypatch.delenv("FOYER_PUBLIC_ORIGIN", raising=False)
+    app = create_app(home=tmp_path / "local", clock=clock, testing=True)
+    assert app.config["EXPECTED_HOST"] == "127.0.0.1:8765"
+    assert app.config["EXPECTED_ORIGIN"] == "http://127.0.0.1:8765"
+    client = app.test_client()
+    assert client.get("/initialisation", headers={"Host": HOST}).status_code == 200
 
 
 def test_sauvegarde_et_restauration(world, tmp_path):
