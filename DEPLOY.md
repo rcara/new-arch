@@ -94,10 +94,21 @@ Fichiers utiles dans `deploy/` :
 2. Installer `cloudflared` sur le VPS (paquet officiel ou binaire dans `/usr/local/bin/cloudflared`).
 3. Associer le tunnel (login / token / fichier credentials — **hors git**).
 4. Configurer l’ingress vers `http://127.0.0.1:8765` (voir `deploy/cloudflared.yml.example`).
-5. DNS : enregistrement CNAME du hostname public vers le tunnel.
-6. Activer le service : `sudo systemctl enable --now cloudflared`.
+5. DNS : enregistrement CNAME du hostname public vers le tunnel  
+   (ex. `new-arch.arscodicis.net`).
+6. Dans `foyer.service`, définir le Host/Origin publics (sinon **« Hôte refusé »**) :
+
+```ini
+Environment=FOYER_PUBLIC_HOST=new-arch.arscodicis.net
+Environment=FOYER_PUBLIC_ORIGIN=https://new-arch.arscodicis.net
+```
+
+   Puis `sudo systemctl daemon-reload && sudo systemctl restart foyer`.
+7. Activer le service tunnel : `sudo systemctl enable --now cloudflared`.
 
 **Pare-feu :** laissez 80/443 fermés si tout passe par le Tunnel. Gardez SSH (22 ou votre port) restreint (idéalement IP admin / fail2ban).
+
+L’app continue d’exiger `REMOTE_ADDR == 127.0.0.1` (cloudflared en loopback). Seuls Host/Origin acceptés changent via ces variables.
 
 > Cookie de session sans attribut `Secure` : l’app a été conçue pour HTTP local. Derrière Cloudflare en HTTPS, prévoyez éventuellement un ajustement cookie plus tard ; ce n’est pas requis pour le premier tunnel.
 
@@ -125,6 +136,8 @@ sudo FOYER_APP_DIR=/opt/foyer /opt/foyer/deploy/deploy.sh
 | `FOYER_HOME` | répertoire du dépôt | données (`data/`, `vault/`, …) |
 | `FOYER_PORT` | `8765` | port loopback |
 | `FOYER_NO_BROWSER` | — | `1` en prod (systemd) |
+| `FOYER_PUBLIC_HOST` | `127.0.0.1:{port}` | valeur attendue de l’en-tête `Host` (domaine Tunnel, sans `https://`) |
+| `FOYER_PUBLIC_ORIGIN` | `http://127.0.0.1:{port}` | valeur attendue de `Origin` sur POST (ex. `https://new-arch.arscodicis.net`) |
 
 L’écoute reste `127.0.0.1` dans `launcher.py` — **ne pas** binder `0.0.0.0` pour publier le service.
 

@@ -6,6 +6,6 @@ credentials-file: /etc/cloudflared/TUNNEL_UUID.json
 
 ingress:
   # Hostname public (DNS Cloudflare → CNAME du tunnel)
-  - hostname: foyer.example.com
+  - hostname: new-arch.arscodicis.net
     service: http://127.0.0.1:8765
   - service: http_status:404
