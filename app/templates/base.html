@@ -9,12 +9,12 @@
 </head>
 <body>
   <a class="skip" href="#contenu">Aller au contenu</a>
-  <header>
-    <b>Plateforme foyer</b>
+  <header class="site-header">
+    <p class="brand">Plateforme foyer</p>
     {% if person %}
-    <p>{{ household.name }} · {{ person.display_name }} · {% if person.is_principal %}compte principal{% else %}compte secondaire{% endif %}</p>
+    <p class="context">{{ household.name }} · {{ person.display_name }} · {% if person.is_principal %}compte principal{% else %}compte secondaire{% endif %}</p>
     {% else %}
-    <p>Installation locale</p>
+    <p class="context">Installation locale</p>
     {% endif %}
   </header>
   <div class="layout {% if not person %}guest{% endif %}">
