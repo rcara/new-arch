@@ -1,62 +1,111 @@
 {% extends "base.html" %}
+{% from "_ui.html" import page_header, subnav, empty_state %}
 {% block title %}Inventaire{% endblock %}
+{% set q = args.get('q', '') %}
+{% set place = args.get('place_id', '') %}
+{% set cat = args.get('categorie', '') %}
+{% set filtered = q or place or cat %}
+{% macro inv(v) -%}{{ url_for('pages.inventory_get', vue=None if v == 'galerie' else v, q=q or None, place_id=place or None, categorie=cat or None) }}{%- endmacro %}
 {% block content %}
-<h1>Inventaire</h1>
-<p class="muted">Biens, lieux, garanties et maintenance — liés aux achats et au coffre.</p>
-<div class="toolbar">
-  <a href="{{ url_for('pages.inventory_item_new') }}">Ajouter un bien</a>
-  <a href="{{ url_for('pages.inventory_place_new') }}">Ajouter un lieu</a>
-  <a href="{{ url_for('pages.inventory_export_page') }}">Exporter CSV</a>
-  <form method="get" class="toolbar">
-    <label>Recherche <input name="q" value="{{ args.get('q','') }}"></label>
-    <label>Lieu
-      <select name="place_id">
-        <option value="">Tous</option>
-        {% for place in places %}
-        <option value="{{ place.id }}" {% if args.get('place_id')==place.id|string %}selected{% endif %}>{{ place.name }}</option>
-        {% endfor %}
+{% call page_header("Maison", "Inventaire", "Biens du foyer, lieux, garanties et entretien.") %}
+<a class="btn btn--primary" href="{{ url_for('pages.inventory_item_new', next=request.path) }}">+ Bien</a>
+<a class="btn" href="{{ url_for('pages.inventory_place_new') }}">+ Lieu</a>
+{% endcall %}
+
+{% if has_items %}
+<div class="list-toolbar">
+  {{ subnav([('galerie', 'Galerie', inv('galerie')), ('liste', 'Liste', inv('liste'))], view, "Affichage") }}
+  <form class="search-inline filter-bar" method="get" role="search">
+    {% if view == 'liste' %}<input type="hidden" name="vue" value="liste">{% endif %}
+    <label><span class="sr-only">Rechercher un bien</span><input type="search" name="q" value="{{ q }}" placeholder="Nom, catégorie, n° de série"></label>
+    <label><span class="sr-only">Lieu</span>
+      <select name="place_id" aria-label="Lieu">
+        <option value="">Tous les lieux</option>
+        {% for p in places %}<option value="{{ p.id }}" {% if place == p.id|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
       </select>
     </label>
-    <button type="submit">Filtrer</button>
+    <label><span class="sr-only">Catégorie</span>
+      <select name="categorie" aria-label="Catégorie">
+        <option value="">Toutes les catégories</option>
+        {% for c in categories %}<option value="{{ c }}" {% if cat == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="secondary">Filtrer</button>
+    {% if filtered %}<a class="btn btn--small" href="{{ url_for('pages.inventory_get', vue=None if view == 'galerie' else view) }}">Effacer</a>{% endif %}
   </form>
 </div>
+{% endif %}
 
 {% if warranties %}
-<section class="today-panel" aria-labelledby="inv-warranties">
-  <h2 id="inv-warranties">Garanties à venir</h2>
-  {% for w in warranties %}
-  <div class="row">
-    <b><a href="{{ url_for('pages.inventory_item_get', item_id=w.item_id) }}">{{ w.item_name }}</a></b>
-    <span class="muted">{{ w.label }} · {{ w.ends_on|frdate }}</span>
-  </div>
-  {% endfor %}
+<section class="notice-strip" aria-labelledby="inv-warranties">
+  <h2 id="inv-warranties">Garanties qui arrivent à échéance</h2>
+  <ul>
+    {% for w in warranties %}
+    <li><a href="{{ url_for('pages.inventory_item_get', item_id=w.item_id) }}">{{ w.item_name }}</a> <span class="muted">{{ w.label }} · {{ w.ends_on|frdate }}</span></li>
+    {% endfor %}
+  </ul>
 </section>
 {% endif %}
 
-<section class="today-panel" aria-labelledby="inv-places">
+{% set items = listed['items'] %}
+{% if items %}
+<p class="muted">{{ listed.total }} bien{% if listed.total > 1 %}s{% endif %}{% if filtered %} correspondant{% if listed.total > 1 %}s{% endif %} au filtre{% endif %}.</p>
+{% if view == 'galerie' %}
+<ul class="item-gallery">
+  {% for item in items %}
+  <li class="item-card">
+    <span class="item-thumb" aria-hidden="true">{{ item.name[:1]|upper }}</span>
+    <div class="item-body">
+      <h2><a href="{{ url_for('pages.inventory_item_get', item_id=item.id) }}">{{ item.name }}</a></h2>
+      <p class="muted">{{ item.category or 'Sans catégorie' }}{% if item.place_name %} · {{ item.place_name }}{% endif %}</p>
+      <p class="item-tags">
+        <span class="chip">{{ item.condition_label }}</span>
+        {% if item.warranties %}<span class="chip chip--a_jour">Garantie</span>{% endif %}
+        {% if item.visibility == 'private' %}<span class="chip">Privé</span>{% endif %}
+      </p>
+      {% if item.estimated_value_label or item.purchase_price_label %}<p class="item-value">{{ item.estimated_value_label or item.purchase_price_label }}</p>{% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="table-wrap">
+  <table class="data-table">
+    <caption class="sr-only">Biens du foyer</caption>
+    <thead><tr><th scope="col">Bien</th><th scope="col">Catégorie</th><th scope="col">Lieu</th><th scope="col">État</th><th scope="col">Achat</th><th scope="col" class="num">Valeur</th></tr></thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td data-label="Bien"><a href="{{ url_for('pages.inventory_item_get', item_id=item.id) }}"><b>{{ item.name }}</b></a></td>
+        <td data-label="Catégorie">{{ item.category or '—' }}</td>
+        <td data-label="Lieu">{{ item.place_name or '—' }}</td>
+        <td data-label="État">{{ item.condition_label }}</td>
+        <td data-label="Achat">{% if item.purchase_date %}{{ item.purchase_date|frdate }}{% else %}—{% endif %}</td>
+        <td data-label="Valeur" class="num">{{ item.estimated_value_label or item.purchase_price_label or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% if listed.total > listed.page * listed.page_size %}
+<p><a class="btn" href="{{ url_for('pages.inventory_get', vue=None if view == 'galerie' else view, q=q or None, place_id=place or None, categorie=cat or None, page=listed.page + 1) }}">Biens suivants</a></p>
+{% endif %}
+{% elif filtered %}
+{{ empty_state("Aucun bien trouvé", "Aucun bien ne correspond à ce filtre.", url_for('pages.inventory_get'), "Voir tout l'inventaire", kind="search") }}
+{% else %}
+{{ empty_state("Votre inventaire est vide", "Recensez les biens importants : en cas de sinistre, de garantie ou de déménagement, vous saurez où ils sont, ce qu'ils valent et où trouver la facture.", url_for('pages.inventory_item_new', next=request.path), "Ajouter un premier bien", example="« Lave-linge Miele », cuisine, garantie jusqu'en 2028.") }}
+{% endif %}
+
+<section class="places" aria-labelledby="inv-places">
   <h2 id="inv-places">Lieux</h2>
   {% if places %}
-  {% for place in places %}
-  <div class="row"><b>{{ place.name }}</b>{% if place.notes %}<span class="muted">{{ place.notes }}</span>{% endif %}</div>
-  {% endfor %}
+  <ul class="pill-list">
+    {% for p in places %}<li><a href="{{ url_for('pages.inventory_get', place_id=p.id, vue=None if view == 'galerie' else view) }}" {% if place == p.id|string %}aria-current="true"{% endif %}>{{ p.name }}</a></li>{% endfor %}
+  </ul>
   {% else %}
-  <p class="muted">Aucun lieu. <a href="{{ url_for('pages.inventory_place_new') }}">Créer un lieu</a></p>
+  <p class="muted">Aucun lieu pour l'instant. <a href="{{ url_for('pages.inventory_place_new') }}">Créer une pièce ou un emplacement</a> pour ranger vos biens.</p>
   {% endif %}
-</section>
-
-<section class="today-panel" aria-labelledby="inv-items">
-  <h2 id="inv-items">Biens</h2>
-  {% if listed['items'] %}
-  {% for item in listed['items'] %}
-  <div class="row">
-    <b><a href="{{ url_for('pages.inventory_item_get', item_id=item.id) }}">{{ item.name }}</a></b>
-    <span class="badge">{{ item.condition_label }}</span>
-    {% if item.place_name %}<span class="muted">{{ item.place_name }}</span>{% endif %}
-    {% if item.purchase_price_label %}<span>{{ item.purchase_price_label }}</span>{% endif %}
-  </div>
-  {% endfor %}
-  {% else %}
-  <p class="muted">Aucun bien. <a href="{{ url_for('pages.inventory_item_new') }}">Ajouter un bien</a></p>
-  {% endif %}
+  <p><a class="btn btn--small" href="{{ url_for('pages.inventory_export_page') }}">Exporter en CSV</a></p>
 </section>
 {% endblock %}

@@ -100,7 +100,7 @@ def build(person, enabled, nav, here="/"):
         principal and on("coffre") and _entry("document", "Document", "pages.vault_get", _anchor="depot"),
         principal and index and on("reperes") and _entry("repere", "Repère", "pages.milestone_new", **back),
         principal and index and on("decisions") and on("reperes")
-        and _entry("decision", "Décision", "pages.milestones_get"),
+        and _entry("decision", "Décision", "pages.decisions_get", _anchor="nouvelle-decision"),
         on("mediatheque") and _entry("oeuvre", "Œuvre ou collection", "pages.media_work_new", **back),
     ]
     return {

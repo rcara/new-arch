@@ -741,14 +741,24 @@ def finance_import_post():
 @pages.get("/inventaire")
 def inventory_get():
     person = _need()
+    place_id = request.args.get("place_id", "")
     listed = inventory.list_items(
         current_ctx(), person,
         q=request.args.get("q", ""),
-        place_id=request.args.get("place_id") or None,
+        place_id=place_id if place_id.isdigit() else None,
+        category=request.args.get("categorie", ""),
+        page=int(request.args["page"]) if request.args.get("page", "").isdigit() else 1,
     )
+    first = inventory.list_items(current_ctx(), person)
+    found = {item["category"] for item in first["items"] if item["category"]}
+    for page in range(2, (first["total"] + first["page_size"] - 1) // first["page_size"] + 1):
+        found |= {item["category"] for item in inventory.list_items(current_ctx(), person, page=page)["items"] if item["category"]}
     return render_template(
         "inventory.html",
         listed=listed,
+        view="liste" if request.args.get("vue") == "liste" else "galerie",
+        has_items=first["total"] > 0,
+        categories=sorted(found, key=str.lower),
         places=inventory.list_places(current_ctx(), person)["items"],
         warranties=inventory.upcoming_warranties(current_ctx(), person),
         args=request.args,
@@ -915,14 +925,17 @@ def inventory_link_purchase(item_id):
 def media_get():
     person = _need()
     dash = media.dashboard(current_ctx(), person)
+    tab = request.args.get("onglet", "catalogue")
+    status = {"en-cours": "in_progress", "envies": "wishlist"}.get(tab, request.args.get("status", ""))
     works = media.list_works(
         current_ctx(), person,
         kind=request.args.get("kind", ""),
         q=request.args.get("q", ""),
-        status=request.args.get("status", ""),
+        status=status,
     )
     return render_template(
         "media.html",
+        tab=tab if tab in ("catalogue", "en-cours", "envies", "fichiers", "listes") else "catalogue",
         dash=dash,
         works=works,
         assets=media.list_assets(current_ctx(), person)["items"],
@@ -1182,8 +1195,10 @@ def milestone_restore_post(milestone_id):
 @pages.get("/decisions")
 def decisions_get():
     person = _need()
-    items = decisions.list_decisions(current_ctx(), person)
-    return render_template("decisions.html", items=items)
+    items = sorted(decisions.list_decisions(current_ctx(), person), key=lambda d: (d["created_at"], d["id"]), reverse=True)
+    can_create = bool(person["is_principal"] and person["can_view_index"] and "reperes" in modules.enabled_keys(current_ctx()))
+    choices = [m for m in _all_milestones(person) if not m["archived"]] if can_create else []
+    return render_template("decisions.html", items=items, can_create=can_create, choices=choices)
 
 
 @pages.get("/decisions/nouvelle")
@@ -1280,10 +1295,35 @@ def decision_result_post(decision_id):
 
 @pages.get("/coffre")
 def vault_get():
-    person = _need()
-    items = vault.list_files(current_ctx(), person)
+    return _vault_page(_need(), {})
+
+
+VAULT_KINDS = {"pdf": "PDF", "png": "Image", "jpg": "Image", "jpeg": "Image"}
+
+
+def _vault_page(person, errors, status=200):
+    """Explorateur : filtres appliqués sur la liste déjà restreinte par `vault.list_files`."""
+    every = vault.list_files(current_ctx(), person)
+    for item in every:
+        extension = item["original_name"].rsplit(".", 1)[-1].lower() if "." in item["original_name"] else ""
+        item["kind"] = VAULT_KINDS.get(extension, "Fichier")
+    q = request.args.get("q", "").strip().lower()
+    kind = request.args.get("type", "")
+    repere = request.args.get("repere", "")
+    items = [
+        item for item in every
+        if (not q or q in item["original_name"].lower() or q in (item.get("milestone_name") or "").lower())
+        and (not kind or item["kind"] == kind)
+        and (not repere or str(item.get("milestone_id", "")) == repere)
+    ]
+    items.sort(key=lambda item: (item["created_at"], item["id"]), reverse=True)
     choices = _all_milestones(person) if person["is_principal"] and person["can_view_index"] else []
-    return render_template("vault.html", items=items, choices=choices, errors={})
+    linked = sorted({(item["milestone_id"], item["milestone_name"]) for item in every if "milestone_id" in item},
+                    key=lambda pair: pair[1].lower())
+    return render_template(
+        "vault.html", items=items, total=len(every), choices=choices, errors=errors,
+        reperes=linked, args=request.args, filtered=bool(q or kind or repere),
+    ), status
 
 
 @pages.post("/coffre")
@@ -1296,10 +1336,7 @@ def vault_post():
         )
     except AppError as exc:
         if exc.status in {400, 413, 415, 409}:
-            items = vault.list_files(current_ctx(), person)
-            return render_template(
-                "vault.html", items=items, choices=_all_milestones(person), errors=exc.fields or {"form": exc.message},
-            ), exc.status
+            return _vault_page(person, exc.fields or {"form": exc.message}, exc.status)
         raise
     return _go("uploaded", "pages.vault_get")
 
