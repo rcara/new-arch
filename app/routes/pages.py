@@ -487,7 +487,7 @@ def search_get():
             results = search.search(current_ctx(), person, q)
         except AppError as exc:
             if exc.status == 400:
-                return render_template("search.html", results=results, errors=exc.fields), 400
+                return render_template("search.html", results=results, errors={"q": exc.message}), 400
             raise
     return render_template("search.html", results=results, errors={})
 

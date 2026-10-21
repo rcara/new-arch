@@ -55,10 +55,23 @@ zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, 
 - Décisions : cycle Rédiger → Sceller → Compléter, Brouillons / Scellées, choix du repère puis formulaire existant.
   Aucune règle de scellement ni d'accès modifiée.
 
-## Sprint 5 — Qualité
+## Sprint 5 — Qualité ✅
 
-Desktop / tablette / mobile, clair / sombre, clavier, lecteurs d'écran, permissions dans la recherche, états vides,
-erreurs.
+- Accessibilité : audit axe-core (WCAG 2.1 AA) sur 20 pages × clair / sombre × desktop / mobile, foyer démo et
+  foyer vide, plus connexion et 404 invité : **0 violation**. Corrections : jeton `--text-sage` (#4E6A61 clair,
+  5,9:1 sur blanc ; #A8C0B6 sombre) pour liens et sur-titres, au lieu du sauge de marque #5F7E74 (4,44:1) ;
+  règle sombre des liens passée en `:where()` (elle écrasait boutons primaires, sidebar et barre mobile) ;
+  rouge danger sombre éclairci ; jours hors mois sans opacité.
+- Clavier : lien d'évitement en premier, anneau de focus visible partout, sidebar mobile masquée hors du parcours,
+  panneaux d'ajout rapide : Tab → « Fermer » puis Titre (ancre `:target`, sans JS).
+- Erreurs : une page par famille de statut (403 accès, 404 introuvable, 400/409/413/415 action non enregistrée,
+  405, 423/429/503 indisponible, 500) avec code, message, action de retour, « Réessayer » si pertinent, lien de
+  connexion pour un invité ; aucun détail technique exposé.
+- Recherche : sources filtrées par module actif (un module désactivé ne remonte plus rien), résultats groupés
+  par type, états « Que cherchez-vous ? », trop court (message complet, `aria-invalid`), aucun résultat.
+  Permissions inchangées (`can_see_object`, index, principal seul pour les personnes).
+- Garde-fous testés : aucune page sans CSP `script-src 'none'`, aucun `<script>`, `style=` ni `on*=` ;
+  un seul `h1`, `main#contenu` et `lang="fr"` par page.
 
 ## Décisions à prendre (Roger)
 
@@ -66,7 +79,7 @@ erreurs.
 |---|---|---|---|
 | D1 | **JS / CSP** — glisser-déposer (Coffre) et panneau latéral (création rapide) nécessitent du JavaScript. | Livré sans JS : dépôt par `<input type=file>` (le navigateur accepte déjà le glisser-déposer *sur* le champ), panneaux d'ajout rapide via `:target` (livrés au Sprint 3 : `#ajout-tache`, `#ajout-evenement`, fermeture par « Fermer » ou le fond ; le menu `<details>` reste ouvert derrière le panneau et le focus n'y est pas déplacé automatiquement). Coffre (Sprint 4) : zone de dépôt agrandie autour du champ fichier natif, qui accepte le glisser-déposer sans script. Pour un vrai glisser-déposer sur zone ou un panneau dynamique : autoriser un script **local** (`script-src 'self'`) limité à l'amélioration progressive. CSP **non modifiée** tant que non validé. | Bloquant pour l'amélioration, pas pour la livraison |
 | D2 | **Connexion locale HTTP** : Chrome envoie `Origin: null` (`Referrer-Policy: no-referrer`) → « Origine refusée » sur `127.0.0.1`. | Option A : `Referrer-Policy: same-origin` (le navigateur envoie alors l'Origin exacte). Option B : accepter `null` quand l'hôte est exactement `127.0.0.1:port` (CSRF reste requis). Non modifié (sécurité). | À décider |
-| D3 | Modules activables affichés mais non basculables dans l'UI. | Ajouter un interrupteur (principal seul) en Sprint 4/5. | À décider |
+| D3 | Modules activables affichés mais non basculables dans l'UI. | Non livré en V2.1 (touche aux permissions de navigation) : ajouter un interrupteur principal seul, POST + CSRF, journalisé. La navigation, la création rapide et la recherche respectent déjà l'état des modules. | À décider |
 | D4 | Notifications : aucun moteur existant. | Ne pas inventer ; rappels réels sur Aujourd'hui. | Proposé |
 | D5 | Wordmark : le logo validé dit « New Arch » (pas « NEW ARCH. »). | Conserver le logo validé de PR #16. | Proposé |
 | D6 | Événements récurrents : la récurrence est stockée mais aucune occurrence n'est générée dans les listes. | Badge « récurrent » seulement ; générer les occurrences demande une évolution du service `events` (hors UX). | À décider |

@@ -71,3 +71,19 @@ via l'API locale. Quelques tâches en double proviennent des captures du Sprint 
 
 Limites connues : événements récurrents non développés en occurrences (D6) ; pas d'images de biens ni d'œuvres
 (D7) ; sur mobile, la grille du mois est remplacée par la liste des jours occupés (et le jour même).
+
+## Sprint 5
+
+| Vérification | Résultat |
+|---|---|
+| `pytest` complet | 136 passés |
+| `tests/test_ux_quality.py` (8 tests) | 403 compte secondaire sur `/parametres/avance`, 404, 500 simulée (message générique, aucune trace), 404 invité → connexion ; recherche : invite, trop court (`aria-invalid`), aucun résultat, groupes Tâches / Événements ; bien privé invisible au secondaire, « Personnes » réservé au principal ; Calendrier désactivé → aucun événement ni lien `/calendrier` dans les résultats ; 21 pages sans `<script>`, `style=`, `on*=`, avec CSP `script-src 'none'`, un seul `h1`, `main#contenu`, `lang="fr"` |
+| axe-core 4.x (WCAG 2.1 A/AA) | Avant : 1 règle (`color-contrast`, ~180 nœuds clair + sombre). Après : **0 violation** sur 20 pages × clair / sombre × 1440 px / 390 px, foyer démo et foyer vide ; connexion et 404 invité également à 0 |
+| Clavier (Playwright) | Tab 1 = « Aller au contenu », puis marque, navigation ; Entrée sur le lien d'évitement → premier lien du contenu ; anneau de focus 2 px sur chaque arrêt ; mobile : sidebar masquée hors du parcours ; `/organisation#ajout-tache` : Tab → « Fermer le panneau » → champ Titre |
+| Visuel avant / après | `s5-{avant,apres}-demo-recherche-{light,dark}-{desktop,mobile}`, `-recherche-trop-court-light-desktop`, `s5-…-vide-recherche-aucun-light-{desktop,mobile}`, `-erreur-404-{light,dark}-{desktop,mobile}`, `-erreur-403-light-{desktop,mobile}` (compte secondaire), `-accueil-{light,dark}-{desktop,tablet,mobile}`, `-finances-dark-{desktop,mobile}`, `-organisation-dark-{desktop,tablet}`, `-calendrier-{light,dark}-{desktop,tablet}`, `-panneau-tache-dark-mobile` (28 + 28 fichiers) |
+
+Limites connues : le thème est une préférence enregistrée (cookie, Paramètres › Thème) et ne suit pas
+`prefers-color-scheme` ; axe ne couvre pas tout (ordre de lecture, pertinence des libellés) — vérification
+manuelle faite sur la navigation, les formulaires rapides et les pages d'erreur ; l'interrupteur de modules (D3)
+n'est pas livré.
+
