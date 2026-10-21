@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Profil{% endblock %}
+{% block content %}
+<h1>Profil</h1>
+<p class="muted">{{ profile.display_name }} · compte {{ profile.role }}{% if profile.username %} · {{ profile.username }}{% endif %}</p>
+
+<section class="today-panel" aria-labelledby="profile-identity">
+  <h2 id="profile-identity">Identité</h2>
+  <dl>
+    <dt>Identifiant</dt>
+    <dd>{% if profile.username %}<code>{{ profile.username }}</code>{% else %}Aucun compte{% endif %}</dd>
+    <dt>Rôle</dt>
+    <dd>{% if profile.is_principal %}Compte principal{% else %}Compte secondaire{% endif %}</dd>
+    {% if profile.relationship %}
+    <dt>Lien</dt>
+    <dd>{{ profile.relationship }}</dd>
+    {% endif %}
+  </dl>
+  <form method="post" action="{{ url_for('pages.profile_post') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Nom affiché
+      <input name="display_name" required maxlength="120" value="{{ form.get('display_name', profile.display_name) }}" autocomplete="name">
+    </label>
+    {% if errors.display_name %}<p class="error">{{ errors.display_name }}</p>{% endif %}
+    <button type="submit">Enregistrer le profil</button>
+  </form>
+</section>
+
+{% if profile.has_account %}
+<section class="today-panel" aria-labelledby="profile-password">
+  <h2 id="profile-password">Mot de passe</h2>
+  <p class="muted">12 à 128 caractères. Les autres sessions actives seront fermées.</p>
+  {% if password_errors.form %}<p class="error">{{ password_errors.form }}</p>{% endif %}
+  <form method="post" action="{{ url_for('pages.profile_password_post') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Mot de passe actuel
+      <input name="current_password" type="password" required minlength="1" maxlength="128" autocomplete="current-password">
+    </label>
+    {% if password_errors.current_password %}<p class="error">{{ password_errors.current_password }}</p>{% endif %}
+    <label>Nouveau mot de passe
+      <input name="new_password" type="password" required minlength="12" maxlength="128" autocomplete="new-password">
+    </label>
+    {% if password_errors.new_password %}<p class="error">{{ password_errors.new_password }}</p>{% endif %}
+    <label>Nouveau mot de passe, une seconde fois
+      <input name="new_password_confirm" type="password" required minlength="12" maxlength="128" autocomplete="new-password">
+    </label>
+    {% if password_errors.new_password_confirm %}<p class="error">{{ password_errors.new_password_confirm }}</p>{% endif %}
+    <button type="submit">Changer le mot de passe</button>
+  </form>
+</section>
+{% endif %}
+
+<p class="today-more"><a href="{{ url_for('pages.today') }}">Retour au tableau de bord</a></p>
+{% endblock %}

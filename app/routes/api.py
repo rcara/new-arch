@@ -67,7 +67,30 @@ def logout():
 
 @api.get("/me")
 def me():
-    return jsonify(auth.profile(actor()))
+    return jsonify(auth.self_profile(current_ctx(), actor()))
+
+
+@api.patch("/me")
+def me_update():
+    data = json_body({"display_name"})
+    return jsonify(auth.update_own_display_name(current_ctx(), actor(), data.get("display_name")))
+
+
+@api.post("/me/password")
+def me_password():
+    data = json_body({"current_password", "new_password", "new_password_confirm"})
+    if data.get("new_password") != data.get("new_password_confirm"):
+        raise AppError(400, "validation", "Les deux saisies diffèrent.", {
+            "new_password_confirm": "Les deux saisies diffèrent.",
+        })
+    auth.change_password(
+        current_ctx(),
+        actor(),
+        data.get("current_password", ""),
+        data.get("new_password", ""),
+        session_token=request.cookies.get("foyer_session"),
+    )
+    return jsonify({"ok": True})
 
 
 @api.get("/today")

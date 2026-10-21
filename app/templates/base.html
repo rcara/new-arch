@@ -37,6 +37,7 @@
           {% endif %}
           {% if 'recherche' in nav_modules %}<li><a href="{{ url_for('pages.search_get') }}" {% if nav == 'recherche' %}aria-current="page"{% endif %}>Recherche</a></li>{% endif %}
           {% if 'parametres' in nav_modules %}<li><a href="{{ url_for('pages.settings_get') }}" {% if nav == 'parametres' %}aria-current="page"{% endif %}>Paramètres</a></li>{% endif %}
+          <li><a href="{{ url_for('pages.profile_get') }}" {% if nav == 'profil' %}aria-current="page"{% endif %}>Profil</a></li>
           <li>
             <form method="post" action="{{ url_for('pages.logout') }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

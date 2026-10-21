@@ -123,6 +123,78 @@ def today():
     return render_template("today.html", summary=summary)
 
 
+@pages.get("/profil")
+def profile_get():
+    person = _need()
+    profile = auth.self_profile(current_ctx(), person)
+    return render_template(
+        "profile.html",
+        profile=profile,
+        form={"display_name": profile["display_name"]},
+        password_form={},
+        errors={},
+        password_errors={},
+    )
+
+
+@pages.post("/profil")
+def profile_post():
+    person = _need()
+    form = request.form.to_dict()
+    try:
+        profile = auth.update_own_display_name(current_ctx(), person, form.get("display_name"))
+    except AppError as exc:
+        if exc.status == 400:
+            profile = auth.self_profile(current_ctx(), person)
+            return render_template(
+                "profile.html",
+                profile=profile,
+                form=form,
+                password_form={},
+                errors=exc.fields or {"display_name": exc.message},
+                password_errors={},
+            ), 400
+        raise
+    g.person = {**person, "display_name": profile["display_name"]}
+    return _go("profile_saved", "pages.profile_get")
+
+
+@pages.post("/profil/mot-de-passe")
+def profile_password_post():
+    person = _need()
+    form = request.form.to_dict()
+    profile = auth.self_profile(current_ctx(), person)
+    if form.get("new_password") != form.get("new_password_confirm"):
+        return render_template(
+            "profile.html",
+            profile=profile,
+            form={"display_name": profile["display_name"]},
+            password_form=form,
+            errors={},
+            password_errors={"new_password_confirm": "Les deux saisies diffèrent."},
+        ), 400
+    try:
+        auth.change_password(
+            current_ctx(),
+            person,
+            form.get("current_password", ""),
+            form.get("new_password", ""),
+            session_token=request.cookies.get("foyer_session"),
+        )
+    except AppError as exc:
+        if exc.status in {400, 409}:
+            return render_template(
+                "profile.html",
+                profile=profile,
+                form={"display_name": profile["display_name"]},
+                password_form=form,
+                errors={},
+                password_errors=exc.fields or {"form": exc.message},
+            ), exc.status
+        raise
+    return _go("password_changed", "pages.profile_get")
+
+
 @pages.get("/organisation")
 def tasks_get():
     person = _need()

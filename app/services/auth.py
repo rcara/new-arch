@@ -27,6 +27,86 @@ def profile(person):
     }
 
 
+def self_profile(ctx, person):
+    """Profil enrichi pour l'écran /profil (identifiant inclus, jamais le hash)."""
+    row = ctx.conn.execute(
+        """SELECT p.id, p.display_name, p.relationship, p.is_principal, p.can_view_index, p.active, p.created_at,
+                  a.username
+           FROM person p
+           LEFT JOIN account a ON a.person_id=p.id
+           WHERE p.id=? AND p.household_id=1""",
+        (person["id"],),
+    ).fetchone()
+    if row is None or not row["active"]:
+        raise AppError(401, "unauthorized", "Connexion requise.")
+    return {
+        "person_id": row["id"],
+        "display_name": row["display_name"],
+        "relationship": row["relationship"] or "",
+        "role": "principal" if row["is_principal"] else "secondaire",
+        "is_principal": bool(row["is_principal"]),
+        "can_view_index": bool(row["can_view_index"]),
+        "username": row["username"] or "",
+        "has_account": bool(row["username"]),
+        "created_at": row["created_at"],
+    }
+
+
+def update_own_display_name(ctx, person, display_name):
+    display_name = text_value(display_name, "display_name", 120, required=True, label="Votre nom")
+    with write_tx(ctx):
+        ctx.conn.execute(
+            "UPDATE person SET display_name=? WHERE id=? AND household_id=1 AND active=1",
+            (display_name, person["id"]),
+        )
+        if ctx.conn.total_changes == 0:
+            raise AppError(404, "not_found", "Profil introuvable.")
+    audit(ctx.home, ctx.clock, "profile_update", "ok", person["id"], "person", person["id"])
+    return self_profile(ctx, {**person, "display_name": display_name})
+
+
+def change_password(ctx, person, current_password, new_password, *, session_token=None):
+    """Change le mot de passe après vérification de l'actuel. Révoque les autres sessions."""
+    if not isinstance(current_password, str) or not current_password:
+        raise AppError(400, "validation", "Mot de passe actuel requis.", {"current_password": "Requis."})
+    new_password = password_value(new_password, key="new_password")
+    row = ctx.conn.execute(
+        "SELECT password_hash FROM account WHERE person_id=?",
+        (person["id"],),
+    ).fetchone()
+    if row is None:
+        raise AppError(409, "conflict", "Aucun compte n'est associé à ce profil.")
+    if not verify_password(row["password_hash"], current_password):
+        raise AppError(400, "validation", "Mot de passe actuel incorrect.", {"current_password": "Incorrect."})
+    if current_password == new_password:
+        raise AppError(
+            400,
+            "validation",
+            "Le nouveau mot de passe doit être différent.",
+            {"new_password": "Choisissez un mot de passe différent."},
+        )
+    hashed = hash_password(new_password)
+    moment = iso_utc(ctx.clock.now())
+    keep_hash = hash_token(session_token) if session_token else None
+    with write_tx(ctx):
+        ctx.conn.execute(
+            "UPDATE account SET password_hash=? WHERE person_id=?",
+            (hashed, person["id"]),
+        )
+        if keep_hash:
+            ctx.conn.execute(
+                """UPDATE session SET revoked_at=?
+                   WHERE person_id=? AND revoked_at IS NULL AND token_hash<>?""",
+                (moment, person["id"], keep_hash),
+            )
+        else:
+            ctx.conn.execute(
+                "UPDATE session SET revoked_at=? WHERE person_id=? AND revoked_at IS NULL",
+                (moment, person["id"]),
+            )
+    audit(ctx.home, ctx.clock, "password_change", "ok", person["id"], "person", person["id"])
+
+
 def bootstrap(ctx, limiter, household_name, timezone, display_name, username, password, failpoint=None):
     household_name = text_value(household_name, "household_name", 120, required=True, label="Le nom du foyer")
     timezone = timezone_name(timezone)
