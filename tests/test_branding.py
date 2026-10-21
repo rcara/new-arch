@@ -72,3 +72,28 @@ def test_css_tokens_and_static_served(world):
     mark = web.c.get("/static/brand/logo-mark.png", headers={"Host": "127.0.0.1:8765"})
     assert mark.status_code == 200
     assert mark.data[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def _first_pixel_alpha(path):
+    """Alpha du pixel (0, 0) d'un PNG RGBA 8 bits (ligne 0 : le premier pixel n'est jamais filtré)."""
+    import struct
+    import zlib
+
+    data = path.read_bytes()
+    pos, idat = 8, b""
+    width = depth = color = None
+    while pos < len(data):
+        length, kind = struct.unpack(">I4s", data[pos:pos + 8])
+        chunk = data[pos + 8:pos + 8 + length]
+        if kind == b"IHDR":
+            width, _height, depth, color = struct.unpack(">IIBB", chunk[:10])
+        elif kind == b"IDAT":
+            idat += chunk
+        pos += 12 + length
+    assert depth == 8 and color == 6, (path.name, depth, color)
+    return zlib.decompress(idat)[1 + 3]
+
+
+def test_logos_have_transparent_background():
+    for name in ("logo-mark.png", "logo-full.png", "logo-lockup.png", "logo-header.png", "favicon-32.png"):
+        assert _first_pixel_alpha(BRAND / name) == 0, name
