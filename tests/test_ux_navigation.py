@@ -11,6 +11,7 @@ from app.clock import FrozenClock
 from app.db import connect
 from app.security import AttemptLimiter
 from app.services.demo import DEMO_PASSWORD, DEMO_PASSWORD_SECONDARY, DEMO_USERNAME, seed_demo
+from tests.test_first_party_js import assert_first_party_scripts
 from tests.test_flows import Web
 
 
@@ -152,7 +153,7 @@ def test_user_menu_logout_still_posts_with_csrf(principal):
     assert principal.get("/").status_code in (302, 303)
 
 
-def test_shell_markup_stays_script_free(principal):
+def test_shell_markup_loads_only_local_scripts(principal):
     page = principal.get("/")
-    assert b"<script" not in page.data
-    assert "script-src 'none'" in page.headers["Content-Security-Policy"]
+    assert_first_party_scripts(page.data)
+    assert "script-src 'self';" in page.headers["Content-Security-Policy"]

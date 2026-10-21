@@ -50,7 +50,7 @@ Sémantiques : `--background`, `--surface`, `--text-primary`, `--text-secondary`
 
 ## Navigation
 
-Sidebar gauche (rail desktop) + tiroir mobile via checkbox CSS (`#nav-toggle`), sans JavaScript — CSP `script-src 'none'`. Sélecteur de foyer + création dans la sidebar. État actif navy / sable en sombre.
+Sidebar gauche (rail desktop) + tiroir mobile via checkbox CSS (`#nav-toggle`), sans JavaScript — CSP `script-src 'self'` (un seul script local d'amélioration progressive, aucun inline ; tout fonctionne sans JS). Sélecteur de foyer + création dans la sidebar. État actif navy / sable en sombre.
 
 ## Accessibilité
 

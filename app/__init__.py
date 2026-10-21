@@ -140,7 +140,7 @@ def create_app(home=None, clock=None, testing=False, port=8765):
     @app.after_request
     def harden(response):
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; style-src 'self'; font-src 'self'; script-src 'none'; "
+            "default-src 'self'; style-src 'self'; font-src 'self'; script-src 'self'; "
             "img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; "
             "frame-ancestors 'none'"
         )

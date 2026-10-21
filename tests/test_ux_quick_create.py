@@ -10,6 +10,7 @@ from app.clock import FrozenClock
 from app.db import connect
 from app.security import AttemptLimiter
 from app.services.demo import DEMO_PASSWORD, DEMO_PASSWORD_SECONDARY, DEMO_USERNAME, seed_demo
+from tests.test_first_party_js import assert_first_party_scripts
 from tests.test_flows import Web
 
 
@@ -70,7 +71,7 @@ def test_create_menu_opens_quick_panels(principal):
     assert 'name="csrf_token"' in task and "required" in task
     event = _panel(page, "ajout-evenement")
     assert 'action="/calendrier"' in event and 'value="2027-02-20"' in event
-    assert "<script" not in text
+    assert_first_party_scripts(text)
 
 
 def test_quick_task_returns_to_origin_and_assigns_me(principal):

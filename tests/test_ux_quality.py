@@ -1,4 +1,4 @@
-"""UX V2.1 Sprint 5 : qualité (erreurs distinctes, recherche filtrée, CSP sans script ni style inline)."""
+"""UX V2.1 Sprint 5 : qualité (erreurs distinctes, recherche filtrée, CSP : scripts locaux seulement, aucun inline)."""
 
 import html
 import re
@@ -11,6 +11,7 @@ from app.clock import FrozenClock
 from app.db import connect
 from app.security import AttemptLimiter
 from app.services.demo import DEMO_PASSWORD, DEMO_PASSWORD_SECONDARY, DEMO_USERNAME, seed_demo
+from tests.test_first_party_js import assert_first_party_scripts
 from tests.test_flows import Web
 
 
@@ -145,7 +146,7 @@ def test_search_skips_disabled_modules(demo):
         assert not href.startswith("/calendrier")
 
 
-# CSP : aucune page ne dépend d'un script ou d'un style inline
+# CSP : uniquement des scripts locaux /static/js, aucun script ni style inline
 
 PAGES = [
     "/", "/calendrier", "/calendrier?vue=semaine", "/calendrier?vue=liste", "/organisation",
@@ -156,15 +157,16 @@ PAGES = [
 ]
 
 
-def test_pages_have_no_script_or_inline_style(alex):
+def test_pages_load_only_local_scripts_and_no_inline_style(alex):
     for path in PAGES:
         response = alex.get(path)
         body = response.data.decode()
-        assert "<script" not in body, path
+        assert_first_party_scripts(body)
         assert not re.search(r"\sstyle=", body), path
         assert not re.search(r"\son[a-z]+=", body), path
         csp = response.headers.get("Content-Security-Policy", "")
-        assert "script-src 'none'" in csp, path
+        assert "script-src 'self';" in csp, path
+        assert "unsafe-inline" not in csp and "unsafe-eval" not in csp, path
 
 
 def test_every_page_has_landmarks_and_single_h1(alex):

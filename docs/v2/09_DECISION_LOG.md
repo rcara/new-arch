@@ -14,7 +14,7 @@
 | D10 | Chiffrement blobs optionnel | Confirmé | `crypto.json` + FOYER_PASSPHRASE ; doc 10_ENCRYPTION |
 | H1 | Multi-foyer runtime | Confirmé | Migration 007 ; `household_membership` ; session login+persona |
 | H2 | SPA éventuelle via `/api` | Hypothèse | Pas dans B |
-| D11 | Sidebar CSS-only (checkbox) | Confirmé | CSP `script-src 'none'` ; drawer mobile sans JS |
+| D11 | Sidebar CSS-only (checkbox) | Confirmé | Drawer mobile sans JS (`:target`). CSP `script-src 'none'` jusqu'à la V2.1 ; `script-src 'self'` depuis D1 (script local d'amélioration progressive, voir `UX_IMPLEMENTATION_PLAN.md`) |
 
 ## Backlog traçable
 
