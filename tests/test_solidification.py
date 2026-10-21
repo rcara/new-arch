@@ -116,11 +116,11 @@ def test_theme_cookie_and_settings(world):
     web, _app, _home, _clock = world
     page = web.get("/parametres")
     assert page.status_code == 200
-    assert b'data-theme="dark"' in page.data
+    assert b'data-theme="light"' in page.data
     assert b"Apparence" in page.data
-    posted = web.submit("/parametres/theme", {"theme": "light"}, follow=True)
+    posted = web.submit("/parametres/theme", {"theme": "dark"}, follow=True)
     assert posted.status_code == 200
-    assert b'data-theme="light"' in posted.data
+    assert b'data-theme="dark"' in posted.data
     assert b"Th\xc3\xa8me enregistr" in posted.data or b"enregistr" in posted.data
 
 

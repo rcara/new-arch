@@ -71,7 +71,7 @@ Comptes fictifs : `alex` / `DemoFoyer-2026!` et `camille` / `DemoCamille-2026!`.
 
 ## Thème et accessibilité
 
-Paramètres → Apparence : thème sombre (défaut) ou clair (`foyer_theme`). Lien « Aller au contenu », focus visible, `prefers-reduced-motion` respecté.
+Paramètres → Apparence : thème clair (référence produit) ou sombre (`foyer_theme`). Lien « Aller au contenu », focus visible, `prefers-reduced-motion` respecté. Charte : `docs/NEW_ARCH_DESIGN_SYSTEM.md`.
 
 ## Profil et mot de passe
 

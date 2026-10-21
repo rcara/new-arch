@@ -38,10 +38,10 @@ THEMES = frozenset({"dark", "light"})
 
 
 def resolve_theme(cookie_value):
-    """Thème explicite via cookie ; défaut sombre (langage Ars Codicis)."""
+    """Thème explicite via cookie ; défaut clair (charte New Arch officielle)."""
     if cookie_value in THEMES:
         return cookie_value
-    return "dark"
+    return "light"
 
 
 def cookie_theme(response, theme):
