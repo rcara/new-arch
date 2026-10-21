@@ -1,21 +1,107 @@
 {% extends "base.html" %}
+{% from "_ui.html" import page_header, subnav, empty_state %}
 {% block title %}Calendrier{% endblock %}
 {% block content %}
-<h1>Calendrier</h1>
-<p class="muted">Événements du foyer · {{ listed.from_date|frdate }} → {{ listed.to_date|frdate }}</p>
-<p><a href="{{ url_for('pages.event_new') }}">Nouvel événement</a></p>
-{% if listed['items'] %}
-{% for item in listed['items'] %}
-<div class="row">
-  <b><a href="{{ url_for('pages.event_get', event_id=item.id) }}">{{ item.title }}</a></b>
-  <span class="muted">{{ item.start_date|frdate }}{% if item.end_date and item.end_date != item.start_date %} → {{ item.end_date|frdate }}{% endif %}</span>
+{% set member = args.get('membre', '') %}
+{% set q = args.get('q', '') %}
+{% macro link(view=cal.view, day=cal.anchor) -%}
+{{ url_for('pages.events_get', vue=view, date=day, membre=member or None, q=q or None) }}
+{%- endmacro %}
+{% macro entry_link(entry) -%}
+{% if entry.kind == 'event' %}{{ url_for('pages.event_get', event_id=entry.id) }}{% else %}{{ url_for('pages.milestone_get', milestone_id=entry.id) }}{% endif %}
+{%- endmacro %}
+
+{% call page_header("Agenda", "Calendrier", "Événements du foyer et échéances des repères.") %}
+<a class="btn btn--primary" href="#ajout-evenement">+ Nouvel événement</a>
+{% endcall %}
+
+<div class="agenda-toolbar">
+  {{ subnav([
+    ('mois', 'Mois', link('mois')),
+    ('semaine', 'Semaine', link('semaine')),
+    ('liste', 'Liste', link('liste')),
+  ], cal.view, "Vue de l'agenda") }}
+  <nav class="period-nav" aria-label="Période">
+    <a class="btn btn--small" href="{{ link(day=cal.prev) }}" rel="prev"><span aria-hidden="true">‹</span> Précédent</a>
+    <a class="btn btn--small" href="{{ link(day=cal.today) }}">Aujourd'hui</a>
+    <a class="btn btn--small" href="{{ link(day=cal.next) }}" rel="next">Suivant <span aria-hidden="true">›</span></a>
+  </nav>
+  <form class="agenda-filter" method="get" action="{{ url_for('pages.events_get') }}">
+    <input type="hidden" name="vue" value="{{ cal.view }}">
+    <input type="hidden" name="date" value="{{ cal.anchor }}">
+    <label>Membre
+      <select name="membre">
+        <option value="">Tout le foyer</option>
+        {% for p in people if p.active %}
+        <option value="{{ p.id }}" {% if member == p.id|string %}selected{% endif %}>{{ p.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Titre <input type="search" name="q" value="{{ q }}" placeholder="Rechercher"></label>
+    <button type="submit" class="secondary">Filtrer</button>
+  </form>
 </div>
-{% endfor %}
+
+<h2 class="period-label" id="periode">{{ cal.label }}</h2>
+<p class="muted agenda-count">{% if cal.count %}{{ cal.count }} élément{% if cal.count > 1 %}s{% endif %} sur la période{% if member or q %} (filtré){% endif %}.{% endif %}</p>
+
+{% if not cal.count %}
+{% if member or q %}
+{{ empty_state("Aucun résultat", "Aucun événement ne correspond à ce filtre sur la période affichée.", url_for('pages.events_get', vue=cal.view, date=cal.anchor), "Retirer le filtre", kind="search") }}
 {% else %}
-<section class="today-panel today-panel--empty">
-  <h2>Aucun événement</h2>
-  <p>Planifiez une échéance familiale ou un rendez-vous.</p>
-  <p><a href="{{ url_for('pages.event_new') }}">Nouvel événement</a></p>
-</section>
+{{ empty_state("Rien de prévu sur cette période", "Ajoutez les rendez-vous, anniversaires et échéances du foyer : ils apparaîtront ici et sur la page Aujourd'hui.", url_for('pages.event_new', start_date=cal.anchor), "Ajouter un événement", example="« Rendez-vous pédiatre » le mardi 14, responsable : Camille.") }}
 {% endif %}
+{% endif %}
+
+{% if cal.view in ('mois', 'semaine') %}
+<table class="agenda-grid agenda-grid--{{ cal.view }}" aria-labelledby="periode">
+  <thead>
+    <tr>{% for wd in cal.weekdays %}<th scope="col"><span class="wd-long">{{ wd }}</span><span class="wd-short" aria-hidden="true">{{ wd[:3] }}</span></th>{% endfor %}</tr>
+  </thead>
+  <tbody>
+    {% for week in cal.weeks %}
+    <tr>
+      {% for day in week %}
+      <td class="{% if not day.in_month %}is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if day.entries %} has-entries{% endif %}">
+        <a class="day-num" href="{{ url_for('pages.event_new', start_date=day.iso, next=request.path) }}" title="Ajouter un événement le {{ day.iso|frdate }}">
+          <span class="sr-only">{{ day.weekday }} </span>{{ day.day }}<span class="sr-only"> — ajouter</span>
+        </a>
+        {% if day.entries %}
+        <ul class="day-entries">
+          {% for entry in day.entries %}
+          <li class="agenda-entry agenda-entry--{{ entry.kind }}">
+            <a href="{{ entry_link(entry) }}">{% if entry.kind == 'milestone' %}<span class="sr-only">Échéance : </span>{% endif %}{{ entry.title }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<ol class="agenda-list">
+  {% for group in cal.groups %}
+  <li class="agenda-day{% if group.is_today %} is-today{% endif %}">
+    <h3><span>{{ group.weekday }}</span> {{ group.iso|frdate }}{% if group.is_today %} <span class="chip chip--a_jour">Aujourd'hui</span>{% endif %}</h3>
+    <ul>
+      {% for entry in group.entries %}
+      <li class="agenda-entry agenda-entry--{{ entry.kind }}">
+        <a href="{{ entry_link(entry) }}">{{ entry.title }}</a>
+        <span class="muted">
+          {% if entry.kind == 'milestone' %}Échéance de repère{% else %}Événement{% endif %}
+          {% if entry.end != entry.start %} · jusqu'au {{ entry.end|frdate }}{% endif %}
+          {% if entry.who %} · {{ entry.who }}{% endif %}
+          {% if entry.recurrence and entry.recurrence != 'none' %} · récurrent{% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </li>
+  {% endfor %}
+</ol>
+{% endif %}
+<p class="muted agenda-legend"><span class="legend legend--event"></span> Événement · <span class="legend legend--milestone"></span> Échéance de repère{% if not person.can_view_index %} (non accordées à votre compte){% endif %}</p>
 {% endblock %}

@@ -95,7 +95,7 @@ def test_active_state_marks_group_and_child(principal):
     assert re.search(r'nav-group is-active">\s*<a class="nav-link" href="/calendrier"', page)
     assert 'href="/calendrier" aria-current="page">Calendrier' in page
     assert 'href="/reperes" >Repères' in page or 'href="/reperes">Repères' in page
-    assert 'href="/organisation/nouvelle"' in principal.get("/organisation").data.decode()
+    assert 'href="/organisation/nouvelle' in principal.get("/organisation").data.decode()
 
 
 def test_secondary_account_sees_no_admin_entries(secondary):

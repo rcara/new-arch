@@ -1,0 +1,31 @@
+{# Composants partagés (Sprint 4) : sous-navigation, en-tête de page, états vides. #}
+
+{% macro subnav(items, current, label) -%}
+<nav class="subnav" aria-label="{{ label }}">
+  <ul>
+    {% for key, text, href in items %}
+    <li><a href="{{ href }}" {% if key == current %}aria-current="page"{% endif %}>{{ text }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+{%- endmacro %}
+
+{% macro page_header(eyebrow, title, lead="") -%}
+<header class="page-header">
+  <div>
+    {% if eyebrow %}<p class="eyebrow">{{ eyebrow }}</p>{% endif %}
+    <h1>{{ title }}</h1>
+    {% if lead %}<p class="muted">{{ lead }}</p>{% endif %}
+  </div>
+  {% if caller %}<div class="page-actions">{{ caller() }}</div>{% endif %}
+</header>
+{%- endmacro %}
+
+{% macro empty_state(title, text, href="", action="", kind="data", example="") -%}
+<section class="empty-state empty-state--{{ kind }}" role="{% if kind == 'denied' %}note{% else %}status{% endif %}">
+  <h2>{{ title }}</h2>
+  <p>{{ text }}</p>
+  {% if example %}<p class="empty-example"><span class="eyebrow">Exemple</span> {{ example }}</p>{% endif %}
+  {% if href %}<p><a class="btn btn--primary" href="{{ href }}">{{ action }}</a></p>{% endif %}
+</section>
+{%- endmacro %}
