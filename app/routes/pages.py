@@ -22,6 +22,60 @@ def _go(code, endpoint, **kwargs):
     return cookie_message(response, code)
 
 
+def _next_target():
+    raw = request.values.get("next") or ""
+    return safe_next(raw) if raw else ""
+
+
+def _done(code, endpoint, **kwargs):
+    """Retour à la page d'origine (`next`, même site) sinon vers `endpoint`."""
+    response = redirect(_next_target() or url_for(endpoint, **kwargs))
+    return cookie_message(response, code)
+
+
+def _today_iso():
+    from ..clock import civil_today
+    return civil_today(current_app.config["CLOCK"], (g.household or {}).get("timezone", "Europe/Zurich")).isoformat()
+
+
+def _account_for_currency(person, form):
+    """Compte choisi, sinon le premier compte actif de la devise saisie."""
+    if form.get("ledger_account_id"):
+        return form["ledger_account_id"]
+    for account in finance.list_ledger_accounts(current_ctx(), person)["items"]:
+        if account["currency"] == form.get("currency") and not account.get("archived"):
+            return str(account["id"])
+    return ""
+
+
+CONTEXT_TYPES = {"calendar_event": "pages.event_get", "inventory_item": "pages.inventory_item_get"}
+
+
+def _context(person, values):
+    """Objet d'origine d'une création contextuelle, après contrôle de visibilité."""
+    kind = values.get("link_type") or ""
+    raw_id = str(values.get("link_id") or "")
+    if kind not in CONTEXT_TYPES or not raw_id.isdigit():
+        return None
+    links.require_object(current_ctx(), person, kind, int(raw_id))
+    if kind == "calendar_event":
+        title = events.get_event(current_ctx(), person, int(raw_id))["title"]
+    else:
+        title = inventory.get_item(current_ctx(), person, int(raw_id))["name"]
+    return {"type": kind, "id": int(raw_id), "title": title, "href": url_for(CONTEXT_TYPES[kind], **{
+        "event_id" if kind == "calendar_event" else "item_id": int(raw_id)})}
+
+
+def _linked_tasks(person, target_type, target_id):
+    found = []
+    for link in links.list_links(current_ctx(), person, source_type="task", target_type=target_type, target_id=target_id)["items"]:
+        try:
+            found.append(tasks.get_task(current_ctx(), person, link["source_id"]))
+        except AppError:
+            continue
+    return found
+
+
 def _need():
     if g.person is None:
         raise AppError(401, "unauthorized", "Connexion requise.")
@@ -217,10 +271,15 @@ def tasks_get():
 
 @pages.get("/organisation/nouvelle")
 def task_new():
-    _need()
+    person = _need()
     modules.require_module(current_ctx(), "organisation")
+    form = {"priority": "normal", "recurrence": "none"}
+    for key in ("title", "due_date", "link_type", "link_id"):
+        if request.args.get(key):
+            form[key] = request.args[key]
     return render_template(
-        "task_form.html", form={"priority": "normal", "recurrence": "none"}, errors={}, people=_members(), editing=False,
+        "task_form.html", form=form, errors={}, people=_members(), editing=False,
+        context=_context(person, form),
     )
 
 
@@ -228,15 +287,24 @@ def task_new():
 def task_create():
     person = _need()
     form = request.form.to_dict()
+    if form.get("for_me") == "1" and not form.get("assignee_id"):
+        form["assignee_id"] = str(person["id"])
+    context = _context(person, form)
     try:
-        tasks.create_task(current_ctx(), person, form)
+        task_id = tasks.create_task(current_ctx(), person, form)
     except AppError as exc:
         if exc.status == 400:
             return render_template(
                 "task_form.html", form=form, errors=exc.fields, people=_members(), editing=False,
+                context=context,
             ), 400
         raise
-    return _go("task_saved", "pages.tasks_get")
+    if context:
+        links.create_link(current_ctx(), person, {
+            "source_type": "task", "source_id": task_id,
+            "target_type": context["type"], "target_id": context["id"], "relation_type": "concerns",
+        })
+    return _done("task_saved", "pages.tasks_get")
 
 
 @pages.get("/organisation/<int:task_id>")
@@ -320,7 +388,10 @@ def event_new():
     modules.require_module(current_ctx(), "calendrier")
     return render_template(
         "event_form.html",
-        form={"all_day": "1", "recurrence": "none", "timezone": (g.household or {}).get("timezone", "Europe/Zurich")},
+        form={
+            "all_day": "1", "recurrence": "none", "timezone": (g.household or {}).get("timezone", "Europe/Zurich"),
+            "title": request.args.get("title", ""), "start_date": request.args.get("start_date", ""),
+        },
         errors={}, people=_members(), editing=False,
     )
 
@@ -329,7 +400,11 @@ def event_new():
 def event_create():
     person = _need()
     form = request.form.to_dict()
-    form["all_day"] = "1" if request.form.get("all_day") == "1" else "0"
+    if "all_day_present" in request.form:
+        form["all_day"] = "1" if request.form.get("all_day") == "1" else "0"
+    else:
+        form["all_day"] = "1"
+    form.setdefault("timezone", (g.household or {}).get("timezone", "Europe/Zurich"))
     try:
         events.create_event(current_ctx(), person, form)
     except AppError as exc:
@@ -338,14 +413,14 @@ def event_create():
                 "event_form.html", form=form, errors=exc.fields, people=_members(), editing=False,
             ), 400
         raise
-    return _go("event_saved", "pages.events_get")
+    return _done("event_saved", "pages.events_get")
 
 
 @pages.get("/calendrier/<int:event_id>")
 def event_get(event_id):
     person = _need()
     item = events.get_event(current_ctx(), person, event_id)
-    return render_template("event.html", item=item)
+    return render_template("event.html", item=item, linked_tasks=_linked_tasks(person, "calendar_event", event_id))
 
 
 @pages.get("/calendrier/<int:event_id>/modifier")
@@ -486,7 +561,7 @@ def finance_expense_new():
             "currency": "CHF",
             "visibility": "household",
             "split_method": "equal",
-            "txn_date": "",
+            "txn_date": _today_iso(),
         },
         errors={},
         accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
@@ -501,6 +576,7 @@ def finance_expense_create():
     form = request.form.to_dict()
     form["kind"] = "expense"
     form["split_person_ids"] = request.form.getlist("split_person_ids")
+    form["ledger_account_id"] = _account_for_currency(person, form)
     try:
         finance.create_transaction(current_ctx(), person, form)
     except AppError as exc:
@@ -515,7 +591,7 @@ def finance_expense_create():
                 people=_members(),
             ), 400
         raise
-    return _go("finance_saved", "pages.finance_get")
+    return _done("finance_saved", "pages.finance_get")
 
 
 @pages.get("/finances/remboursement")
@@ -689,7 +765,7 @@ def inventory_item_create():
                 editing=False,
             ), 400
         raise
-    return _go("inventory_saved", "pages.inventory_item_get", item_id=item_id)
+    return _done("inventory_saved", "pages.inventory_item_get", item_id=item_id)
 
 
 @pages.get("/inventaire/<int:item_id>")
@@ -697,7 +773,10 @@ def inventory_item_get(item_id):
     person = _need()
     item = inventory.get_item(current_ctx(), person, item_id)
     related = links.list_links(current_ctx(), person, source_type="inventory_item", source_id=item_id)
-    return render_template("inventory_item.html", item=item, links=related["items"])
+    return render_template(
+        "inventory_item.html", item=item, links=related["items"],
+        linked_tasks=_linked_tasks(person, "inventory_item", item_id),
+    )
 
 
 @pages.get("/inventaire/<int:item_id>/modifier")
@@ -827,7 +906,7 @@ def media_work_create():
                 "media_work_form.html", form=form, errors=exc.fields or {"form": exc.message}, kinds=media.WORK_KIND_LABEL,
             ), 400
         raise
-    return _go("media_saved", "pages.media_work_get", work_id=work_id)
+    return _done("media_saved", "pages.media_work_get", work_id=work_id)
 
 
 @pages.get("/mediatheque/oeuvres/<int:work_id>")
@@ -968,7 +1047,7 @@ def milestone_create():
         if exc.status == 400:
             return render_template("milestone_form.html", form=form, errors=exc.fields, people=_people(), editing=False), 400
         raise
-    return _go("saved", "pages.milestone_get", milestone_id=new_id)
+    return _done("saved", "pages.milestone_get", milestone_id=new_id)
 
 
 @pages.get("/reperes/<int:milestone_id>")

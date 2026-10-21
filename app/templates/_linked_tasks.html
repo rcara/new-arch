@@ -1,0 +1,14 @@
+{% if 'organisation' in nav_modules %}
+<section class="today-panel" aria-labelledby="taches-liees">
+  <h2 id="taches-liees">Tâches liées</h2>
+  {% for task in linked_tasks %}
+  <div class="row">
+    <a href="{{ url_for('pages.task_get', task_id=task.id) }}">{{ task.title }}</a>
+    <span class="muted">{% if task.status == 'done' %}faite{% elif task.due_date %}pour le {{ task.due_date|frdate }}{% else %}sans échéance{% endif %}</span>
+  </div>
+  {% else %}
+  <p class="muted">Aucune tâche liée.</p>
+  {% endfor %}
+  <p><a class="btn btn--small" href="{{ url_for('pages.task_new', title=task_title, due_date=task_due or '', link_type=link_type, link_id=link_id, next=request.path) }}">+ Ajouter une tâche liée</a></p>
+</section>
+{% endif %}

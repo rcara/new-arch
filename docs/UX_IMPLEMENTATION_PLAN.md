@@ -27,11 +27,16 @@ zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, 
 - `today.html` en grille ; action « Terminer » (POST) sur les tâches ; onboarding facultatif (masquable via
   cookie, reprenable depuis Paramètres) basé sur l'état réel.
 
-## Sprint 3 — Création rapide
+## Sprint 3 — Création rapide ✅
 
-- Menu « + Ajouter » ; formulaires rapides (champs essentiels d'abord, « Plus d'options » en `<details>`),
-  redirection vers la page d'origine (`next` validé, même origine), messages de retour.
-- Création contextuelle depuis un bien / un événement.
+- Menu « + Ajouter » : Tâche et Événement ouvrent un **panneau latéral `:target`** (CSS seul) ; les autres
+  entrées ouvrent le formulaire complet avec `?next=<page courante>`.
+- Formulaires rapides (champs essentiels d'abord, « Plus d'options » en `<details>`), redirection vers la page
+  d'origine (`next` validé par `safe_next`, même site), messages de retour existants.
+- Création contextuelle depuis un événement ou un bien (« Tâches liées », lien `concerns` après contrôle de
+  visibilité).
+- Reste hors périmètre sans JS : fermeture du menu « + Ajouter » au clic extérieur, focus automatique dans le
+  panneau (voir D1).
 
 ## Sprint 4 — Modules
 
@@ -48,7 +53,9 @@ erreurs.
 
 | # | Sujet | Proposition | Statut |
 |---|---|---|---|
-| D1 | **JS / CSP** — glisser-déposer (Coffre) et panneau latéral (création rapide) nécessitent du JavaScript. | Livré sans JS : dépôt par `<input type=file>` (le navigateur accepte déjà le glisser-déposer *sur* le champ), panneaux via pages dédiées / `:target`. Pour un vrai glisser-déposer sur zone ou un panneau dynamique : autoriser un script **local** (`script-src 'self'`) limité à l'amélioration progressive. CSP **non modifiée** tant que non validé. | Bloquant pour l'amélioration, pas pour la livraison |
+| D1 | **JS / CSP** — glisser-déposer (Coffre) et panneau latéral (création rapide) nécessitent du JavaScript. | Livré sans JS : dépôt par `<input type=file>` (le navigateur accepte déjà le glisser-déposer *sur* le champ), panneaux d'ajout rapide via `:target` (livrés au Sprint 3 : `#ajout-tache`, `#ajout-evenement`, fermeture par
+« Fermer » ou le fond ; le menu `<details>` reste ouvert derrière le panneau et le focus n'y est pas déplacé
+automatiquement). Pour un vrai glisser-déposer sur zone ou un panneau dynamique : autoriser un script **local** (`script-src 'self'`) limité à l'amélioration progressive. CSP **non modifiée** tant que non validé. | Bloquant pour l'amélioration, pas pour la livraison |
 | D2 | **Connexion locale HTTP** : Chrome envoie `Origin: null` (`Referrer-Policy: no-referrer`) → « Origine refusée » sur `127.0.0.1`. | Option A : `Referrer-Policy: same-origin` (le navigateur envoie alors l'Origin exacte). Option B : accepter `null` quand l'hôte est exactement `127.0.0.1:port` (CSRF reste requis). Non modifié (sécurité). | À décider |
 | D3 | Modules activables affichés mais non basculables dans l'UI. | Ajouter un interrupteur (principal seul) en Sprint 4/5. | À décider |
 | D4 | Notifications : aucun moteur existant. | Ne pas inventer ; rappels réels sur Aujourd'hui. | Proposé |

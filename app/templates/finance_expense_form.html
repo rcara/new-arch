@@ -1,76 +1,99 @@
 {% extends "base.html" %}
 {% block title %}Nouvelle dépense{% endblock %}
 {% block content %}
-<h1>Nouvelle dépense</h1>
-<p class="muted">Indiquez le payeur, le compte débité et la répartition. Un remboursement ultérieur ne recompte pas la dépense.</p>
-{% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
-<form method="post">
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Finances</p>
+    <h1>Nouvelle dépense</h1>
+    <p class="muted">Par défaut : partagée à parts égales entre les membres, visible du foyer. Un remboursement ultérieur ne recompte pas la dépense.</p>
+  </div>
+</header>
+{% if errors.form %}<p class="error" role="alert">{{ errors.form }}</p>
+{% elif errors %}<p class="error" role="alert">La dépense n'a pas été enregistrée : vérifiez les champs signalés.</p>{% endif %}
+<form class="form-card" method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Libellé <input name="label" required maxlength="200" value="{{ form.get('label','') }}"></label>
+  {% include "_next.html" %}
+  <label>Libellé <input name="label" required maxlength="200" value="{{ form.get('label','') }}" autofocus></label>
   {% if errors.label %}<p class="error">{{ errors.label }}</p>{% endif %}
-  <label>Montant <input name="amount" required placeholder="12,50" value="{{ form.get('amount','') }}"></label>
+  <div class="form-row">
+    <label>Montant <input name="amount" required inputmode="decimal" placeholder="12,50" value="{{ form.get('amount','') }}"></label>
+    <label>Devise
+      <select name="currency">
+        <option value="CHF" {% if form.get('currency','CHF')=='CHF' %}selected{% endif %}>CHF</option>
+        <option value="EUR" {% if form.get('currency')=='EUR' %}selected{% endif %}>EUR</option>
+      </select>
+    </label>
+  </div>
   {% if errors.amount %}<p class="error">{{ errors.amount }}</p>{% endif %}
-  <label>Devise
-    <select name="currency">
-      <option value="CHF" {% if form.get('currency','CHF')=='CHF' %}selected{% endif %}>CHF</option>
-      <option value="EUR" {% if form.get('currency')=='EUR' %}selected{% endif %}>EUR</option>
-    </select>
-  </label>
   {% if errors.currency %}<p class="error">{{ errors.currency }}</p>{% endif %}
-  <label>Date <input type="date" name="txn_date" required value="{{ form.get('txn_date','') }}"></label>
+  <div class="form-row">
+    <label>Date <input type="date" name="txn_date" required value="{{ form.get('txn_date','') }}"></label>
+    <label>Catégorie
+      <select name="category_id" required>
+        {% for c in categories %}
+        <option value="{{ c.id }}" {% if form.get('category_id')==c.id|string %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
   {% if errors.txn_date %}<p class="error">{{ errors.txn_date }}</p>{% endif %}
-  <label>Catégorie
-    <select name="category_id" required>
-      {% for c in categories %}
-      <option value="{{ c.id }}" {% if form.get('category_id')==c.id|string %}selected{% endif %}>{{ c.name }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label>Compte débité
-    <select name="ledger_account_id" required>
-      {% for a in accounts %}
-      <option value="{{ a.id }}" {% if form.get('ledger_account_id')==a.id|string %}selected{% endif %}>{{ a.name }} ({{ a.currency }})</option>
-      {% endfor %}
-    </select>
-  </label>
-  {% if errors.ledger_account_id %}<p class="error">{{ errors.ledger_account_id }}</p>{% endif %}
-  <label>Payeur
+  {% if errors.category_id %}<p class="error">{{ errors.category_id }}</p>{% endif %}
+  <label>Payée par
     <select name="payer_id">
       {% for p in people %}
       <option value="{{ p.id }}" {% if form.get('payer_id', person.id|string)==p.id|string %}selected{% endif %}>{{ p.display_name }}</option>
       {% endfor %}
     </select>
   </label>
-  <label>Répartition
-    <select name="split_method">
-      <option value="equal" {% if form.get('split_method','equal')=='equal' %}selected{% endif %}>Égale (ex. 50/50)</option>
-      <option value="income_prorata" {% if form.get('split_method')=='income_prorata' %}selected{% endif %}>Prorata des revenus</option>
-    </select>
-  </label>
-  <fieldset>
-    <legend>Personnes qui partagent</legend>
-    {% set selected = form.get('split_person_ids') %}
-    {% for p in people %}
-    <label class="permission">
-      <input type="checkbox" name="split_person_ids" value="{{ p.id }}"
-        {% if selected is sequence and selected is not string %}
-          {% if (p.id|string) in selected or p.id in selected %}checked{% endif %}
-        {% else %}
-          checked
-        {% endif %}>
-      {{ p.display_name }}
+  {% if errors.payer_id %}<p class="error">{{ errors.payer_id }}</p>{% endif %}
+  <details class="more" {% if errors.ledger_account_id or errors.splits or errors.split_method or errors.split_person_ids or errors.visibility or errors.notes %}open{% endif %}>
+    <summary>Plus d'options : compte, répartition, visibilité</summary>
+    <label>Compte débité
+      <select name="ledger_account_id">
+        <option value="">Automatique (premier compte de la devise)</option>
+        {% for a in accounts %}
+        <option value="{{ a.id }}" {% if form.get('ledger_account_id')==a.id|string %}selected{% endif %}>{{ a.name }} ({{ a.currency }})</option>
+        {% endfor %}
+      </select>
     </label>
-    {% endfor %}
-  </fieldset>
-  {% if errors.splits %}<p class="error">{{ errors.splits }}</p>{% endif %}
-  <label>Visibilité
-    <select name="visibility">
-      <option value="household" {% if form.get('visibility','household')=='household' %}selected{% endif %}>Foyer</option>
-      <option value="private" {% if form.get('visibility')=='private' %}selected{% endif %}>Privée (participants seulement)</option>
-    </select>
-  </label>
-  <label>Notes <textarea name="notes" rows="3">{{ form.get('notes','') }}</textarea></label>
-  <button type="submit">Enregistrer la dépense</button>
+    {% if errors.ledger_account_id %}<p class="error">{{ errors.ledger_account_id }}</p>{% endif %}
+    <label>Répartition
+      <select name="split_method">
+        <option value="equal" {% if form.get('split_method','equal')=='equal' %}selected{% endif %}>Égale (ex. 50/50)</option>
+        <option value="income_prorata" {% if form.get('split_method')=='income_prorata' %}selected{% endif %}>Prorata des revenus</option>
+      </select>
+    </label>
+    {% if errors.split_method %}<p class="error">{{ errors.split_method }}</p>{% endif %}
+    <fieldset>
+      <legend>Personnes qui partagent</legend>
+      {% set selected = form.get('split_person_ids') %}
+      {% for p in people %}
+      <label class="permission">
+        <input type="checkbox" name="split_person_ids" value="{{ p.id }}"
+          {% if selected is sequence and selected is not string %}
+            {% if (p.id|string) in selected or p.id in selected %}checked{% endif %}
+          {% else %}
+            checked
+          {% endif %}>
+        {{ p.display_name }}
+      </label>
+      {% endfor %}
+    </fieldset>
+    {% if errors.splits %}<p class="error">{{ errors.splits }}</p>{% endif %}
+    {% if errors.split_person_ids %}<p class="error">{{ errors.split_person_ids }}</p>{% endif %}
+    <label>Visibilité
+      <select name="visibility">
+        <option value="household" {% if form.get('visibility','household')=='household' %}selected{% endif %}>Foyer</option>
+        <option value="private" {% if form.get('visibility')=='private' %}selected{% endif %}>Privée (participants seulement)</option>
+      </select>
+    </label>
+    {% if errors.visibility %}<p class="error">{{ errors.visibility }}</p>{% endif %}
+    <label>Notes <textarea name="notes" rows="3">{{ form.get('notes','') }}</textarea></label>
+    {% if errors.notes %}<p class="error">{{ errors.notes }}</p>{% endif %}
+  </details>
+  <div class="form-actions">
+    <button type="submit">Enregistrer la dépense</button>
+    <a class="btn" href="{{ next_url or url_for('pages.finance_get') }}">Annuler</a>
+  </div>
 </form>
-<p><a href="{{ url_for('pages.finance_get') }}">Retour aux finances</a></p>
 {% endblock %}

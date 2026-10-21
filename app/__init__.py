@@ -11,7 +11,7 @@ from .audit import audit
 from .clock import SystemClock
 from .db import connect, ensure_layout, household_row
 from .errors import AppError
-from .http import MESSAGES, cookie_message, guard_local, resolve_theme
+from .http import MESSAGES, cookie_message, guard_local, resolve_theme, safe_next
 from .locks import OpLock
 from .present import STATUS_LABEL, format_cents, format_date, format_timestamp
 from .security import AttemptLimiter, hash_password, new_token
@@ -169,7 +169,9 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             nav_modules = modules_svc.enabled_keys(current_ctx())
         from .navigation import build as build_navigation
         return {
-            "shell": build_navigation(g.get("person"), nav_modules, nav),
+            "shell": build_navigation(g.get("person"), nav_modules, nav, request.path if request.method == "GET" else "/"),
+            "today_iso": _today_iso(),
+            "next_url": safe_next(request.values.get("next")) if request.values.get("next") else "",
             "person": g.get("person"),
             "household": g.get("household"),
             "csrf_token": g.get("setup_token") or g.get("csrf_token") or "",
@@ -234,6 +236,15 @@ def create_app(home=None, clock=None, testing=False, port=8765):
         return render_template("error.html", title="Information", text="Opération impossible."), 500
 
     return app
+
+
+def _today_iso():
+    from flask import current_app
+    from .clock import civil_today
+    household = g.get("household")
+    if not household:
+        return ""
+    return civil_today(current_app.config["CLOCK"], household.get("timezone", "Europe/Zurich")).isoformat()
 
 
 def current_ctx():

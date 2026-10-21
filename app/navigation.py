@@ -45,7 +45,7 @@ def _group(key, label, short, children, section="principal"):
     }
 
 
-def build(person, enabled, nav):
+def build(person, enabled, nav, here="/"):
     if not person:
         return {"groups": [], "create": [], "active": (None, None), "search": False}
     principal = bool(person.get("is_principal"))
@@ -91,16 +91,17 @@ def build(person, enabled, nav):
     ]
     groups = [group for group in groups if group]
 
+    back = {"next": here if here and here.startswith("/") else "/"}
     create = [
-        on("finances") and _entry("depense", "Dépense", "pages.finance_expense_new"),
-        on("calendrier") and _entry("evenement", "Événement", "pages.event_new"),
-        on("organisation") and _entry("tache", "Tâche", "pages.task_new"),
-        on("inventaire") and _entry("bien", "Bien", "pages.inventory_item_new"),
+        on("finances") and _entry("depense", "Dépense", "pages.finance_expense_new", **back),
+        on("calendrier") and dict(_entry("evenement", "Événement", "pages.event_new", **back), panel="ajout-evenement"),
+        on("organisation") and dict(_entry("tache", "Tâche", "pages.task_new", **back), panel="ajout-tache"),
+        on("inventaire") and _entry("bien", "Bien", "pages.inventory_item_new", **back),
         principal and on("coffre") and _entry("document", "Document", "pages.vault_get", _anchor="depot"),
-        principal and index and on("reperes") and _entry("repere", "Repère", "pages.milestone_new"),
+        principal and index and on("reperes") and _entry("repere", "Repère", "pages.milestone_new", **back),
         principal and index and on("decisions") and on("reperes")
         and _entry("decision", "Décision", "pages.milestones_get"),
-        on("mediatheque") and _entry("oeuvre", "Œuvre ou collection", "pages.media_work_new"),
+        on("mediatheque") and _entry("oeuvre", "Œuvre ou collection", "pages.media_work_new", **back),
     ]
     return {
         "groups": groups,

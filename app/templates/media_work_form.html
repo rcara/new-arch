@@ -6,6 +6,7 @@
 {% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
 <form method="post" action="{{ url_for('pages.media_work_create') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% include "_next.html" %}
   <label>Type
     <select name="kind">
       {% for key, label in kinds.items() %}
