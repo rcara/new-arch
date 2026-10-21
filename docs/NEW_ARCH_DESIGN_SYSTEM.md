@@ -12,8 +12,8 @@ Assets raster officiels (PNG source validé — pas de faux SVG) dans `app/stati
 
 | Fichier | Usage |
 |---|---|
-| `logo-full.png` | Source complète |
-| `logo-mark.png` | Symbole seul (header, favicon dérivé) |
+| `logo-full.png` | Source complète (fond transparent ; texte bleu nuit : réservé aux fonds clairs) |
+| `logo-mark.png` | Symbole seul, fond transparent (sidebar, en-tête, connexion ; clair et sombre) |
 | `logo-header.png` / `logo-lockup.png` | Lockups compactés |
 | `favicon-32.png`, `apple-touch-icon.png`, `app-icon-*.png` | Icônes |
 
