@@ -101,6 +101,22 @@ def search(ctx, person, q, *, limit=40):
             "href": f"/inventaire/{row['id']}",
         })
 
+    rows = ctx.conn.execute(
+        """SELECT id, title FROM media_work
+           WHERE household_id=1 AND archived=0 AND title LIKE ? ESCAPE '\\'
+           ORDER BY id DESC LIMIT ?""",
+        (like, limit),
+    ).fetchall()
+    for row in rows:
+        if not can_see_object(ctx, person, "media_work", row["id"]):
+            continue
+        items.append({
+            "type": "media_work",
+            "id": row["id"],
+            "title": row["title"],
+            "href": f"/mediatheque/oeuvres/{row['id']}",
+        })
+
     return {"q": query, "items": items[:limit], "total": min(len(items), limit)}
 
 

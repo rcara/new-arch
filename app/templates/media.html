@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Médiathèque{% endblock %}
+{% block content %}
+<h1>Médiathèque</h1>
+<p class="muted">Catalogue culturel (œuvres) distinct de la bibliothèque personnelle (fichiers). Pas de streaming.</p>
+<div class="toolbar">
+  <a href="{{ url_for('pages.media_work_new') }}">Ajouter une œuvre</a>
+  <a href="{{ url_for('pages.media_list_new') }}">Nouvelle liste</a>
+  <a href="{{ url_for('pages.media_asset_new') }}">Déposer un fichier</a>
+</div>
+
+<section class="today-panel" aria-labelledby="media-progress">
+  <h2 id="media-progress">En cours</h2>
+  {% for item in dash.in_progress %}
+  <div class="row">
+    <b><a href="{{ url_for('pages.media_work_get', work_id=item.id) }}">{{ item.title }}</a></b>
+    <span class="badge">{{ item.kind_label }}</span>
+    {% if item.my_progress %}<span class="muted">{{ item.my_progress }}</span>{% endif %}
+  </div>
+  {% else %}
+  <p class="muted">Rien en cours. <a href="{{ url_for('pages.media_work_new') }}">Ajouter un livre à lire</a></p>
+  {% endfor %}
+</section>
+
+<section class="today-panel" aria-labelledby="media-wish">
+  <h2 id="media-wish">Envies</h2>
+  {% for item in dash.wishlist %}
+  <div class="row">
+    <b><a href="{{ url_for('pages.media_work_get', work_id=item.id) }}">{{ item.title }}</a></b>
+    <span class="badge">{{ item.kind_label }}</span>
+  </div>
+  {% else %}
+  <p class="muted">Liste d’envies vide.</p>
+  {% endfor %}
+</section>
+
+<section class="today-panel" aria-labelledby="media-catalog">
+  <h2 id="media-catalog">Catalogue</h2>
+  <form method="get" class="toolbar">
+    <label>Type
+      <select name="kind">
+        <option value="">Tous</option>
+        {% for key, label in kinds.items() %}
+        <option value="{{ key }}" {% if args.get('kind')==key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Statut
+      <select name="status">
+        <option value="">Tous</option>
+        {% for key, label in statuses.items() %}
+        <option value="{{ key }}" {% if args.get('status')==key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Recherche <input name="q" value="{{ args.get('q','') }}"></label>
+    <button type="submit">Filtrer</button>
+  </form>
+  {% for item in works['items'] %}
+  <div class="row">
+    <b><a href="{{ url_for('pages.media_work_get', work_id=item.id) }}">{{ item.title }}</a></b>
+    <span class="badge">{{ item.kind_label }}</span>
+    {% if item.creator %}<span class="muted">{{ item.creator }}</span>{% endif %}
+    {% if item.my_status_label %}<span class="badge">{{ item.my_status_label }}</span>{% endif %}
+  </div>
+  {% else %}
+  <p class="muted">Aucune œuvre.</p>
+  {% endfor %}
+</section>
+
+<section class="today-panel" aria-labelledby="media-lib">
+  <h2 id="media-lib">Bibliothèque personnelle</h2>
+  <p class="muted">Fichiers hébergés localement — métadonnées d’œuvre ≠ fichier.</p>
+  {% for item in assets %}
+  <div class="row">
+    <b><a href="{{ url_for('pages.media_asset_get', asset_id=item.id) }}">{{ item.title }}</a></b>
+    <span class="badge">{{ item.asset_kind }}</span>
+    {% if item.collection %}<span class="muted">{{ item.collection }}</span>{% endif %}
+  </div>
+  {% else %}
+  <p class="muted">Aucun fichier. <a href="{{ url_for('pages.media_asset_new') }}">Déposer</a></p>
+  {% endfor %}
+</section>
+
+{% if lists %}
+<section class="today-panel" aria-labelledby="media-lists">
+  <h2 id="media-lists">Listes</h2>
+  {% for lst in lists %}
+  <div class="row"><b>{{ lst.name }}</b><span class="badge">{{ lst.list_kind }}</span></div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

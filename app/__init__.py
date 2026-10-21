@@ -149,6 +149,8 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             nav = "finances"
         elif name.startswith("inventory") or name.startswith("inventaire"):
             nav = "inventaire"
+        elif name.startswith("media"):
+            nav = "mediatheque"
         elif name.startswith("today"):
             nav = "today"
         else:

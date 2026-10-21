@@ -42,7 +42,10 @@ def init_db(path):
         if version == 4:
             conn.executescript((MIGRATIONS / "005_inventory.sql").read_text(encoding="utf-8"))
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-        if version != 5:
+        if version == 5:
+            conn.executescript((MIGRATIONS / "006_mediatheque.sql").read_text(encoding="utf-8"))
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version != 6:
             raise RuntimeError("schema incompatible")
     finally:
         conn.close()
@@ -56,14 +59,15 @@ def init_db(path):
 
 def ensure_layout(home):
     home = Path(home)
-    for relative in ("data", "vault/objects", "vault/staging", "backups", "logs"):
+    for relative in ("data", "vault/objects", "vault/staging", "media/objects", "media/staging", "backups", "logs"):
         directory = home / relative
         directory.mkdir(parents=True, exist_ok=True)
         if os.name == "posix":
             os.chmod(directory, 0o700)
-            vault = home / "vault"
-            if vault.exists():
-                os.chmod(vault, 0o700)
+            for protected in ("vault", "media"):
+                folder = home / protected
+                if folder.exists():
+                    os.chmod(folder, 0o700)
     init_db(home / "data" / "metadata.sqlite")
 
 

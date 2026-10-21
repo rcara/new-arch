@@ -57,9 +57,12 @@ def test_migration_002_to_003_on_copied_v1(tmp_path):
 
     init_db(db_path)
     conn = connect(db_path)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 5
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"task", "calendar_event", "object_link", "module_setting", "finance_transaction", "inventory_item"} <= tables
+    assert {
+        "task", "calendar_event", "object_link", "module_setting",
+        "finance_transaction", "inventory_item", "media_work",
+    } <= tables
     assert conn.execute("SELECT name FROM household WHERE id=1").fetchone()[0] == "Démo"
     assert conn.execute("SELECT COUNT(*) FROM milestone").fetchone()[0] == 1
     enabled = {
@@ -69,6 +72,7 @@ def test_migration_002_to_003_on_copied_v1(tmp_path):
     assert enabled["organisation"] == 1
     assert enabled["finances"] == 1
     assert enabled["inventaire"] == 1
+    assert enabled["mediatheque"] == 1
     assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     conn.close()
 

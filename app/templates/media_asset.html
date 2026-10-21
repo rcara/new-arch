@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block content %}
+<h1>{{ item.title }}</h1>
+<p class="muted">{{ item.asset_kind }} · {{ item.mime_type }} · {{ item.size_bytes }} octets</p>
+{% if item.collection %}<p>Collection : {{ item.collection }}</p>{% endif %}
+{% if item.work_id %}<p>Œuvre liée : <a href="{{ url_for('pages.media_work_get', work_id=item.work_id) }}">#{{ item.work_id }}</a></p>{% endif %}
+<p><a href="{{ url_for('pages.media_asset_open', asset_id=item.id) }}">Télécharger</a> · <a href="{{ url_for('pages.media_get') }}">Médiathèque</a></p>
+<p class="muted">Les fichiers ne sont pas exposés en statique ; le téléchargement est contrôlé.</p>
+{% endblock %}

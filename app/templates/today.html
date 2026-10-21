@@ -99,4 +99,17 @@
   <p class="today-more"><a href="{{ url_for('pages.inventory_get') }}">Inventaire</a></p>
 </section>
 {% endif %}
+
+{% if summary.media and summary.media.in_progress %}
+<section class="today-panel" aria-labelledby="home-media">
+  <h2 id="home-media">Médias en cours</h2>
+  {% for item in summary.media.in_progress %}
+  <div class="row row--today">
+    <b><a href="{{ url_for('pages.media_work_get', work_id=item.id) }}">{{ item.title }}</a></b>
+    <span class="muted">{{ item.kind_label }}{% if item.my_progress %} · {{ item.my_progress }}{% endif %}</span>
+  </div>
+  {% endfor %}
+  <p class="today-more"><a href="{{ url_for('pages.media_get') }}">Médiathèque</a></p>
+</section>
+{% endif %}
 {% endblock %}

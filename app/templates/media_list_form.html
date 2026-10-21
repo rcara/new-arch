@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle liste{% endblock %}
+{% block content %}
+<h1>Nouvelle liste</h1>
+<form method="post" action="{{ url_for('pages.media_list_create') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Nom <input name="name" required value="{{ form.get('name','') }}"></label>
+  <label>Type
+    <select name="list_kind">
+      <option value="wishlist">Envies</option>
+      <option value="collection">Collection</option>
+      <option value="custom">Personnalisée</option>
+    </select>
+  </label>
+  <label>Visibilité
+    <select name="visibility">
+      <option value="private" selected>Privée</option>
+      <option value="household">Foyer</option>
+    </select>
+  </label>
+  <button type="submit">Créer</button>
+</form>
+{% endblock %}
