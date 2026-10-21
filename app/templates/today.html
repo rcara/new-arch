@@ -1,160 +1,256 @@
 {% extends "base.html" %}
-{% from "_status.html" import status_chip, vault_mark with context %}
-{% block title %}Tableau de bord{% endblock %}
+{% from "_status.html" import status_chip with context %}
+{% block title %}Aujourd'hui{% endblock %}
+
+{% macro task_row(item) %}
+<li class="task-row">
+  <form method="post" action="{{ url_for('pages.task_complete', task_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ url_for('pages.today') }}">
+    <button type="submit" class="check" title="Marquer comme faite"><span class="sr-only">Terminer « {{ item.title }} »</span></button>
+  </form>
+  <div class="task-main">
+    <a href="{{ url_for('pages.task_get', task_id=item.id) }}">{{ item.title }}</a>
+    <span class="task-meta">
+      {% if item.due_date %}
+      <span class="{% if item.due_date < summary.today %}is-late{% endif %}">{{ item.due_date|frdate }}{% if item.due_date < summary.today %} · en retard{% endif %}</span>
+      {% else %}Sans date{% endif %}
+      {% if item.priority == 'high' %}<span class="chip chip--sous_30">Prioritaire</span>{% endif %}
+      {% if item.recurrence and item.recurrence != 'none' %}<span class="chip">Récurrente</span>{% endif %}
+    </span>
+  </div>
+</li>
+{% endmacro %}
+
 {% block content %}
-<h1>Tableau de bord</h1>
-<p class="muted">
-  Bonjour {{ summary.person.display_name }} · {{ summary.household_name }} · {{ summary.today|frdate }}
-  · <a href="{{ url_for('pages.profile_get') }}">Gérer mon profil</a>
-</p>
-
-<section class="today-panel" aria-labelledby="dash-mine">
-  <h2 id="dash-mine">Pour vous</h2>
-  <div class="row row--today">
-    <b>Mes tâches ouvertes</b>
-    <span class="row-date">{{ summary.mine.task_count }}</span>
-  </div>
-  {% if summary.mine.balance %}
-  <div class="row row--today">
-    <b>Mon solde (CHF)</b>
-    <span class="row-date">{{ summary.mine.balance.net_label }}</span>
-    <span class="muted">{{ summary.mine.balance.meaning }}</span>
-  </div>
-  {% endif %}
-  {% if summary.person.can_view_index %}
-  <div class="row row--today">
-    <b>Échéances urgentes</b>
-    <span class="row-date">{{ summary.mine.urgent_milestones }}</span>
-  </div>
-  {% endif %}
-  {% if summary.mine.media_in_progress %}
-  <div class="row row--today">
-    <b>Médias en cours</b>
-    <span class="row-date">{{ summary.mine.media_in_progress|length }}</span>
-  </div>
-  {% endif %}
-</section>
-
-{% if summary.mine.tasks %}
-<section class="today-panel" aria-labelledby="dash-my-tasks">
-  <h2 id="dash-my-tasks">Mes tâches</h2>
-  {% for item in summary.mine.tasks %}
-  <div class="row row--today">
-    <b><a href="{{ url_for('pages.task_get', task_id=item.id) }}">{{ item.title }}</a></b>
-    <span class="row-date">{% if item.due_date %}{{ item.due_date|frdate }}{% else %}Sans date{% endif %}</span>
-    <span class="badge">{{ item.priority_label }}</span>
-  </div>
-  {% endfor %}
-  <p class="today-more"><a href="{{ url_for('pages.tasks_get') }}">Toutes les tâches</a></p>
-</section>
-{% endif %}
-
+{% set todo = summary.todo %}
+{% set agenda = summary.agenda %}
 {% set ms = summary.milestones %}
-{% if ms and not ms.denied %}
-<section class="today-panel" aria-labelledby="home-milestones">
-  {% if ms.urgent_items %}
-  <h2 id="home-milestones">Échéances à traiter</h2>
-  <p class="muted">Repères expirés ou sous 30 jours.</p>
-  {% for item in ms.urgent_items %}
-  <div class="row row--today">
-    <b><a href="{{ url_for('pages.milestone_get', milestone_id=item.id) }}">{{ item.name }}</a></b>
-    <span class="row-date">{{ item.due_date|frdate }}</span>
-    {{ status_chip(item.status) }}
-    {{ vault_mark(item.has_file) }}
+{% set fm = summary.finance_month %}
+{% set open_count = todo.mine|length + todo.shared|length %}
+{% set agenda_count = agenda['items']|length %}
+
+<header class="page-header today-hero">
+  <div>
+    <p class="eyebrow">{{ summary.today|frdate }} · {{ summary.household_name }}</p>
+    <h1>Bonjour {{ summary.person.display_name.split(' ')[0] }}</h1>
+    <p class="muted">
+      {% if agenda_count or open_count %}
+      {% if agenda_count %}{{ agenda_count }} rendez-vous ou échéance{% if agenda_count > 1 %}s{% endif %} dans les {{ agenda.days }} prochains jours{% endif %}{% if agenda_count and open_count %} · {% endif %}{% if open_count %}{{ open_count }} tâche{% if open_count > 1 %}s{% endif %} à faire{% if todo.overdue %}, dont {{ todo.overdue }} en retard{% endif %}{% endif %}.
+      {% else %}
+      Rien d'urgent pour l'instant. Voici l'essentiel du foyer.
+      {% endif %}
+    </p>
   </div>
-  {% endfor %}
-  {% else %}
-  <h2 id="home-milestones">Aucune échéance urgente</h2>
-  <p class="muted">Pas de repère expiré ni sous 30 jours.</p>
-  {% endif %}
-  {% if ms.other_count %}
-  <p class="today-more"><a href="{{ url_for('pages.milestones_get') }}">{{ ms.other_count }} autre{% if ms.other_count > 1 %}s{% endif %} sur Repères</a></p>
-  {% elif ms.total == 0 %}
-  <p class="today-more">{% if person.is_principal %}<a href="{{ url_for('pages.milestone_new') }}">Créer un repère</a>{% else %}Aucun repère pour l’instant.{% endif %}</p>
-  {% endif %}
-</section>
-{% elif ms and ms.denied %}
-<section class="today-panel">
-  <h2>Repères</h2>
-  <p class="muted">Les repères ne vous sont pas accordés.</p>
+</header>
+
+{% if summary.onboarding and not onboarding_hidden %}
+{% set ob = summary.onboarding %}
+<section class="card onboarding" aria-labelledby="onboarding-title">
+  <div class="card-head">
+    <div>
+      <h2 id="onboarding-title">Bien démarrer</h2>
+      <p class="muted">{{ ob.done }} étape{% if ob.done > 1 %}s{% endif %} sur {{ ob.total }} · facultatif, à reprendre quand vous voulez.</p>
+    </div>
+    <form method="post" action="{{ url_for('pages.onboarding_post') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="masquer">
+      <button type="submit" class="secondary btn--small">Masquer</button>
+    </form>
+  </div>
+  <progress max="{{ ob.total }}" value="{{ ob.done }}" aria-label="Progression du démarrage">{{ ob.done }}/{{ ob.total }}</progress>
+  <ol class="steps">
+    {% for step in ob.steps %}
+    <li class="step{% if step.done %} is-done{% endif %}">
+      <span class="step-mark" aria-hidden="true">{% if step.done %}✓{% else %}{{ loop.index }}{% endif %}</span>
+      {% if step.done %}<span>{{ step.label }}<span class="sr-only"> (fait)</span></span>
+      {% else %}<a href="{{ url_for(step.endpoint) }}">{{ step.label }}</a>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
 </section>
 {% endif %}
 
-<section class="today-panel" aria-labelledby="home-tasks">
-  <h2 id="home-tasks">Tâches du foyer</h2>
-  {% if summary.tasks %}
-  {% for item in summary.tasks %}
-  <div class="row row--today">
-    <b><a href="{{ url_for('pages.task_get', task_id=item.id) }}">{{ item.title }}</a></b>
-    <span class="row-date">{% if item.due_date %}{{ item.due_date|frdate }}{% else %}Sans date{% endif %}</span>
-    <span class="badge">{{ item.priority_label }}</span>
-    {% if item.assignee_name %}<span class="muted">{{ item.assignee_name }}</span>{% endif %}
-  </div>
-  {% endfor %}
-  {% else %}
-  <p class="muted">Aucune tâche ouverte dans les 30 prochains jours.</p>
-  <p><a href="{{ url_for('pages.task_new') }}">Créer une tâche</a></p>
+<div class="dash-grid">
+  {% if 'calendrier' in nav_modules or (ms and not ms.denied) %}
+  <section class="card dash-card dash-card--wide" aria-labelledby="dash-agenda">
+    <div class="card-head">
+      <h2 id="dash-agenda">Agenda</h2>
+      {% if 'calendrier' in nav_modules %}<a href="{{ url_for('pages.events_get') }}">Voir l'agenda</a>{% endif %}
+    </div>
+    {% if agenda['items'] %}
+    <ul class="timeline">
+      {% for entry in agenda['items'] %}
+      <li class="timeline-item timeline-item--{{ entry.kind }}">
+        <span class="timeline-date">{{ entry.date|frdate }}</span>
+        <div>
+          {% if entry.kind == 'event' %}
+          <a href="{{ url_for('pages.event_get', event_id=entry.id) }}">{{ entry.title }}</a>
+          <span class="muted">Événement{% if entry.end_date and entry.end_date != entry.date %} · jusqu'au {{ entry.end_date|frdate }}{% endif %}{% if entry.who %} · {{ entry.who }}{% endif %}</span>
+          {% else %}
+          <a href="{{ url_for('pages.milestone_get', milestone_id=entry.id) }}">{{ entry.title }}</a>
+          <span class="muted">Échéance{% if entry.who %} · {{ entry.who }}{% endif %}</span>
+          {{ status_chip(entry.status) }}
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if agenda.more %}<p class="card-foot muted">{{ agenda.more }} autre{% if agenda.more > 1 %}s{% endif %} élément{% if agenda.more > 1 %}s{% endif %} à venir.</p>{% endif %}
+    {% else %}
+    <div class="empty-inline">
+      <p><b>Rien de prévu dans les {{ agenda.days }} prochains jours.</b></p>
+      <p class="muted">Rendez-vous, anniversaires, échéances administratives : tout le foyer les voit ici.</p>
+      {% if 'calendrier' in nav_modules %}<a class="btn btn--primary btn--small" href="{{ url_for('pages.event_new') }}">Créer un événement</a>{% endif %}
+    </div>
+    {% endif %}
+    {% if ms and not ms.denied %}
+    <p class="card-foot muted">
+      {% if not ms.urgent_items %}Aucune échéance urgente.{% endif %}
+      {% if ms.other_count %}<a href="{{ url_for('pages.milestones_get') }}">{{ ms.other_count }} autre{% if ms.other_count > 1 %}s{% endif %} repère{% if ms.other_count > 1 %}s{% endif %}</a>{% endif %}
+    </p>
+    {% endif %}
+  </section>
   {% endif %}
-</section>
 
-<section class="today-panel" aria-labelledby="home-events">
-  <h2 id="home-events">Événements à venir</h2>
-  {% if summary.events %}
-  {% for item in summary.events %}
-  <div class="row row--today">
-    <b><a href="{{ url_for('pages.event_get', event_id=item.id) }}">{{ item.title }}</a></b>
-    <span class="row-date">{{ item.start_date|frdate }}</span>
-  </div>
-  {% endfor %}
-  {% else %}
-  <p class="muted">Aucun événement sur les 30 prochains jours.</p>
-  <p><a href="{{ url_for('pages.event_new') }}">Créer un événement</a></p>
+  {% if todo.enabled %}
+  <section class="card dash-card" aria-labelledby="dash-todo">
+    <div class="card-head">
+      <h2 id="dash-todo">À faire</h2>
+      <a href="{{ url_for('pages.tasks_get') }}">Toutes les tâches</a>
+    </div>
+    {% if todo.mine or todo.shared %}
+    {% if todo.mine %}
+    <h3 class="list-title">Mes tâches</h3>
+    <ul class="task-list">{% for item in todo.mine %}{{ task_row(item) }}{% endfor %}</ul>
+    {% endif %}
+    {% if todo.shared %}
+    <h3 class="list-title">Pour tout le foyer</h3>
+    <ul class="task-list">{% for item in todo.shared %}{{ task_row(item) }}{% endfor %}</ul>
+    {% endif %}
+    {% else %}
+    <div class="empty-inline">
+      <p><b>Mes tâches : rien en attente.</b></p>
+      <p class="muted">Notez ce qu'il reste à faire et à qui c'est confié ; une coche suffit pour terminer.</p>
+    </div>
+    {% endif %}
+    <p class="card-foot"><a class="btn btn--small" href="{{ url_for('pages.task_new') }}">+ Nouvelle tâche</a></p>
+  </section>
   {% endif %}
-</section>
 
-{% if summary.finance_balances %}
-<section class="today-panel" aria-labelledby="home-finance">
-  <h2 id="home-finance">Soldes (CHF)</h2>
-  {% set open_balances = summary.finance_balances.entries|selectattr('net_minor')|list %}
-  {% if open_balances %}
-  {% for item in open_balances %}
-  <div class="row row--today">
-    <b>{{ item.display_name }}</b>
-    <span class="row-date">{{ item.net_label }}</span>
-    <span class="muted">{{ item.meaning }}</span>
-  </div>
-  {% endfor %}
-  {% else %}
-  <p class="muted">Aucun solde à régler.</p>
+  {% if fm %}
+  <section class="card dash-card dash-card--wide" aria-labelledby="dash-finance">
+    <div class="card-head">
+      <h2 id="dash-finance">Finances · {{ (summary.today|frdate).split(' ', 1)[1] }}</h2>
+      <a href="{{ url_for('pages.finance_get') }}">Ouvrir Finances</a>
+    </div>
+    {% if fm.spending %}
+    <div class="stats">
+      {% for s in fm.spending %}
+      <div class="stat">
+        <span class="stat-label">Dépenses du mois · {{ s.currency }}</span>
+        <span class="stat-value amount">{{ s.spent_label }}</span>
+        <span class="muted">{{ s.count }} opération{% if s.count > 1 %}s{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-inline">
+      <p><b>Aucune dépense ce mois-ci.</b></p>
+      <p class="muted">Chaque montant reste dans sa devise (CHF ou EUR), sans conversion.</p>
+    </div>
+    {% endif %}
+    {% if fm.budgets %}
+    <h3 class="list-title">Budgets du mois</h3>
+    <ul class="budget-list">
+      {% for b in fm.budgets %}
+      <li>
+        <div class="budget-line">
+          <b>{{ b.category_name }}</b>
+          <span class="amount">{{ b.spent_label }} / {{ b.amount_label }}</span>
+        </div>
+        <meter min="0" max="{{ b.amount_minor }}" low="{{ (b.amount_minor * 0.8)|int }}" high="{{ b.amount_minor }}" optimum="0" value="{{ [b.spent_minor, b.amount_minor]|min }}">{{ b.spent_label }}</meter>
+        <span class="muted">{% if b.remaining_minor >= 0 %}Reste {{ b.remaining_label }}{% else %}Dépassé de {{ b.remaining_label|replace('-', '') }}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if fm.balances %}
+    <h3 class="list-title">Soldes entre membres</h3>
+    {% for group in fm.balances %}
+    {% for item in group.entries %}
+    <div class="row row--today">
+      <b>{{ item.display_name }}</b>
+      <span class="amount">{{ item.net_label }}</span>
+      <span class="muted">{{ item.meaning }}</span>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+    <p class="card-foot"><a class="btn btn--small" href="{{ url_for('pages.finance_expense_new') }}">+ Ajouter une dépense</a></p>
+  </section>
   {% endif %}
-  <p class="today-more"><a href="{{ url_for('pages.finance_get') }}">Ouvrir Finances</a></p>
-</section>
-{% endif %}
 
-{% if summary.warranties %}
-<section class="today-panel" aria-labelledby="home-warranties">
-  <h2 id="home-warranties">Garanties à venir</h2>
-  {% for w in summary.warranties %}
-  <div class="row row--today">
-    <b><a href="{{ url_for('pages.inventory_item_get', item_id=w.item_id) }}">{{ w.item_name }}</a></b>
-    <span class="row-date">{{ w.ends_on|frdate }}</span>
-    <span class="muted">{{ w.label }}</span>
-  </div>
-  {% endfor %}
-  <p class="today-more"><a href="{{ url_for('pages.inventory_get') }}">Inventaire</a></p>
-</section>
-{% endif %}
+  <section class="card dash-card" aria-labelledby="dash-shortcuts">
+    <div class="card-head"><h2 id="dash-shortcuts">Raccourcis</h2></div>
+    <ul class="shortcuts">
+      {% for item in shell.create %}
+      <li><a href="{{ item.href }}">{{ item.label }}</a></li>
+      {% endfor %}
+      {% if shell.search %}<li><a href="{{ url_for('pages.search_get') }}">Rechercher</a></li>{% endif %}
+    </ul>
+  </section>
 
-{% if summary.media and summary.media.in_progress %}
-<section class="today-panel" aria-labelledby="home-media">
-  <h2 id="home-media">Médias en cours</h2>
-  {% for item in summary.media.in_progress %}
-  <div class="row row--today">
-    <b><a href="{{ url_for('pages.media_work_get', work_id=item.id) }}">{{ item.title }}</a></b>
-    <span class="muted">{{ item.kind_label }}{% if item.my_progress %} · {{ item.my_progress }}{% endif %}</span>
-  </div>
-  {% endfor %}
-  <p class="today-more"><a href="{{ url_for('pages.media_get') }}">Médiathèque</a></p>
-</section>
-{% endif %}
+  {% if ms and ms.denied %}
+  <section class="card dash-card">
+    <div class="card-head"><h2>Repères</h2></div>
+    <p class="muted">Les repères ne vous sont pas accordés. Le compte principal peut vous en ouvrir l'accès.</p>
+  </section>
+  {% endif %}
+
+  {% if summary.warranties %}
+  <section class="card dash-card" aria-labelledby="dash-warranties">
+    <div class="card-head">
+      <h2 id="dash-warranties">Garanties à venir</h2>
+      <a href="{{ url_for('pages.inventory_get') }}">Maison</a>
+    </div>
+    <ul class="plain-list">
+      {% for w in summary.warranties %}
+      <li><a href="{{ url_for('pages.inventory_item_get', item_id=w.item_id) }}">{{ w.item_name }}</a> <span class="muted">· fin le {{ w.ends_on|frdate }}{% if w.label %} · {{ w.label }}{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if summary.media and summary.media.in_progress %}
+  <section class="card dash-card" aria-labelledby="dash-media">
+    <div class="card-head">
+      <h2 id="dash-media">En cours</h2>
+      <a href="{{ url_for('pages.media_get') }}">Médiathèque</a>
+    </div>
+    <ul class="plain-list">
+      {% for item in summary.media.in_progress %}
+      <li><a href="{{ url_for('pages.media_work_get', work_id=item.id) }}">{{ item.title }}</a> <span class="muted">· {{ item.kind_label }}{% if item.my_progress %} · {{ item.my_progress }}{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if summary.recent %}
+  <section class="card dash-card" aria-labelledby="dash-recent">
+    <div class="card-head"><h2 id="dash-recent">Ajouté récemment</h2></div>
+    <ul class="plain-list">
+      {% for entry in summary.recent %}
+      <li>
+        {% if entry.kind == 'task' %}<a href="{{ url_for('pages.task_get', task_id=entry.id) }}">{{ entry.title }}</a> <span class="muted">· tâche</span>
+        {% elif entry.kind == 'event' %}<a href="{{ url_for('pages.event_get', event_id=entry.id) }}">{{ entry.title }}</a> <span class="muted">· événement</span>
+        {% elif entry.kind == 'transaction' %}<a href="{{ url_for('pages.finance_get') }}">{{ entry.title }}</a> <span class="muted">· {{ entry.detail }}</span>
+        {% else %}<a href="{{ url_for('pages.inventory_item_get', item_id=entry.id) }}">{{ entry.title }}</a> <span class="muted">· bien</span>{% endif %}
+        <span class="muted">· {{ entry.at[:10]|frdate }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
 {% endblock %}

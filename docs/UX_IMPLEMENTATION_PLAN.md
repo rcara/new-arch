@@ -20,7 +20,7 @@ zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, 
 - Tests : chaque lien de nav répond 200, modules désactivés masqués, compte secondaire sans entrées admin,
   état actif correct.
 
-## Sprint 2 — Accueil
+## Sprint 2 — Accueil ✅
 
 - Service `home.dashboard` étendu (lecture seule) : agenda 14 jours, tâches (moi + partagées), dépenses du mois par
   devise, budgets du mois, soldes, activité récente autorisée.
