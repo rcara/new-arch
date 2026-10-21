@@ -54,7 +54,11 @@
 <ul class="item-gallery">
   {% for item in items %}
   <li class="item-card">
+    {% if item.photo_id %}
+    <img class="item-thumb item-thumb--photo" src="{{ url_for('pages.inventory_photo_get', item_id=item.id, v=item.photo_id) }}" alt="" width="56" height="56" loading="lazy">
+    {% else %}
     <span class="item-thumb" aria-hidden="true">{{ item.name[:1]|upper }}</span>
+    {% endif %}
     <div class="item-body">
       <h2><a href="{{ url_for('pages.inventory_item_get', item_id=item.id) }}">{{ item.name }}</a></h2>
       <p class="muted">{{ item.category or 'Sans catégorie' }}{% if item.place_name %} · {{ item.place_name }}{% endif %}</p>

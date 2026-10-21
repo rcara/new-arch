@@ -32,6 +32,8 @@ MESSAGES = {
     "finance_imported": "Import CSV terminé.",
     "inventory_saved": "Inventaire mis à jour.",
     "media_saved": "Médiathèque mise à jour.",
+    "photo_saved": "Photo enregistrée.",
+    "photo_removed": "Photo retirée.",
     "theme_saved": "Thème enregistré.",
     "modules_saved": "Modules mis à jour. Les données des modules masqués sont conservées.",
     "profile_saved": "Profil mis à jour.",

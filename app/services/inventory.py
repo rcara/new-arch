@@ -13,6 +13,7 @@ from ..money import format_minor, parse_amount_to_minor, require_currency
 from ..validate import date_value, text_value
 from . import events as events_svc
 from . import links as links_svc
+from . import photos as photos_svc
 from .modules import require_module
 from .people import list_active_members
 
@@ -104,7 +105,7 @@ def create_place(ctx, person, data):
     return place_id
 
 
-def _item_public(ctx, row):
+def _item_public(ctx, row, photo_id=None):
     owners = _owners_of(ctx.conn, row["id"])
     warranties = ctx.conn.execute(
         """SELECT id, label, starts_on, ends_on, provider, notes, calendar_event_id, created_at
@@ -162,6 +163,7 @@ def _item_public(ctx, row):
             for m in maintenances
         ],
         "history": [dict(h) for h in history],
+        "photo_id": photo_id,
     }
 
 
@@ -193,7 +195,8 @@ def list_items(ctx, person, *, q="", place_id=None, category="", page=1):
         f"{ITEM_SELECT} WHERE {' AND '.join(where)} ORDER BY i.name, i.id LIMIT 300",
         params,
     ).fetchall()
-    items = [_item_public(ctx, row) for row in rows if _can_see_item(ctx, person, row)]
+    photos = photos_svc.active_photo_ids(ctx, "inventory_item")
+    items = [_item_public(ctx, row, photos.get(row["id"])) for row in rows if _can_see_item(ctx, person, row)]
     page = max(1, int(page or 1))
     start = (page - 1) * 50
     return {"items": items[start:start + 50], "page": page, "page_size": 50, "total": len(items)}
@@ -206,7 +209,7 @@ def get_item(ctx, person, item_id):
         raise AppError(404, "not_found", "Bien introuvable.")
     if not _can_see_item(ctx, person, row):
         raise AppError(404, "not_found", "Bien introuvable.")
-    return _item_public(ctx, row)
+    return _item_public(ctx, row, photos_svc.active_photo_id(ctx, "inventory_item", row["id"]))
 
 
 def _parse_owner_ids(data):
