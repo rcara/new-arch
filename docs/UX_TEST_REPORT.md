@@ -69,7 +69,7 @@ l'en-tête et la barre mobile fixes apparaissent au milieu (artefact de capture)
 Données de capture : foyer démo enrichi (3 lieux, 5 biens, 5 œuvres, 1 bail au coffre, 1 décision brouillon)
 via l'API locale. Quelques tâches en double proviennent des captures du Sprint 3.
 
-Limites connues : événements récurrents non développés en occurrences (D6) ; pas d'images de biens ni d'œuvres
+Limites connues : événements récurrents non développés en occurrences (D6, résolu en V2.2) ; pas d'images de biens ni d'œuvres
 (D7) ; sur mobile, la grille du mois est remplacée par la liste des jours occupés (et le jour même).
 
 ## Sprint 5

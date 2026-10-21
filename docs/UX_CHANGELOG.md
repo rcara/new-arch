@@ -29,6 +29,66 @@
 
 **Inchangé** : schéma, routes, permissions (principal seul pour déposer), CSRF, `style-src 'self'`. Sans JS,
 tout fonctionne comme avant (`:target`, champ fichier natif). Connexion HTTP locale sous Chrome : voir D2.
+## D7 — Photos de biens et affiches d'œuvres
+
+**Ajouté**
+- Migration additive `migrations/008_object_photo.sql` (`user_version` 7 → 8) : table `object_photo`
+  (foyer, type d'objet `inventory_item` | `media_work`, identifiant, clé de stockage, type, taille, SHA-256,
+  auteur, `archived`). Une seule photo active par objet (index unique partiel), suppression de ligne interdite
+  (trigger), aucune table existante modifiée.
+- `app/services/photos.py` : validation par contenu réel (JPEG, PNG, WebP ; GIF, SVG et autres refusés en 415),
+  10 Mio au plus (413), image vide refusée (400). Métadonnées retirées en Python pur, sans dépendance :
+  JPEG (EXIF dont GPS, XMP, IPTC, commentaires, vignettes, données après la fin d'image ; seule l'orientation
+  est réécrite pour garder le bon sens d'affichage), PNG (`tEXt`, `zTXt`, `iTXt`, `eXIf`, `tIME`, CRC vérifiés),
+  WebP (`EXIF`, `XMP`, drapeaux `VP8X` remis à zéro). Le nom de fichier d'origine n'est pas conservé.
+- Stockage dans le dossier local existant `media/objects` (clé aléatoire, droits 0600, chiffré au repos si le
+  chiffrement est activé), inclus dans les sauvegardes et restaurations (`media_files` du manifeste).
+- Routes (POST + CSRF, formulaires `multipart/form-data` sans script) :
+  `GET|POST /inventaire/<id>/photo`, `POST /inventaire/<id>/photo/retirer`,
+  `GET|POST /mediatheque/oeuvres/<id>/affiche`, `POST /mediatheque/oeuvres/<id>/affiche/retirer`.
+  La lecture passe par la même vérification que la fiche (`get_item` / `get_work`) : module actif, foyer actif,
+  visibilité (privé = créateur, propriétaires ou principal pour un bien ; créateur, participants ou principal pour
+  une œuvre). Sinon 404, sans révéler l'existence. Remplacer ou retirer archive la ligne et efface le fichier.
+- `tests/test_photos.py` (21 tests) : nettoyage JPEG / PNG / WebP, refus (GIF, SVG, faux JPEG, PNG tronqué, vide,
+  trop lourd, sans CSRF, invité), dépôt / remplacement / retrait, galeries, bien et œuvre privés invisibles à un
+  autre membre (lecture, dépôt, retrait), cloisonnement entre deux foyers, sauvegarde + restauration, migration 008
+  sur une copie de base v7 existante (données identiques, intégrité, idempotence, retour arrière puis ré-application).
+
+**Modifié**
+- Inventaire : la galerie affiche la photo en vignette (`item-thumb--photo`) ; la fiche a un panneau « Photo »
+  (aperçu, ajout / remplacement, retrait, erreur annoncée en `role="alert"` + `aria-invalid`).
+- Médiathèque : les affiches remplacent la vignette typée dans la galerie (`poster-art--photo`) ; la fiche œuvre a
+  un panneau « Affiche ». Sans image, les vignettes typées (initiale, couleur par type) restent affichées.
+- Sauvegarde : schéma 8 accepté ; les photos actives sont copiées et vérifiées comme les fichiers média.
+
+**Retour arrière**
+- Code seul : impossible sans toucher la base, l'ancienne version refuse `user_version=8`.
+- Base : application arrêtée, sauvegarde (`python cli.py backup`), puis
+  `sqlite3 data/metadata.sqlite < migrations/rollback/008_object_photo_down.sql` : retire seulement la table des
+  photos et remet `user_version=7` ; biens, œuvres et autres données inchangés (vérifié par test). Les fichiers photo
+  restent orphelins dans `media/objects`. Alternative : restaurer la sauvegarde d'avant déploiement.
+
+**Inchangé** : CSP (`img-src 'self'`, `script-src 'none'`), sessions, permissions existantes, autres tables.
+## V2.2 — Modules activables (décision D3)
+
+**Ajouté**
+- Paramètres → « Modules du foyer » : cases à cocher + « Enregistrer les modules » (POST `/parametres/modules`,
+  CSRF, sans JS). Réservé au compte principal du foyer actif ; un membre secondaire voit l'état en lecture seule
+  et reçoit 403 s'il poste. Chaque bascule est journalisée (`module_enable` / `module_disable`, sans contenu).
+- `services/modules.py` : `LOCKED` (Accueil, Foyer, Paramètres — toujours actifs : page d'arrivée, gestion des
+  membres et des accès, et formulaire de réactivation), `set_enabled`, `ROUTE_PREFIXES` / `module_for_path`.
+- Garde serveur unique (`before_request`) : toute route HTML ou API d'un module désactivé renvoie 404
+  (organisation, calendrier, finances, inventaire, médiathèque, repères, décisions, coffre, recherche, alias inclus).
+- `tests/test_modules_settings.py` (17 tests) : bascule, modules verrouillés, 403 secondaire, CSRF et clé inconnue,
+  masquage + 404 page/API pour chaque module, cartes d'Aujourd'hui, données intactes après off/on, isolation par foyer.
+
+**Modifié**
+- Aujourd'hui : la carte et les échéances Repères suivent le module `reperes` (elles l'ignoraient).
+- Liens croisés masqués quand la cible est désactivée : repère → décision, coffre → repère, marque « Pièce au
+  coffre », médiathèque → lier une décision ; `/bibliotheque` ouvre le premier module actif de la Bibliothèque.
+
+**Inchangé** : schéma (aucune migration, table `module_setting` existante), données des modules masqués
+(jamais supprimées ni modifiées ; réactiver restaure tout), permissions par objet, CSP.
 
 ## Mise en production — intégration avec le multi-foyer (PR #18)
 

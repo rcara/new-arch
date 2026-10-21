@@ -1,6 +1,9 @@
 """Calendrier : événements du foyer (distincts des repères Index)."""
 
 import uuid
+from calendar import monthrange
+from datetime import date, timedelta
+
 from ..tenancy import hh
 
 from ..audit import audit
@@ -11,6 +14,13 @@ from ..validate import date_value, text_value, timezone_name
 from .modules import require_module
 
 RECURRENCES = frozenset({"none", "daily", "weekly", "monthly", "yearly"})
+RECURRENCE_LABEL = {
+    "daily": "Tous les jours",
+    "weekly": "Chaque semaine",
+    "monthly": "Chaque mois",
+    "yearly": "Chaque année",
+}
+MAX_OCCURRENCES = 1000
 
 SELECT = """
 SELECT e.*, r.display_name AS responsible_name
@@ -43,6 +53,7 @@ def _public(row):
         "responsible_name": row["responsible_name"] if "responsible_name" in row.keys() else None,
         "created_by": row["created_by"],
         "recurrence": row["recurrence"],
+        "recurrence_label": RECURRENCE_LABEL.get(row["recurrence"]),
         "archived": bool(row["archived"]),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
@@ -207,17 +218,118 @@ def update_event(ctx, person, event_id, data):
     return get_event(ctx, person, event_id)
 
 
+def _nth(first, recurrence, n):
+    """n-ième occurrence calculée depuis la date d'origine : un 31 reste un 31 quand le mois le permet."""
+    if recurrence == "daily":
+        return first + timedelta(days=n)
+    if recurrence == "weekly":
+        return first + timedelta(weeks=n)
+    if recurrence == "monthly":
+        index = first.month - 1 + n
+        year, month = first.year + index // 12, index % 12 + 1
+        return date(year, month, min(first.day, monthrange(year, month)[1]))
+    year = first.year + n
+    return date(year, first.month, min(first.day, monthrange(year, first.month)[1]))
+
+
+def _first_index(first, recurrence, earliest):
+    """Indice sûr (jamais trop grand) de la première occurrence pouvant chevaucher `earliest`."""
+    if earliest <= first:
+        return 0
+    if recurrence == "daily":
+        return (earliest - first).days
+    if recurrence == "weekly":
+        return (earliest - first).days // 7
+    if recurrence == "monthly":
+        return max(0, (earliest.year - first.year) * 12 + earliest.month - first.month - 1)
+    return max(0, earliest.year - first.year - 1)
+
+
+def occurrence_dates(start_date, end_date, recurrence, window_start, window_end):
+    """Paires (début, fin) des occurrences qui chevauchent [window_start, window_end], bornes incluses.
+
+    La durée de chaque occurrence est celle de l'événement d'origine (end_date - start_date).
+    Les séries n'ont pas de date de fin en base : elles se répètent indéfiniment.
+    """
+    first = date.fromisoformat(start_date)
+    length = date.fromisoformat(end_date) - first if end_date else timedelta(0)
+    window_start = date.fromisoformat(window_start) if isinstance(window_start, str) else window_start
+    window_end = date.fromisoformat(window_end) if isinstance(window_end, str) else window_end
+    if recurrence not in RECURRENCE_LABEL:
+        if first <= window_end and first + length >= window_start:
+            return [(first, first + length)]
+        return []
+    found = []
+    n = _first_index(first, recurrence, window_start - length)
+    while len(found) < MAX_OCCURRENCES:
+        begin = _nth(first, recurrence, n)
+        if begin > window_end:
+            break
+        if begin + length >= window_start:
+            found.append((begin, begin + length))
+        n += 1
+    return found
+
+
+def _expand(ctx, start, end, q=""):
+    where = [
+        f"e.household_id={hh(ctx)}", "e.archived=0", "e.start_date <= :end",
+        "(e.recurrence != 'none' OR e.end_date IS NULL OR e.end_date >= :start)",
+    ]
+    params = {"start": start, "end": end}
+    if q:
+        escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        where.append("e.title LIKE :q ESCAPE '\\'")
+        params["q"] = f"%{escaped}%"
+    rows = ctx.conn.execute(f"{SELECT} WHERE {' AND '.join(where)} ORDER BY e.start_date, e.id", params).fetchall()
+    found = []
+    for row in rows:
+        base = _public(row)
+        for begin, finish in occurrence_dates(row["start_date"], row["end_date"], row["recurrence"], start, end):
+            item = dict(base)
+            item.update({
+                "start_date": begin.isoformat(),
+                "end_date": finish.isoformat() if row["end_date"] else None,
+                "series_start_date": row["start_date"],
+                "series_end_date": row["end_date"],
+                "is_occurrence": row["recurrence"] != "none",
+            })
+            found.append(item)
+    found.sort(key=lambda item: (item["start_date"], item["id"]))
+    return found
+
+
+def occurrences(ctx, person, *, from_date, to_date, q=""):
+    """Événements du foyer actif sur [from_date, to_date], séries récurrentes développées en occurrences.
+
+    Lecture seule : rien n'est écrit en base ; chaque occurrence renvoie vers la série (même `id`).
+    """
+    require_module(ctx, "calendrier")
+    start = date_value(from_date, key="from", label="La date de début")
+    end = date_value(to_date, key="to", label="La date de fin")
+    if not start or not end:
+        raise AppError(400, "validation", "Période requise.", {"from": "Période requise."})
+    return _expand(ctx, start, end, q)
+
+
+def is_occurrence(item, day):
+    """Vrai si `day` (AAAA-MM-JJ) est le début d'une occurrence de l'événement `item` (tel que renvoyé par get_event)."""
+    try:
+        target = date.fromisoformat(str(day or ""))
+    except ValueError:
+        return False
+    return any(
+        begin == target
+        for begin, _ in occurrence_dates(item["start_date"], item["end_date"], item["recurrence"], target, target)
+    )
+
+
 def upcoming(ctx, person, *, within_days=30, limit=20):
-    require_household(ctx.conn, hh(ctx))
     household = require_household(ctx.conn, hh(ctx))
-    today = civil_today(ctx.clock, household["timezone"]).isoformat()
-    rows = ctx.conn.execute(
-        f"""{SELECT}
-            WHERE e.household_id={hh(ctx)} AND e.archived=0
-              AND e.start_date >= ?
-              AND e.start_date <= date(?, '+' || ? || ' days')
-            ORDER BY e.start_date, e.id
-            LIMIT ?""",
-        (today, today, int(within_days), int(limit)),
-    ).fetchall()
-    return [_public(row) for row in rows]
+    today = civil_today(ctx.clock, household["timezone"])
+    horizon = today + timedelta(days=int(within_days))
+    items = [
+        item for item in _expand(ctx, today.isoformat(), horizon.isoformat())
+        if item["start_date"] >= today.isoformat()
+    ]
+    return items[:int(limit)]

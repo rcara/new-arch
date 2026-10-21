@@ -57,7 +57,7 @@ def test_migration_002_to_003_on_copied_v1(tmp_path):
 
     init_db(db_path)
     conn = connect(db_path)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 8
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {
         "task", "calendar_event", "object_link", "module_setting",

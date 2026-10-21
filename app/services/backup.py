@@ -13,7 +13,7 @@ from ..errors import AppError
 from .media import asset_path, ensure_media_layout
 from .vault import HEX, object_path
 
-ACCEPTED_SCHEMA = frozenset({2, 3, 4, 5, 6, 7})
+ACCEPTED_SCHEMA = frozenset({2, 3, 4, 5, 6, 7, 8})
 
 
 def _copy_hashed_objects(home, rows, source_resolver, dest_dir, crypto=None):
@@ -84,6 +84,10 @@ def create_backup(ctx):
                 if "media_asset" in tables:
                     media_rows = check.execute(
                         "SELECT storage_key, sha256, size_bytes FROM media_asset WHERE archived=0 ORDER BY id"
+                    ).fetchall()
+                if "object_photo" in tables:
+                    media_rows += check.execute(
+                        "SELECT storage_key, sha256, size_bytes FROM object_photo WHERE archived=0 ORDER BY id"
                     ).fetchall()
             finally:
                 check.close()
@@ -189,6 +193,10 @@ def restore_archive(archive, dest, clock):
         if "media_asset" in tables:
             media_rows = conn.execute(
                 "SELECT storage_key, sha256, size_bytes FROM media_asset WHERE archived=0 ORDER BY storage_key"
+            ).fetchall()
+        if "object_photo" in tables:
+            media_rows += conn.execute(
+                "SELECT storage_key, sha256, size_bytes FROM object_photo WHERE archived=0 ORDER BY storage_key"
             ).fetchall()
     finally:
         conn.close()

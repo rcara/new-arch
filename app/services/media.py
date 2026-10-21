@@ -12,6 +12,7 @@ from ..clock import iso_utc
 from ..db import require_household, write_tx
 from ..errors import AppError
 from ..validate import text_value
+from . import photos as photos_svc
 from .modules import require_module
 
 WORK_KINDS = frozenset({"film", "series", "book", "music", "game"})
@@ -130,13 +131,14 @@ def list_works(ctx, person, *, kind="", q="", status="", page=1):
             ORDER BY w.title, w.id LIMIT 300""",
         params,
     ).fetchall()
+    photos = photos_svc.active_photo_ids(ctx, "media_work")
     items = []
     for row in rows:
         if not _can_see_work(ctx, person, row):
             continue
         if status and (row["my_status"] or "") != status:
             continue
-        items.append(_work_public(row))
+        items.append({**_work_public(row), "photo_id": photos.get(row["id"])})
     page = max(1, int(page or 1))
     start = (page - 1) * 50
     return {"items": items[start:start + 50], "page": page, "page_size": 50, "total": len(items)}
@@ -181,6 +183,7 @@ def get_work(ctx, person, work_id):
     if not _can_see_work(ctx, person, row):
         raise AppError(404, "not_found", "Œuvre introuvable.")
     payload = _work_public(row)
+    payload["photo_id"] = photos_svc.active_photo_id(ctx, "media_work", row["id"])
     progress_rows = ctx.conn.execute(
         """SELECT pr.person_id, pe.display_name, pr.status, pr.progress_label, pr.progress_percent, pr.rating
            FROM media_progress pr JOIN person pe ON pe.id=pr.person_id

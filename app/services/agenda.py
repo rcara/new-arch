@@ -1,5 +1,7 @@
 """Agenda : vues mois, semaine et liste (lecture seule, au-dessus de events et milestones).
 
+Les événements récurrents apparaissent comme autant d'occurrences, calculées à la lecture sur la période.
+
 Les droits restent ceux des services : événements du foyer via `events.list_events`, échéances de repères
 uniquement si le module est actif et que la personne a accès à l'index.
 """
@@ -48,13 +50,7 @@ def _range(view, anchor):
 
 
 def _events(ctx, person, start, end, q=""):
-    found, page = [], 1
-    while True:
-        listed = events.list_events(ctx, person, from_date=start.isoformat(), to_date=end.isoformat(), q=q, page=page)
-        found.extend(listed["items"])
-        if len(found) >= listed["total"] or not listed["items"]:
-            return found
-        page += 1
+    return events.occurrences(ctx, person, from_date=start.isoformat(), to_date=end.isoformat(), q=q)
 
 
 def _deadlines(ctx, person, start, end):
@@ -78,7 +74,8 @@ def _entries(ctx, person, start, end, member_id, q):
             "kind": "event", "id": item["id"], "title": item["title"],
             "start": item["start_date"], "end": item["end_date"] or item["start_date"],
             "who": item["responsible_name"], "people": {item["responsible_id"]},
-            "recurrence": item["recurrence"],
+            "recurrence": item["recurrence"], "recurrence_label": item["recurrence_label"],
+            "occurrence": item["start_date"] if item["is_occurrence"] else None,
         })
     for item in [] if q else _deadlines(ctx, person, start, end):
         entries.append({
