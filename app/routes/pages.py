@@ -572,7 +572,19 @@ def alias_maison():
 
 @pages.get("/bibliotheque")
 def alias_bibliotheque():
-    return redirect(url_for("pages.vault_get"))
+    _need()
+    enabled = modules.enabled_keys(current_ctx())
+    for key, endpoint in (("coffre", "pages.vault_get"), ("mediatheque", "pages.media_get"), ("decisions", "pages.decisions_get")):
+        if key in enabled:
+            return redirect(url_for(endpoint))
+    raise AppError(404, "not_found", "Module indisponible.")
+
+
+@pages.post("/parametres/modules")
+def settings_modules_post():
+    person = _need()
+    modules.set_enabled(current_ctx(), person, request.form.getlist("module"))
+    return _go("modules_saved", "pages.settings_get")
 
 
 @pages.post("/parametres/theme")

@@ -22,7 +22,7 @@
       <ul>
       {% for decision in item.decisions %}
         <li>
-          {% if decision.can_read %}
+          {% if decision.can_read and 'decisions' in nav_modules %}
           <a href="{{ url_for('pages.decision_get', decision_id=decision.id) }}">Page du {{ decision.created_at|frtime }}</a>
           {% else %}
           Page du {{ decision.created_at|frtime }}
@@ -35,7 +35,7 @@
   {% if person.is_principal %}
   <p class="toolbar">
     <a href="{{ url_for('pages.milestone_edit', milestone_id=item.id) }}">Modifier</a>
-    <a href="{{ url_for('pages.decision_new', repere=item.id) }}">Écrire une décision</a>
+    {% if 'decisions' in nav_modules %}<a href="{{ url_for('pages.decision_new', repere=item.id) }}">Écrire une décision</a>{% endif %}
     {% if item.archived %}
     <a href="{{ url_for('pages.milestone_restore_get', milestone_id=item.id) }}">Restaurer</a>
     {% else %}

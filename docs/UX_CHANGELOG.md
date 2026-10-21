@@ -1,5 +1,26 @@
 # UX Changelog — New Arch V2.1
 
+## V2.2 — Modules activables (décision D3)
+
+**Ajouté**
+- Paramètres → « Modules du foyer » : cases à cocher + « Enregistrer les modules » (POST `/parametres/modules`,
+  CSRF, sans JS). Réservé au compte principal du foyer actif ; un membre secondaire voit l'état en lecture seule
+  et reçoit 403 s'il poste. Chaque bascule est journalisée (`module_enable` / `module_disable`, sans contenu).
+- `services/modules.py` : `LOCKED` (Accueil, Foyer, Paramètres — toujours actifs : page d'arrivée, gestion des
+  membres et des accès, et formulaire de réactivation), `set_enabled`, `ROUTE_PREFIXES` / `module_for_path`.
+- Garde serveur unique (`before_request`) : toute route HTML ou API d'un module désactivé renvoie 404
+  (organisation, calendrier, finances, inventaire, médiathèque, repères, décisions, coffre, recherche, alias inclus).
+- `tests/test_modules_settings.py` (17 tests) : bascule, modules verrouillés, 403 secondaire, CSRF et clé inconnue,
+  masquage + 404 page/API pour chaque module, cartes d'Aujourd'hui, données intactes après off/on, isolation par foyer.
+
+**Modifié**
+- Aujourd'hui : la carte et les échéances Repères suivent le module `reperes` (elles l'ignoraient).
+- Liens croisés masqués quand la cible est désactivée : repère → décision, coffre → repère, marque « Pièce au
+  coffre », médiathèque → lier une décision ; `/bibliotheque` ouvre le premier module actif de la Bibliothèque.
+
+**Inchangé** : schéma (aucune migration, table `module_setting` existante), données des modules masqués
+(jamais supprimées ni modifiées ; réactiver restaure tout), permissions par objet, CSP.
+
 ## Mise en production — intégration avec le multi-foyer (PR #18)
 
 - Fusion de la pile Sprint 1 → 5 avec `main` (qui contenait déjà Sprint 0 et le multi-foyer de PR #18).

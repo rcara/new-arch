@@ -33,7 +33,9 @@ def dashboard(ctx, person):
         "events": [],
     }
 
-    if person.get("can_view_index"):
+    if "reperes" not in enabled:
+        payload["milestones"] = None
+    elif person.get("can_view_index"):
         summary = milestones.today_items(ctx, person)
         urgent = summary.get("urgent_items", [])
         payload["milestones"] = {
