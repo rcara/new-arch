@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0] — 2026-10-21
+
+### Ajouté
+- Identité visuelle officielle New Arch (logo, palette, Manrope/Inter)
+- Tokens CSS clair/sombre ; favicon et icônes d’application
+- Docs branding : `docs/BRANDING_AUDIT.md`, `NEW_ARCH_DESIGN_SYSTEM.md`, `BRANDING_CHANGELOG.md`
+- Tests `tests/test_branding.py`
+
+### Modifié
+- Thème par défaut : **clair** (ivoire) ; sombre via Paramètres
+- Header avec symbole officiel + wordmark ; signature éditoriale
+
 ## [0.7.0] — 2026-10-21
 
 ### Ajouté

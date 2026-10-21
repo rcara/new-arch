@@ -6,13 +6,13 @@
 
 <section class="today-panel" aria-labelledby="theme-title">
   <h2 id="theme-title">Apparence</h2>
-  <p class="muted">Thème sombre (défaut) ou clair. Le contraste et le focus clavier restent visibles dans les deux modes.</p>
+  <p class="muted">Thème clair (référence produit) ou sombre. Contraste et focus clavier conservés dans les deux modes.</p>
   <form method="post" action="{{ url_for('pages.settings_theme_post') }}" class="toolbar">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>Thème
       <select name="theme" aria-label="Choisir le thème">
-        <option value="dark" {% if theme == 'dark' %}selected{% endif %}>Sombre</option>
         <option value="light" {% if theme == 'light' %}selected{% endif %}>Clair</option>
+        <option value="dark" {% if theme == 'dark' %}selected{% endif %}>Sombre</option>
       </select>
     </label>
     <button type="submit">Enregistrer</button>

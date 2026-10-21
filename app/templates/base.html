@@ -1,11 +1,14 @@
 <!doctype html>
-<html lang="fr" data-theme="{{ theme|default('dark') }}">
+<html lang="fr" data-theme="{{ theme|default('light') }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <meta name="color-scheme" content="{{ theme|default('dark') }}">
+  <meta name="color-scheme" content="{{ theme|default('light') }}">
+  <meta name="theme-color" content="#24364A">
   <title>{% block title %}Accueil{% endblock %} · New Arch</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='brand/favicon-32.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='brand/apple-touch-icon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body>
@@ -13,11 +16,12 @@
   <header class="site-header">
     <div class="header-inner">
       <div class="brand-block">
-        <p class="brand">New Arch<span class="brand-dot">.</span></p>
+        <a class="brand-link" href="{% if person %}{{ url_for('pages.today') }}{% else %}{{ url_for('pages.login_get') }}{% endif %}">
+          <img class="brand-mark" src="{{ url_for('static', filename='brand/logo-mark.png') }}" width="40" height="40" alt="">
+          <span class="brand-wordmark">New Arch</span>
+        </a>
         {% if person %}
         <p class="context">{{ household.name }} · {{ person.display_name }} · {% if person.is_principal %}compte principal{% else %}compte secondaire{% endif %}</p>
-        {% else %}
-        <p class="context">Installation locale</p>
         {% endif %}
       </div>
       {% if person %}
@@ -51,6 +55,13 @@
   </header>
   <div class="layout {% if not person %}guest{% endif %}">
     <main id="contenu">
+      {% if not person %}
+      <div class="guest-brand">
+        <img src="{{ url_for('static', filename='brand/logo-mark.png') }}" width="88" height="88" alt="New Arch">
+        <p class="brand-wordmark">New Arch</p>
+        <p class="brand-tagline">Organiser le foyer, simplement.</p>
+      </div>
+      {% endif %}
       {% if message %}<p class="status" role="status">{{ message }}</p>{% endif %}
       {% block content %}{% endblock %}
     </main>

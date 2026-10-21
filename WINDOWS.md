@@ -101,7 +101,7 @@ Refuse si un foyer existe déjà. Ne pas utiliser pour un foyer réel.
 
 ## Thème clair / sombre
 
-Dans **Paramètres → Apparence**, choisissez Sombre (défaut) ou Clair. Le choix est stocké dans le cookie `foyer_theme` (pas de JavaScript).
+Dans **Paramètres → Apparence**, choisissez Clair (référence) ou Sombre. Le choix est stocké dans le cookie `foyer_theme` (pas de JavaScript).
 
 ## Exports CSV
 
