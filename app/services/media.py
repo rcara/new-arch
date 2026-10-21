@@ -5,6 +5,7 @@ import os
 import secrets
 import uuid
 from pathlib import Path
+from ..tenancy import hh
 
 from ..audit import audit
 from ..clock import iso_utc
@@ -55,7 +56,7 @@ MAX_BYTES = 20 * 1024 * 1024
 
 def _require(ctx):
     require_module(ctx, "mediatheque")
-    return require_household(ctx.conn)
+    return require_household(ctx.conn, hh(ctx))
 
 
 def media_root(home):
@@ -107,7 +108,7 @@ def _can_see_asset(ctx, person, row):
 
 def list_works(ctx, person, *, kind="", q="", status="", page=1):
     _require(ctx)
-    where = ["w.household_id=1", "w.archived=0"]
+    where = [f'w.household_id={hh(ctx)}', "w.archived=0"]
     params = {"person_id": person["id"]}
     if kind:
         if kind not in WORK_KINDS:
@@ -166,13 +167,13 @@ def _work_public(row):
 def get_work(ctx, person, work_id):
     _require(ctx)
     row = ctx.conn.execute(
-        """SELECT w.id, w.public_id, w.kind, w.title, w.creator, w.year, w.notes, w.visibility,
+        f"""SELECT w.id, w.public_id, w.kind, w.title, w.creator, w.year, w.notes, w.visibility,
                   w.created_by, w.created_at, w.updated_at, w.archived,
                   p.status AS my_status, p.progress_label AS my_progress, p.progress_percent AS my_percent,
                   p.rating AS my_rating
            FROM media_work w
            LEFT JOIN media_progress p ON p.work_id=w.id AND p.person_id=?
-           WHERE w.id=? AND w.household_id=1""",
+           WHERE w.id=? AND w.household_id={hh(ctx)}""",
         (person["id"], work_id),
     ).fetchone()
     if row is None or row["archived"]:
@@ -218,10 +219,10 @@ def create_work(ctx, person, data):
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         ctx.conn.execute(
-            """INSERT INTO media_work(
+            f"""INSERT INTO media_work(
                  household_id, public_id, kind, title, creator, year, notes, visibility,
                  created_by, archived, created_at, updated_at
-               ) VALUES(1,?,?,?,?,?,?,?,?,0,?,?)""",
+               ) VALUES({hh(ctx)},?,?,?,?,?,?,?,?,0,?,?)""",
             (str(uuid.uuid4()), kind, title, creator, year, notes, visibility, person["id"], moment, moment),
         )
         work_id = ctx.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -292,8 +293,8 @@ def create_list(ctx, person, data):
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         ctx.conn.execute(
-            """INSERT INTO media_list(household_id, public_id, name, list_kind, owner_id, visibility, created_at)
-               VALUES(1,?,?,?,?,?,?)""",
+            f"""INSERT INTO media_list(household_id, public_id, name, list_kind, owner_id, visibility, created_at)
+               VALUES({hh(ctx)},?,?,?,?,?,?)""",
             (str(uuid.uuid4()), name, list_kind, person["id"], visibility, moment),
         )
         list_id = ctx.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -303,8 +304,8 @@ def create_list(ctx, person, data):
 def list_lists(ctx, person):
     _require(ctx)
     rows = ctx.conn.execute(
-        """SELECT id, public_id, name, list_kind, owner_id, visibility, created_at
-           FROM media_list WHERE household_id=1
+        f"""SELECT id, public_id, name, list_kind, owner_id, visibility, created_at
+           FROM media_list WHERE household_id={hh(ctx)}
            ORDER BY name, id"""
     ).fetchall()
     items = []
@@ -317,7 +318,7 @@ def list_lists(ctx, person):
 def add_to_list(ctx, person, list_id, work_id):
     _require(ctx)
     row = ctx.conn.execute(
-        "SELECT id, owner_id, visibility FROM media_list WHERE id=? AND household_id=1",
+        f'SELECT id, owner_id, visibility FROM media_list WHERE id=? AND household_id={hh(ctx)}',
         (list_id,),
     ).fetchone()
     if row is None:
@@ -336,7 +337,7 @@ def add_to_list(ctx, person, list_id, work_id):
 
 def list_assets(ctx, person, *, asset_kind="", collection="", page=1):
     _require(ctx)
-    where = ["household_id=1", "archived=0"]
+    where = [f'household_id={hh(ctx)}', "archived=0"]
     params = {}
     if asset_kind:
         if asset_kind not in ASSET_KINDS:
@@ -451,10 +452,10 @@ def store_asset(ctx, person, data, upload):
     try:
         with write_tx(ctx):
             ctx.conn.execute(
-                """INSERT INTO media_asset(
+                f"""INSERT INTO media_asset(
                      household_id, public_id, title, asset_kind, collection, storage_key, mime_type,
                      size_bytes, sha256, original_name, visibility, uploaded_by, work_id, archived, created_at
-                   ) VALUES(1,?,?,?,?,?,?,?,?,?,?,?,?,0,?)""",
+                   ) VALUES({hh(ctx)},?,?,?,?,?,?,?,?,?,?,?,?,0,?)""",
                 (
                     str(uuid.uuid4()), title, asset_kind, collection, key, mime,
                     len(raw), digest, upload.filename, visibility, person["id"], work_id, moment,
@@ -475,9 +476,9 @@ def store_asset(ctx, person, data, upload):
 def get_asset(ctx, person, asset_id):
     _require(ctx)
     row = ctx.conn.execute(
-        """SELECT id, public_id, title, asset_kind, collection, storage_key, mime_type, size_bytes,
+        f"""SELECT id, public_id, title, asset_kind, collection, storage_key, mime_type, size_bytes,
                   sha256, original_name, visibility, uploaded_by, work_id, created_at, archived
-           FROM media_asset WHERE id=? AND household_id=1""",
+           FROM media_asset WHERE id=? AND household_id={hh(ctx)}""",
         (asset_id,),
     ).fetchone()
     if row is None or row["archived"]:
@@ -511,7 +512,7 @@ def grant_asset(ctx, person, asset_id, target_person_id):
     require_principal(person)
     get_asset(ctx, person, asset_id)
     target = ctx.conn.execute(
-        "SELECT id, active FROM person WHERE id=? AND household_id=1", (target_person_id,)
+        f'SELECT id, active FROM person WHERE id=? AND household_id={hh(ctx)}', (target_person_id,)
     ).fetchone()
     if target is None or not target["active"]:
         raise AppError(404, "not_found", "Personne introuvable.")

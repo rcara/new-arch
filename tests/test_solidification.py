@@ -92,7 +92,7 @@ def test_seed_demo_refuses_existing_and_fills_empty(tmp_path, clock):
         conn = connect(empty / "data" / "metadata.sqlite")
         ctx = Ctx(conn, clock, empty, app.config["LOCK"], app.config["DUMMY_HASH"])
         info = seed_demo(ctx, AttemptLimiter())
-        assert household_row(conn)["name"] == "Maison Démo"
+        assert household_row(conn, 1)["name"] == "Maison Démo"
         assert info["username"] == DEMO_USERNAME
         assert info["password"] == DEMO_PASSWORD
         assert conn.execute("SELECT COUNT(*) FROM task").fetchone()[0] >= 2

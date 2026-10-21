@@ -3,6 +3,7 @@
 import csv
 import io
 import uuid
+from ..tenancy import hh
 
 from ..audit import audit
 from ..clock import iso_utc
@@ -28,12 +29,12 @@ CONDITION_LABEL = {
 
 def _require(ctx):
     require_module(ctx, "inventaire")
-    return require_household(ctx.conn)
+    return require_household(ctx.conn, hh(ctx))
 
 
-def _active_person(conn, person_id):
-    row = conn.execute(
-        "SELECT id, display_name, active FROM person WHERE id=? AND household_id=1",
+def _active_person(ctx, person_id):
+    row = ctx.conn.execute(
+        f'SELECT id, display_name, active FROM person WHERE id=? AND household_id={hh(ctx)}',
         (person_id,),
     ).fetchone()
     if row is None or not row["active"]:
@@ -81,8 +82,8 @@ def _money_fields(data, price_key, currency_key, label):
 def list_places(ctx, person):
     _require(ctx)
     rows = ctx.conn.execute(
-        """SELECT id, public_id, name, notes FROM inventory_place
-           WHERE household_id=1 AND archived=0 ORDER BY name, id"""
+        f"""SELECT id, public_id, name, notes FROM inventory_place
+           WHERE household_id={hh(ctx)} AND archived=0 ORDER BY name, id"""
     ).fetchall()
     return {"items": [dict(row) for row in rows]}
 
@@ -94,8 +95,8 @@ def create_place(ctx, person, data):
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         ctx.conn.execute(
-            """INSERT INTO inventory_place(household_id, public_id, name, notes, archived, created_at, updated_at)
-               VALUES(1,?,?,?,0,?,?)""",
+            f"""INSERT INTO inventory_place(household_id, public_id, name, notes, archived, created_at, updated_at)
+               VALUES({hh(ctx)},?,?,?,0,?,?)""",
             (str(uuid.uuid4()), name, notes, moment, moment),
         )
         place_id = ctx.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -176,7 +177,7 @@ LEFT JOIN inventory_place p ON p.id=i.place_id
 
 def list_items(ctx, person, *, q="", place_id=None, category="", page=1):
     _require(ctx)
-    where = ["i.household_id=1", "i.archived=0"]
+    where = [f'i.household_id={hh(ctx)}', "i.archived=0"]
     params = {}
     if q:
         escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -200,7 +201,7 @@ def list_items(ctx, person, *, q="", place_id=None, category="", page=1):
 
 def get_item(ctx, person, item_id):
     _require(ctx)
-    row = ctx.conn.execute(f"{ITEM_SELECT} WHERE i.id=? AND i.household_id=1", (item_id,)).fetchone()
+    row = ctx.conn.execute(f"{ITEM_SELECT} WHERE i.id=? AND i.household_id={hh(ctx)}", (item_id,)).fetchone()
     if row is None or row["archived"]:
         raise AppError(404, "not_found", "Bien introuvable.")
     if not _can_see_item(ctx, person, row):
@@ -252,7 +253,7 @@ def create_item(ctx, person, data):
     else:
         place_id = int(place_id)
         place = ctx.conn.execute(
-            "SELECT id FROM inventory_place WHERE id=? AND household_id=1 AND archived=0",
+            f'SELECT id FROM inventory_place WHERE id=? AND household_id={hh(ctx)} AND archived=0',
             (place_id,),
         ).fetchone()
         if place is None:
@@ -262,7 +263,7 @@ def create_item(ctx, person, data):
     if not owner_ids:
         owner_ids = [person["id"]]
     for owner_id in owner_ids:
-        _active_person(ctx.conn, owner_id)
+        _active_person(ctx, owner_id)
 
     purchase_transaction_id = data.get("purchase_transaction_id")
     if purchase_transaction_id in (None, ""):
@@ -270,7 +271,7 @@ def create_item(ctx, person, data):
     else:
         purchase_transaction_id = int(purchase_transaction_id)
         txn = ctx.conn.execute(
-            "SELECT id, kind, archived FROM finance_transaction WHERE id=? AND household_id=1",
+            f'SELECT id, kind, archived FROM finance_transaction WHERE id=? AND household_id={hh(ctx)}',
             (purchase_transaction_id,),
         ).fetchone()
         if txn is None or txn["archived"] or txn["kind"] not in {"expense", "transfer"}:
@@ -287,12 +288,12 @@ def create_item(ctx, person, data):
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         ctx.conn.execute(
-            """INSERT INTO inventory_item(
+            f"""INSERT INTO inventory_item(
                  household_id, public_id, name, category, place_id, condition, serial_number,
                  purchase_date, purchase_price_minor, purchase_currency,
                  estimated_value_minor, estimated_currency, notes, visibility,
                  purchase_transaction_id, invoice_file_id, created_by, archived, created_at, updated_at
-               ) VALUES(1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)""",
+               ) VALUES({hh(ctx)},?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)""",
             (
                 str(uuid.uuid4()), name, category, place_id, condition, serial,
                 purchase_date, price_minor, price_currency, value_minor, value_currency,
@@ -389,7 +390,7 @@ def update_item(ctx, person, item_id, data):
     if not owner_ids:
         owner_ids = [person["id"]]
     for owner_id in owner_ids:
-        _active_person(ctx.conn, owner_id)
+        _active_person(ctx, owner_id)
 
     moment = iso_utc(ctx.clock.now())
     event_type = "updated"
@@ -456,7 +457,7 @@ def link_purchase(ctx, person, item_id, transaction_id):
     get_item(ctx, person, item_id)
     transaction_id = int(transaction_id)
     txn = ctx.conn.execute(
-        "SELECT id, kind, archived FROM finance_transaction WHERE id=? AND household_id=1",
+        f'SELECT id, kind, archived FROM finance_transaction WHERE id=? AND household_id={hh(ctx)}',
         (transaction_id,),
     ).fetchone()
     if txn is None or txn["archived"]:
@@ -493,7 +494,7 @@ def add_warranty(ctx, person, item_id, data):
     moment = iso_utc(ctx.clock.now())
 
     if create_deadline and ends_on:
-        household = require_household(ctx.conn)
+        household = require_household(ctx.conn, hh(ctx))
         calendar_event_id = events_svc.create_event(ctx, person, {
             "title": f"Garantie : {item['name']} — {label}",
             "notes": f"Échéance de garantie du bien « {item['name']} ».",
@@ -559,15 +560,15 @@ def add_maintenance(ctx, person, item_id, data):
 
 def upcoming_warranties(ctx, person, *, within_days=90, limit=20):
     _require(ctx)
-    household = require_household(ctx.conn)
+    household = require_household(ctx.conn, hh(ctx))
     from ..clock import civil_today
     today = civil_today(ctx.clock, household["timezone"]).isoformat()
     rows = ctx.conn.execute(
-        """SELECT i.id AS item_id, i.name AS item_name, i.visibility, i.created_by,
+        f"""SELECT i.id AS item_id, i.name AS item_name, i.visibility, i.created_by,
                   w.id AS warranty_id, w.label, w.ends_on, w.provider
            FROM inventory_warranty w
            JOIN inventory_item i ON i.id=w.item_id
-           WHERE i.household_id=1 AND i.archived=0
+           WHERE i.household_id={hh(ctx)} AND i.archived=0
              AND w.ends_on IS NOT NULL
              AND w.ends_on >= ?
              AND w.ends_on <= date(?, '+' || ? || ' days')
@@ -598,7 +599,7 @@ def export_csv(ctx, person):
     """Export inventaire visible (séparateur ;, montants en unités mineures)."""
     _require(ctx)
     rows = ctx.conn.execute(
-        f"{ITEM_SELECT} WHERE i.household_id=1 AND i.archived=0 ORDER BY i.name, i.id"
+        f"{ITEM_SELECT} WHERE i.household_id={hh(ctx)} AND i.archived=0 ORDER BY i.name, i.id"
     ).fetchall()
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=";")

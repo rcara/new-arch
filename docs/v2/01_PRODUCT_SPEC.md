@@ -37,4 +37,4 @@ Point d’entrée unique local-first pour gérer la vie quotidienne d’une pers
 
 ## Hors périmètre immédiat
 
-Paiements cloud, e-mail, streaming, conversion de devises implicite, multi-foyer runtime (schéma prêt via `household_id`).
+Paiements cloud, e-mail, streaming, conversion de devises implicite, SPA distante.

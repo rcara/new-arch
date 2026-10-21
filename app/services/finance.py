@@ -4,6 +4,7 @@ import csv
 import io
 import sqlite3
 import uuid
+from ..tenancy import hh
 
 from ..audit import audit
 from ..clock import iso_utc
@@ -41,12 +42,12 @@ DEFAULT_CATEGORIES = (
 
 def _require(ctx):
     require_module(ctx, "finances")
-    return require_household(ctx.conn)
+    return require_household(ctx.conn, hh(ctx))
 
 
-def _active_person(conn, person_id):
-    row = conn.execute(
-        "SELECT id, display_name, active FROM person WHERE id=? AND household_id=1",
+def _active_person(ctx, person_id):
+    row = ctx.conn.execute(
+        f'SELECT id, display_name, active FROM person WHERE id=? AND household_id={hh(ctx)}',
         (person_id,),
     ).fetchone()
     if row is None or not row["active"]:
@@ -60,25 +61,25 @@ def seed_defaults(ctx, person):
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         count = ctx.conn.execute(
-            "SELECT COUNT(*) AS n FROM finance_category WHERE household_id=1"
+            f'SELECT COUNT(*) AS n FROM finance_category WHERE household_id={hh(ctx)}'
         ).fetchone()["n"]
         if count == 0:
             for name, kind in DEFAULT_CATEGORIES:
                 ctx.conn.execute(
-                    """INSERT INTO finance_category(household_id, public_id, name, kind, archived, created_at)
-                       VALUES(1,?,?,?,0,?)""",
+                    f"""INSERT INTO finance_category(household_id, public_id, name, kind, archived, created_at)
+                       VALUES({hh(ctx)},?,?,?,0,?)""",
                     (str(uuid.uuid4()), name, kind, moment),
                 )
         accounts = ctx.conn.execute(
-            "SELECT COUNT(*) AS n FROM finance_ledger_account WHERE household_id=1"
+            f'SELECT COUNT(*) AS n FROM finance_ledger_account WHERE household_id={hh(ctx)}'
         ).fetchone()["n"]
         if accounts == 0:
             for name, currency in (("Compte foyer CHF", "CHF"), ("Compte foyer EUR", "EUR")):
                 ctx.conn.execute(
-                    """INSERT INTO finance_ledger_account(
+                    f"""INSERT INTO finance_ledger_account(
                          household_id, public_id, name, currency, account_kind, owner_id,
                          archived, created_at, updated_at
-                       ) VALUES(1,?,?,?,'checking',NULL,0,?,?)""",
+                       ) VALUES({hh(ctx)},?,?,?,'checking',NULL,0,?,?)""",
                     (str(uuid.uuid4()), name, currency, moment, moment),
                 )
 
@@ -87,11 +88,11 @@ def list_ledger_accounts(ctx, person):
     _require(ctx)
     seed_defaults(ctx, person)
     rows = ctx.conn.execute(
-        """SELECT a.id, a.public_id, a.name, a.currency, a.account_kind, a.owner_id,
+        f"""SELECT a.id, a.public_id, a.name, a.currency, a.account_kind, a.owner_id,
                   a.archived, p.display_name AS owner_name
            FROM finance_ledger_account a
            LEFT JOIN person p ON p.id=a.owner_id
-           WHERE a.household_id=1 AND a.archived=0
+           WHERE a.household_id={hh(ctx)} AND a.archived=0
            ORDER BY a.currency, a.id"""
     ).fetchall()
     return {
@@ -122,14 +123,14 @@ def create_ledger_account(ctx, person, data):
         owner_id = None
     else:
         owner_id = int(owner_id)
-        _active_person(ctx.conn, owner_id)
+        _active_person(ctx, owner_id)
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         ctx.conn.execute(
-            """INSERT INTO finance_ledger_account(
+            f"""INSERT INTO finance_ledger_account(
                  household_id, public_id, name, currency, account_kind, owner_id,
                  archived, created_at, updated_at
-               ) VALUES(1,?,?,?,?,?,0,?,?)""",
+               ) VALUES({hh(ctx)},?,?,?,?,?,0,?,?)""",
             (str(uuid.uuid4()), name, currency, kind, owner_id, moment, moment),
         )
         new_id = ctx.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -140,7 +141,7 @@ def create_ledger_account(ctx, person, data):
 def list_categories(ctx, person, *, kind=""):
     _require(ctx)
     seed_defaults(ctx, person)
-    where = ["household_id=1", "archived=0"]
+    where = [f'household_id={hh(ctx)}', "archived=0"]
     params = {}
     if kind:
         if kind not in {"expense", "income"}:
@@ -158,7 +159,7 @@ def set_income_share(ctx, person, person_id, income_value, currency="CHF"):
     _require(ctx)
     if not person.get("is_principal"):
         raise AppError(403, "forbidden", "Réservé au compte principal.")
-    _active_person(ctx.conn, person_id)
+    _active_person(ctx, person_id)
     currency = require_currency(currency)
     if income_value in (None, ""):
         income_minor = 0
@@ -175,7 +176,7 @@ def set_income_share(ctx, person, person_id, income_value, currency="CHF"):
                  income_minor=excluded.income_minor,
                  currency=excluded.currency,
                  updated_at=excluded.updated_at""",
-            (person_id, 1, income_minor, currency, moment),
+            (person_id, hh(ctx), income_minor, currency, moment),
         )
     return {"person_id": person_id, "income_minor": income_minor, "currency": currency}
 
@@ -183,10 +184,10 @@ def set_income_share(ctx, person, person_id, income_value, currency="CHF"):
 def list_income_shares(ctx, person):
     _require(ctx)
     rows = ctx.conn.execute(
-        """SELECT s.person_id, p.display_name, s.income_minor, s.currency
+        f"""SELECT s.person_id, p.display_name, s.income_minor, s.currency
            FROM finance_income_share s
            JOIN person p ON p.id=s.person_id
-           WHERE s.household_id=1 AND p.active=1
+           WHERE s.household_id={hh(ctx)} AND p.active=1
            ORDER BY p.id"""
     ).fetchall()
     return {
@@ -281,7 +282,7 @@ LEFT JOIN person ben ON ben.id=t.beneficiary_id
 def list_transactions(ctx, person, *, kind="", currency="", page=1):
     _require(ctx)
     seed_defaults(ctx, person)
-    where = ["t.household_id=1", "t.archived=0"]
+    where = [f't.household_id={hh(ctx)}', "t.archived=0"]
     params = {}
     if kind:
         if kind not in TXN_KINDS:
@@ -304,7 +305,7 @@ def list_transactions(ctx, person, *, kind="", currency="", page=1):
 
 def get_transaction(ctx, person, txn_id):
     _require(ctx)
-    row = ctx.conn.execute(f"{TXN_SELECT} WHERE t.id=? AND t.household_id=1", (txn_id,)).fetchone()
+    row = ctx.conn.execute(f"{TXN_SELECT} WHERE t.id=? AND t.household_id={hh(ctx)}", (txn_id,)).fetchone()
     if row is None or row["archived"]:
         raise AppError(404, "not_found", "Transaction introuvable.")
     if not _can_see_txn(ctx, person, row):
@@ -321,7 +322,7 @@ def _build_splits(ctx, method, total_minor, data, currency):
         person_ids = [p for p in person_ids.replace(";", ",").split(",") if p.strip()]
     person_ids = [int(pid) for pid in person_ids]
     for pid in person_ids:
-        _active_person(ctx.conn, pid)
+        _active_person(ctx, pid)
 
     if method == "equal":
         if len(person_ids) < 1:
@@ -338,7 +339,7 @@ def _build_splits(ctx, method, total_minor, data, currency):
                 "person_id": int(item["person_id"]),
                 "percent": item.get("percent", item.get("weight")),
             })
-            _active_person(ctx.conn, int(item["person_id"]))
+            _active_person(ctx, int(item["person_id"]))
         return split_percent(total_minor, cleaned)
 
     if method == "fixed":
@@ -346,7 +347,7 @@ def _build_splits(ctx, method, total_minor, data, currency):
         if not allocations:
             raise AppError(400, "validation", "Indiquez les montants fixes.")
         for item in allocations:
-            _active_person(ctx.conn, int(item["person_id"]))
+            _active_person(ctx, int(item["person_id"]))
         return split_fixed(total_minor, allocations)
 
     # income_prorata
@@ -384,7 +385,7 @@ def create_transaction(ctx, person, data):
     except (TypeError, ValueError):
         raise AppError(400, "validation", "Compte requis.", {"ledger_account_id": "Compte requis."})
     account = ctx.conn.execute(
-        "SELECT id, currency, archived FROM finance_ledger_account WHERE id=? AND household_id=1",
+        f'SELECT id, currency, archived FROM finance_ledger_account WHERE id=? AND household_id={hh(ctx)}',
         (ledger_account_id,),
     ).fetchone()
     if account is None or account["archived"]:
@@ -402,7 +403,7 @@ def create_transaction(ctx, person, data):
         payer_id = int(payer_id)
     except (TypeError, ValueError):
         raise AppError(400, "validation", "Payeur invalide.", {"payer_id": "Payeur invalide."})
-    _active_person(ctx.conn, payer_id)
+    _active_person(ctx, payer_id)
 
     category_id = data.get("category_id")
     counterparty_account_id = None
@@ -416,7 +417,7 @@ def create_transaction(ctx, person, data):
         except (TypeError, ValueError):
             raise AppError(400, "validation", "Catégorie requise.", {"category_id": "Catégorie requise."})
         cat = ctx.conn.execute(
-            "SELECT id, kind, archived FROM finance_category WHERE id=? AND household_id=1",
+            f'SELECT id, kind, archived FROM finance_category WHERE id=? AND household_id={hh(ctx)}',
             (category_id,),
         ).fetchone()
         if cat is None or cat["archived"] or cat["kind"] != kind:
@@ -434,7 +435,7 @@ def create_transaction(ctx, person, data):
         except (TypeError, ValueError):
             raise AppError(400, "validation", "Compte destination requis.", {"counterparty_account_id": "Compte requis."})
         other = ctx.conn.execute(
-            "SELECT id, currency, archived FROM finance_ledger_account WHERE id=? AND household_id=1",
+            f'SELECT id, currency, archived FROM finance_ledger_account WHERE id=? AND household_id={hh(ctx)}',
             (counterparty_account_id,),
         ).fetchone()
         if other is None or other["archived"]:
@@ -447,14 +448,14 @@ def create_transaction(ctx, person, data):
             beneficiary_id = int(data.get("beneficiary_id"))
         except (TypeError, ValueError):
             raise AppError(400, "validation", "Bénéficiaire requis.", {"beneficiary_id": "Bénéficiaire requis."})
-        _active_person(ctx.conn, beneficiary_id)
+        _active_person(ctx, beneficiary_id)
         if beneficiary_id == payer_id:
             raise AppError(400, "validation", "Le bénéficiaire doit différer du payeur.")
         raw_settle = data.get("settles_transaction_id")
         if raw_settle not in (None, ""):
             settles_transaction_id = int(raw_settle)
             original = ctx.conn.execute(
-                "SELECT id, kind, currency, archived FROM finance_transaction WHERE id=? AND household_id=1",
+                f'SELECT id, kind, currency, archived FROM finance_transaction WHERE id=? AND household_id={hh(ctx)}',
                 (settles_transaction_id,),
             ).fetchone()
             if original is None or original["archived"] or original["kind"] != "expense":
@@ -466,11 +467,11 @@ def create_transaction(ctx, person, data):
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         ctx.conn.execute(
-            """INSERT INTO finance_transaction(
+            f"""INSERT INTO finance_transaction(
                  household_id, public_id, kind, amount_minor, currency, txn_date, label, notes,
                  category_id, ledger_account_id, counterparty_account_id, payer_id, beneficiary_id,
                  created_by, visibility, settles_transaction_id, archived, created_at, updated_at
-               ) VALUES(1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)""",
+               ) VALUES({hh(ctx)},?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)""",
             (
                 str(uuid.uuid4()), kind, amount_minor, currency, txn_date, label, notes,
                 category_id, ledger_account_id, counterparty_account_id, payer_id, beneficiary_id,
@@ -496,9 +497,9 @@ def person_balances(ctx, person, *, currency="CHF"):
     nets = {m["id"]: 0 for m in members}
 
     expenses = ctx.conn.execute(
-        """SELECT t.id, t.amount_minor, t.payer_id, t.visibility, t.created_by, t.beneficiary_id
+        f"""SELECT t.id, t.amount_minor, t.payer_id, t.visibility, t.created_by, t.beneficiary_id
            FROM finance_transaction t
-           WHERE t.household_id=1 AND t.archived=0 AND t.kind='expense' AND t.currency=?""",
+           WHERE t.household_id={hh(ctx)} AND t.archived=0 AND t.kind='expense' AND t.currency=?""",
         (currency,),
     ).fetchall()
     for row in expenses:
@@ -521,9 +522,9 @@ def person_balances(ctx, person, *, currency="CHF"):
                 nets[pid] -= share
 
     reimbursements = ctx.conn.execute(
-        """SELECT id, amount_minor, payer_id, beneficiary_id, visibility, created_by
+        f"""SELECT id, amount_minor, payer_id, beneficiary_id, visibility, created_by
            FROM finance_transaction
-           WHERE household_id=1 AND archived=0 AND kind='reimbursement' AND currency=?""",
+           WHERE household_id={hh(ctx)} AND archived=0 AND kind='reimbursement' AND currency=?""",
         (currency,),
     ).fetchall()
     for row in reimbursements:
@@ -558,7 +559,7 @@ def create_budget(ctx, person, data):
     except (TypeError, ValueError):
         raise AppError(400, "validation", "Catégorie requise.", {"category_id": "Catégorie requise."})
     cat = ctx.conn.execute(
-        "SELECT id, kind FROM finance_category WHERE id=? AND household_id=1 AND archived=0",
+        f'SELECT id, kind FROM finance_category WHERE id=? AND household_id={hh(ctx)} AND archived=0',
         (category_id,),
     ).fetchone()
     if cat is None or cat["kind"] != "expense":
@@ -590,10 +591,10 @@ def create_budget(ctx, person, data):
     try:
         with write_tx(ctx):
             ctx.conn.execute(
-                """INSERT INTO finance_budget(
+                f"""INSERT INTO finance_budget(
                      household_id, public_id, category_id, period, year, month,
                      amount_minor, currency, created_by, created_at
-                   ) VALUES(1,?,?,?,?,?,?,?,?,?)""",
+                   ) VALUES({hh(ctx)},?,?,?,?,?,?,?,?,?)""",
                 (str(uuid.uuid4()), category_id, period, year, month, amount_minor, currency, person["id"], moment),
             )
             new_id = ctx.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -605,7 +606,7 @@ def create_budget(ctx, person, data):
 def list_budgets(ctx, person, *, year=None, month=None, currency="CHF"):
     _require(ctx)
     currency = require_currency(currency)
-    where = ["b.household_id=1", "b.currency=:currency"]
+    where = [f'b.household_id={hh(ctx)}', "b.currency=:currency"]
     params = {"currency": currency}
     if year is not None:
         where.append("b.year=:year")
@@ -647,17 +648,17 @@ def _spent_in_period(ctx, person, category_id, period, year, month, currency):
     if period == "month":
         prefix = f"{year:04d}-{month:02d}"
         rows = ctx.conn.execute(
-            """SELECT t.id, t.amount_minor, t.visibility, t.payer_id, t.created_by, t.beneficiary_id
+            f"""SELECT t.id, t.amount_minor, t.visibility, t.payer_id, t.created_by, t.beneficiary_id
                FROM finance_transaction t
-               WHERE t.household_id=1 AND t.archived=0 AND t.kind='expense'
+               WHERE t.household_id={hh(ctx)} AND t.archived=0 AND t.kind='expense'
                  AND t.category_id=? AND t.currency=? AND t.txn_date LIKE ?""",
             (category_id, currency, prefix + "%"),
         ).fetchall()
     else:
         rows = ctx.conn.execute(
-            """SELECT t.id, t.amount_minor, t.visibility, t.payer_id, t.created_by, t.beneficiary_id
+            f"""SELECT t.id, t.amount_minor, t.visibility, t.payer_id, t.created_by, t.beneficiary_id
                FROM finance_transaction t
-               WHERE t.household_id=1 AND t.archived=0 AND t.kind='expense'
+               WHERE t.household_id={hh(ctx)} AND t.archived=0 AND t.kind='expense'
                  AND t.category_id=? AND t.currency=? AND t.txn_date >= ? AND t.txn_date < ?""",
             (category_id, currency, f"{year:04d}-01-01", f"{year + 1:04d}-01-01"),
         ).fetchall()
@@ -672,7 +673,7 @@ def export_csv(ctx, person, *, currency=""):
     _require(ctx)
     listed = list_transactions(ctx, person, currency=currency, page=1)
     # gather all pages roughly via direct query already limited; extend for export
-    where = ["t.household_id=1", "t.archived=0"]
+    where = [f't.household_id={hh(ctx)}', "t.archived=0"]
     params = {}
     if currency:
         where.append("t.currency=:currency")

@@ -34,6 +34,6 @@ Table `object_link` : `{source_type, source_id, target_type, target_id, relation
 
 ## Hypothèses (non confirmées)
 
-- H1 : un seul foyer `id=1` en runtime V2 (schéma multi-foyer préparé).
+- H1 : multi-foyer runtime (`household_membership`, session login+persona, `user_version=7`).
 - H2 : React/Vite pourra s’ajouter plus tard sans casser l’API JSON.
 - H3 : PostgreSQL non requis tant que WAL + backup restent cohérents.

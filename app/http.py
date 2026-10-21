@@ -32,6 +32,8 @@ MESSAGES = {
     "theme_saved": "Thème enregistré.",
     "profile_saved": "Profil mis à jour.",
     "password_changed": "Mot de passe modifié.",
+    "household_switched": "Foyer actif mis à jour.",
+    "household_created": "Nouveau foyer créé.",
 }
 
 THEMES = frozenset({"dark", "light"})

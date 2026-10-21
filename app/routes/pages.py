@@ -6,7 +6,7 @@ from .. import current_ctx
 from ..errors import AppError
 from ..http import THEMES, cookie_message, cookie_session, cookie_setup, cookie_theme, safe_next
 from ..security import new_token
-from ..services import auth, decisions, events, finance, home, inventory, links, media, milestones, modules, people, search, tasks, vault
+from ..services import auth, decisions, events, finance, home, households, inventory, links, media, milestones, modules, people, search, tasks, vault
 from ..validate import text_value
 
 pages = Blueprint("pages", __name__)
@@ -114,6 +114,38 @@ def logout():
     response = redirect(url_for("pages.login_get"))
     response.delete_cookie("foyer_session", path="/")
     return response
+
+
+@pages.post("/foyers/basculer")
+def household_switch_post():
+    _need()
+    form = request.form.to_dict()
+    households.switch_household(
+        current_ctx(),
+        request.cookies.get("foyer_session"),
+        form.get("household_id"),
+    )
+    target = safe_next(form.get("next", "/"))
+    response = redirect(target)
+    return cookie_message(response, "household_switched")
+
+
+@pages.post("/foyers/creer")
+def household_create_post():
+    person = _need()
+    form = request.form.to_dict()
+    created = households.create_household(
+        current_ctx(),
+        form.get("household_name"),
+        form.get("timezone") or "Europe/Zurich",
+        form.get("display_name") or person.get("display_name"),
+    )
+    households.switch_household(
+        current_ctx(),
+        request.cookies.get("foyer_session"),
+        created["household_id"],
+    )
+    return _go("household_created", "pages.today")
 
 
 @pages.get("/")

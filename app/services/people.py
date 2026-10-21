@@ -1,6 +1,7 @@
 """Personnes, comptes locaux et trois droits indépendants."""
 
 import sqlite3
+from ..tenancy import hh
 
 from .auth import require_principal
 from ..audit import audit
@@ -27,8 +28,8 @@ def list_active_members(ctx, person):
     if person is None:
         raise AppError(401, "unauthorized", "Connexion requise.")
     rows = ctx.conn.execute(
-        """SELECT id, display_name, active FROM person
-           WHERE household_id=1 AND active=1 ORDER BY is_principal DESC, id"""
+        f"""SELECT id, display_name, active FROM person
+           WHERE household_id={hh(ctx)} AND active=1 ORDER BY is_principal DESC, id"""
     ).fetchall()
     return [{"id": row["id"], "display_name": row["display_name"], "active": True} for row in rows]
 
@@ -71,8 +72,8 @@ def add_person(ctx, person, display_name, relationship="", username=None, passwo
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         ctx.conn.execute(
-            """INSERT INTO person(household_id, display_name, relationship, is_principal, active,
-               can_view_index, created_at) VALUES(1,?,?,0,1,1,?)""",
+            f"""INSERT INTO person(household_id, display_name, relationship, is_principal, active,
+               can_view_index, created_at) VALUES({hh(ctx)},?,?,0,1,1,?)""",
             (display_name, relationship, moment),
         )
         new_id = ctx.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -81,6 +82,11 @@ def add_person(ctx, person, display_name, relationship="", username=None, passwo
                 ctx.conn.execute(
                     "INSERT INTO account(person_id, username, password_hash, created_at) VALUES(?,?,?,?)",
                     (new_id, username, password_hash, moment),
+                )
+                ctx.conn.execute(
+                    """INSERT INTO household_membership(login_person_id, household_id, person_id, created_at)
+                       VALUES(?,?,?,?)""",
+                    (new_id, hh(ctx), new_id, moment),
                 )
             except sqlite3.IntegrityError:
                 raise AppError(409, "conflict", "Cet identifiant est déjà utilisé.")
@@ -124,6 +130,11 @@ def create_account(ctx, person, person_id, username, password):
             ctx.conn.execute(
                 "INSERT INTO account(person_id, username, password_hash, created_at) VALUES(?,?,?,?)",
                 (person_id, username, hash_password(password), moment),
+            )
+            ctx.conn.execute(
+                """INSERT INTO household_membership(login_person_id, household_id, person_id, created_at)
+                   VALUES(?,?,?,?)""",
+                (person_id, hh(ctx), person_id, moment),
             )
         except sqlite3.IntegrityError:
             raise AppError(409, "conflict", "Cet identifiant est déjà utilisé.")

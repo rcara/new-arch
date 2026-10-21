@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.0] — 2026-10-21
+
+### Ajouté
+- Multi-foyer runtime : migration `007_multi_household.sql` (`user_version=7`)
+- Table `household_membership` ; session `login_person_id` + persona `person_id`
+- Bascule / création de foyer (UI sidebar + `/api/households`)
+- Sidebar responsive CSS-only (drawer mobile checkbox, sans JS)
+- Tests `tests/test_multi_household.py`
+
+### Modifié
+- Isolation données via `ctx.household_id` / `hh(ctx)` sur les services
+- H1 décision log : multi-foyer confirmé
+
 ## [0.9.0] — 2026-10-21
 
 ### Ajouté

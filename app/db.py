@@ -45,7 +45,10 @@ def init_db(path):
         if version == 5:
             conn.executescript((MIGRATIONS / "006_mediatheque.sql").read_text(encoding="utf-8"))
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-        if version != 6:
+        if version == 6:
+            conn.executescript((MIGRATIONS / "007_multi_household.sql").read_text(encoding="utf-8"))
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version != 7:
             raise RuntimeError("schema incompatible")
     finally:
         conn.close()
@@ -84,14 +87,19 @@ def write_tx(ctx, wait=5):
             ctx.conn.commit()
 
 
-def household_row(conn):
+def any_household(conn):
+    return conn.execute("SELECT 1 AS ok FROM household LIMIT 1").fetchone() is not None
+
+
+def household_row(conn, household_id):
     return conn.execute(
-        "SELECT id, name, timezone, created_at FROM household WHERE id=1"
+        "SELECT id, name, timezone, created_at FROM household WHERE id=?",
+        (int(household_id),),
     ).fetchone()
 
 
-def require_household(conn):
-    row = household_row(conn)
+def require_household(conn, household_id):
+    row = household_row(conn, household_id)
     if row is None:
         raise AppError(409, "conflict", "Le foyer n'est pas initialisé.")
     return row

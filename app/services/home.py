@@ -2,11 +2,12 @@
 
 from ..clock import civil_today
 from ..db import require_household
+from ..tenancy import hh
 from . import auth, events, milestones, modules, tasks
 
 
 def dashboard(ctx, person):
-    household = require_household(ctx.conn)
+    household = require_household(ctx.conn, hh(ctx))
     enabled = modules.enabled_keys(ctx)
     profile = auth.self_profile(ctx, person)
     payload = {

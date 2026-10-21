@@ -3,6 +3,7 @@
 import uuid
 from calendar import monthrange
 from datetime import date, timedelta
+from ..tenancy import hh
 
 from ..audit import audit
 from ..clock import iso_utc
@@ -31,11 +32,11 @@ LEFT JOIN person a ON a.id=t.assignee_id
 """
 
 
-def _person_or_none(conn, person_id):
+def _person_or_none(ctx, person_id):
     if person_id is None:
         return None
-    return conn.execute(
-        "SELECT id, display_name, active FROM person WHERE id=? AND household_id=1",
+    return ctx.conn.execute(
+        f'SELECT id, display_name, active FROM person WHERE id=? AND household_id={hh(ctx)}',
         (person_id,),
     ).fetchone()
 
@@ -65,8 +66,8 @@ def _public(row):
 
 def list_tasks(ctx, person, *, status="open", q="", page=1):
     require_module(ctx, "organisation")
-    require_household(ctx.conn)
-    where = ["t.household_id=1", "t.archived=0"]
+    require_household(ctx.conn, hh(ctx))
+    where = [f't.household_id={hh(ctx)}', "t.archived=0"]
     params = {}
     if status:
         if status not in STATUSES:
@@ -94,7 +95,7 @@ def list_tasks(ctx, person, *, status="open", q="", page=1):
 
 def get_task(ctx, person, task_id):
     require_module(ctx, "organisation")
-    row = ctx.conn.execute(f"{SELECT} WHERE t.id=? AND t.household_id=1", (task_id,)).fetchone()
+    row = ctx.conn.execute(f"{SELECT} WHERE t.id=? AND t.household_id={hh(ctx)}", (task_id,)).fetchone()
     if row is None or row["archived"]:
         raise AppError(404, "not_found", "Tâche introuvable.")
     return _public(row)
@@ -140,16 +141,16 @@ def _parse_fields(data, *, partial=False):
 def create_task(ctx, person, data):
     require_module(ctx, "organisation")
     fields = _parse_fields(data, partial=False)
-    if fields.get("assignee_id") is not None and _person_or_none(ctx.conn, fields["assignee_id"]) is None:
+    if fields.get("assignee_id") is not None and _person_or_none(ctx, fields["assignee_id"]) is None:
         raise AppError(400, "validation", "Assigné inconnu.", {"assignee_id": "Assigné inconnu."})
     moment = iso_utc(ctx.clock.now())
     public_id = str(uuid.uuid4())
     with write_tx(ctx):
         ctx.conn.execute(
-            """INSERT INTO task(
+            f"""INSERT INTO task(
                  household_id, public_id, title, notes, status, priority, assignee_id,
                  created_by, due_date, recurrence, archived, created_at, updated_at, completed_at
-               ) VALUES(1,?,?,?,'open',?,?,?,?,?,0,?,?,NULL)""",
+               ) VALUES({hh(ctx)},?,?,?,'open',?,?,?,?,?,0,?,?,NULL)""",
             (
                 public_id,
                 fields["title"],
@@ -193,16 +194,16 @@ def next_due_date(current, recurrence):
 def update_task(ctx, person, task_id, data):
     require_module(ctx, "organisation")
     existing = ctx.conn.execute(
-        """SELECT id, household_id, public_id, title, notes, status, priority, assignee_id,
+        f"""SELECT id, household_id, public_id, title, notes, status, priority, assignee_id,
                   created_by, due_date, recurrence, archived, created_at, updated_at, completed_at
-           FROM task WHERE id=? AND household_id=1 AND archived=0""",
+           FROM task WHERE id=? AND household_id={hh(ctx)} AND archived=0""",
         (task_id,),
     ).fetchone()
     if existing is None:
         raise AppError(404, "not_found", "Tâche introuvable.")
     fields = _parse_fields(data, partial=True)
     if fields.get("_has_assignee") and fields.get("assignee_id") is not None:
-        if _person_or_none(ctx.conn, fields["assignee_id"]) is None:
+        if _person_or_none(ctx, fields["assignee_id"]) is None:
             raise AppError(400, "validation", "Assigné inconnu.", {"assignee_id": "Assigné inconnu."})
 
     title = fields.get("title", existing["title"])
@@ -240,10 +241,10 @@ def update_task(ctx, person, task_id, data):
         )
         if spawn is not None:
             ctx.conn.execute(
-                """INSERT INTO task(
+                f"""INSERT INTO task(
                      household_id, public_id, title, notes, status, priority, assignee_id,
                      created_by, due_date, recurrence, archived, created_at, updated_at, completed_at
-                   ) VALUES(1,?,?,?,'open',?,?,?,?,?,0,?,?,NULL)""",
+                   ) VALUES({hh(ctx)},?,?,?,'open',?,?,?,?,?,0,?,?,NULL)""",
                 (
                     str(uuid.uuid4()),
                     spawn["title"],
@@ -263,13 +264,13 @@ def update_task(ctx, person, task_id, data):
 
 def open_due_soon(ctx, person, *, within_days=30, limit=20, assignee_id=None):
     """Tâches ouvertes pour l'accueil (module organisation requis côté appelant)."""
-    require_household(ctx.conn)
+    require_household(ctx.conn, hh(ctx))
     from ..clock import civil_today
 
-    household = require_household(ctx.conn)
+    household = require_household(ctx.conn, hh(ctx))
     today = civil_today(ctx.clock, household["timezone"]).isoformat()
     where = [
-        "t.household_id=1",
+        f't.household_id={hh(ctx)}',
         "t.archived=0",
         "t.status='open'",
         "(t.due_date IS NULL OR t.due_date <= date(?, '+' || ? || ' days'))",
