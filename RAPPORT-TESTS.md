@@ -10,7 +10,7 @@ Machine : Linux, Python 3.12.3, Flask 3.1.3.
 
 Résultat : **68 tests, tous réussis** (branche chiffrement).
 
-- V1 + B→F + profil + branding + crypto blobs (`user_version` jusqu’à 6).
+- V1 + B→F + profil + branding + crypto blobs (`user_version` jusqu’à 7).
 - Crypto : `tests/test_crypto.py` (enable, migrate, backup scellé).
 
 ## Limitations

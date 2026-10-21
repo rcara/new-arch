@@ -2,7 +2,7 @@
 
 from io import BytesIO
 
-from ..db import household_row
+from ..db import any_household
 from ..errors import AppError
 from . import auth, events, finance, inventory, media, milestones, people, tasks
 
@@ -25,7 +25,7 @@ class _DemoUpload:
 
 def seed_demo(ctx, limiter):
     """Initialise un foyer fictif riche. Refuse si un foyer existe déjà."""
-    if household_row(ctx.conn) is not None:
+    if any_household(ctx.conn):
         raise AppError(
             409,
             "conflict",
@@ -40,11 +40,16 @@ def seed_demo(ctx, limiter):
         DEMO_USERNAME,
         DEMO_PASSWORD,
     )
+    ctx.household_id = 1
+    ctx.login_person_id = profile["person_id"]
+    ctx.actor_id = profile["person_id"]
     principal = {
         "id": profile["person_id"],
         "display_name": "Alex Martin",
         "is_principal": 1,
         "can_view_index": 1,
+        "household_id": 1,
+        "login_person_id": profile["person_id"],
     }
     camille_id = people.add_person(
         ctx, principal, "Camille Dubois", relationship="colocataire",

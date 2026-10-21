@@ -1,6 +1,7 @@
 """Repères : statuts calculés, archives, projection sans pièce ni décision."""
 
 import sqlite3
+from ..tenancy import hh
 
 from .auth import require_principal
 from ..audit import audit
@@ -44,7 +45,7 @@ def require_index(person):
 
 
 def _today(ctx):
-    household = require_household(ctx.conn)
+    household = require_household(ctx.conn, hh(ctx))
     return household, civil_today(ctx.clock, household["timezone"])
 
 
@@ -254,9 +255,9 @@ def create_milestone(ctx, person, fields):
             _assignable(ctx.conn, normalized["responsible_id"], None, "responsible_id", "Le responsable")
         try:
             ctx.conn.execute(
-                """INSERT INTO milestone(household_id, name, category, holder_id, responsible_id, location,
+                f"""INSERT INTO milestone(household_id, name, category, holder_id, responsible_id, location,
                    amount_cents, due_date, notice_days, note, archived, created_at, updated_at)
-                   VALUES(1,?,?,?,?,?,?,?,?,?,0,?,?)""",
+                   VALUES({hh(ctx)},?,?,?,?,?,?,?,?,?,0,?,?)""",
                 (
                     normalized["name"], normalized["category"], normalized["holder_id"], normalized["responsible_id"],
                     normalized["location"], normalized["amount_cents"], normalized["due_date"], normalized["notice_days"],

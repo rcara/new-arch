@@ -9,7 +9,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from .audit import audit
 from .clock import SystemClock
-from .db import connect, ensure_layout, household_row
+from .db import any_household, connect, ensure_layout, household_row
 from .errors import AppError
 from .http import MESSAGES, cookie_message, guard_local, resolve_theme
 from .locks import OpLock
@@ -23,7 +23,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Ctx:
-    def __init__(self, conn, clock, home, lock, dummy_hash, actor_id=None, crypto=None):
+    def __init__(
+        self,
+        conn,
+        clock,
+        home,
+        lock,
+        dummy_hash,
+        actor_id=None,
+        crypto=None,
+        household_id=None,
+        login_person_id=None,
+    ):
         self.conn = conn
         self.clock = clock
         self.home = home
@@ -31,6 +42,8 @@ class Ctx:
         self.dummy_hash = dummy_hash
         self.actor_id = actor_id
         self.crypto = crypto
+        self.household_id = household_id
+        self.login_person_id = login_person_id
 
 
 def create_app(home=None, clock=None, testing=False, port=8765):
@@ -71,13 +84,12 @@ def create_app(home=None, clock=None, testing=False, port=8765):
     @app.before_request
     def prepare():
         g.db = connect(app.config["HOME"] / "data" / "metadata.sqlite")
-        g.household = household_row(g.db)
-        if g.household is not None:
-            g.household = dict(g.household)
+        g.bootstrapped = any_household(g.db)
         row = load_session(g.db, app.config["CLOCK"], request.cookies.get("foyer_session"))
         if row is None:
             g.person = None
             g.csrf_token = ""
+            g.household = None
         else:
             g.person = {
                 "id": row["id"],
@@ -86,20 +98,32 @@ def create_app(home=None, clock=None, testing=False, port=8765):
                 "can_view_index": bool(row["can_view_index"]),
                 "active": bool(row["active"]),
                 "relationship": row["relationship"],
+                "household_id": row["household_id"],
+                "login_person_id": row["login_person_id"],
             }
             g.csrf_token = row["csrf_token"]
+            active = household_row(g.db, row["household_id"])
+            g.household = dict(active) if active is not None else None
         code = request.cookies.get("foyer_msg")
         g.message = MESSAGES.get(code, "")
         g.clear_message = bool(code)
         guard_local()
         endpoint = request.endpoint or ""
-        public = {"pages.bootstrap_get", "pages.bootstrap_post", "pages.login_get", "pages.login_post", "api.bootstrap", "api.login", "static"}
-        if g.household is None and endpoint not in public and endpoint != "static":
+        public = {
+            "pages.bootstrap_get",
+            "pages.bootstrap_post",
+            "pages.login_get",
+            "pages.login_post",
+            "api.bootstrap",
+            "api.login",
+            "static",
+        }
+        if not g.bootstrapped and endpoint not in public and endpoint != "static":
             if request.path.startswith("/api"):
                 raise AppError(409, "conflict", "Le foyer n'est pas initialisé.")
             if endpoint != "pages.bootstrap_get":
                 return redirect(url_for("pages.bootstrap_get"))
-        if g.household is not None and endpoint in {"pages.bootstrap_get", "pages.bootstrap_post", "api.bootstrap"}:
+        if g.bootstrapped and endpoint in {"pages.bootstrap_get", "pages.bootstrap_post", "api.bootstrap"}:
             raise AppError(409, "conflict", "Le foyer existe déjà.")
 
     @app.teardown_appcontext
@@ -162,12 +186,17 @@ def create_app(home=None, clock=None, testing=False, port=8765):
         else:
             nav = ""
         nav_modules = set()
+        memberships = []
         if g.get("household") is not None and g.get("person") is not None and g.get("db") is not None:
+            from .services import households as households_svc
             from .services import modules as modules_svc
-            nav_modules = modules_svc.enabled_keys(current_ctx())
+            ctx = current_ctx()
+            nav_modules = modules_svc.enabled_keys(ctx)
+            memberships = households_svc.list_memberships(ctx)
         return {
             "person": g.get("person"),
             "household": g.get("household"),
+            "memberships": memberships,
             "csrf_token": g.get("setup_token") or g.get("csrf_token") or "",
             "message": g.get("message") or "",
             "nav": nav,
@@ -235,6 +264,7 @@ def create_app(home=None, clock=None, testing=False, port=8765):
 def current_ctx():
     from flask import current_app
     person = g.get("person") or {}
+    household = g.get("household") or {}
     return Ctx(
         g.db,
         current_app.config["CLOCK"],
@@ -243,4 +273,6 @@ def current_ctx():
         current_app.config["DUMMY_HASH"],
         person.get("id"),
         current_app.config.get("CRYPTO"),
+        person.get("household_id") or household.get("id"),
+        person.get("login_person_id"),
     )

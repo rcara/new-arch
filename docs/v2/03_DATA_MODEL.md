@@ -57,3 +57,19 @@ Lieux et biens (état, série, prix/valeur en unités mineures, visibilité, lie
 
 ### `inventory_warranty` / `inventory_maintenance` / `inventory_history`
 Garanties (échéance calendrier optionnelle), interventions, historique de cession/état.
+
+## Ajouts migration 007 (`user_version=7`)
+
+### `household`
+- Suppression du `CHECK(id=1)` — plusieurs foyers dans la même base.
+
+### `household_membership`
+- PK `(login_person_id, household_id)` ; `person_id` persona locale `UNIQUE`
+- Un compte (`account`) peut ouvrir plusieurs foyers via des personas distinctes
+
+### `session`
+- `login_person_id` (compte) + `person_id` (persona / foyer actif)
+- Index unique principal : `one_principal_per_household` (plus global)
+
+### Tenancy runtime
+- `Ctx.household_id` / `Ctx.login_person_id` ; helper `hh(ctx)`

@@ -1,6 +1,7 @@
 """Calendrier : événements du foyer (distincts des repères Index)."""
 
 import uuid
+from ..tenancy import hh
 
 from ..audit import audit
 from ..clock import civil_today, iso_utc
@@ -18,11 +19,11 @@ LEFT JOIN person r ON r.id=e.responsible_id
 """
 
 
-def _person_or_none(conn, person_id):
+def _person_or_none(ctx, person_id):
     if person_id is None:
         return None
-    return conn.execute(
-        "SELECT id FROM person WHERE id=? AND household_id=1", (person_id,)
+    return ctx.conn.execute(
+        f'SELECT id FROM person WHERE id=? AND household_id={hh(ctx)}', (person_id,)
     ).fetchone()
 
 
@@ -50,7 +51,7 @@ def _public(row):
 
 def list_events(ctx, person, *, from_date=None, to_date=None, q="", page=1):
     require_module(ctx, "calendrier")
-    household = require_household(ctx.conn)
+    household = require_household(ctx.conn, hh(ctx))
     today = civil_today(ctx.clock, household["timezone"])
     start = from_date or today.isoformat()
     if to_date:
@@ -59,7 +60,7 @@ def list_events(ctx, person, *, from_date=None, to_date=None, q="", page=1):
         end = ctx.conn.execute("SELECT date(?, '+90 days')", (start,)).fetchone()[0]
     start = date_value(start, key="from", label="La date de début") or today.isoformat()
     end = date_value(end, key="to", label="La date de fin") or end
-    where = ["e.household_id=1", "e.archived=0", "e.start_date <= :end", "(e.end_date IS NULL OR e.end_date >= :start)"]
+    where = [f'e.household_id={hh(ctx)}', "e.archived=0", "e.start_date <= :end", "(e.end_date IS NULL OR e.end_date >= :start)"]
     params = {"start": start, "end": end}
     if q:
         escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -86,7 +87,7 @@ def list_events(ctx, person, *, from_date=None, to_date=None, q="", page=1):
 
 def get_event(ctx, person, event_id):
     require_module(ctx, "calendrier")
-    row = ctx.conn.execute(f"{SELECT} WHERE e.id=? AND e.household_id=1", (event_id,)).fetchone()
+    row = ctx.conn.execute(f"{SELECT} WHERE e.id=? AND e.household_id={hh(ctx)}", (event_id,)).fetchone()
     if row is None or row["archived"]:
         raise AppError(404, "not_found", "Événement introuvable.")
     return _public(row)
@@ -133,20 +134,20 @@ def _parse(data, household_tz, *, partial=False):
 
 def create_event(ctx, person, data):
     require_module(ctx, "calendrier")
-    household = require_household(ctx.conn)
+    household = require_household(ctx.conn, hh(ctx))
     fields = _parse(data, household["timezone"], partial=False)
     if fields.get("end_date") and fields["end_date"] < fields["start_date"]:
         raise AppError(400, "validation", "La fin précède le début.", {"end_date": "La fin précède le début."})
-    if fields.get("responsible_id") is not None and _person_or_none(ctx.conn, fields["responsible_id"]) is None:
+    if fields.get("responsible_id") is not None and _person_or_none(ctx, fields["responsible_id"]) is None:
         raise AppError(400, "validation", "Responsable inconnu.", {"responsible_id": "Responsable inconnu."})
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         ctx.conn.execute(
-            """INSERT INTO calendar_event(
+            f"""INSERT INTO calendar_event(
                  household_id, public_id, title, notes, all_day, start_date, end_date,
                  start_at, end_at, timezone, responsible_id, created_by, recurrence,
                  archived, created_at, updated_at
-               ) VALUES(1,?,?,?,?,?,?,NULL,NULL,?,?,?,?,0,?,?)""",
+               ) VALUES({hh(ctx)},?,?,?,?,?,?,NULL,NULL,?,?,?,?,0,?,?)""",
             (
                 str(uuid.uuid4()),
                 fields["title"],
@@ -169,12 +170,12 @@ def create_event(ctx, person, data):
 
 def update_event(ctx, person, event_id, data):
     require_module(ctx, "calendrier")
-    household = require_household(ctx.conn)
+    household = require_household(ctx.conn, hh(ctx))
     existing = ctx.conn.execute(
-        """SELECT id, household_id, public_id, title, notes, all_day, start_date, end_date,
+        f"""SELECT id, household_id, public_id, title, notes, all_day, start_date, end_date,
                   start_at, end_at, timezone, responsible_id, created_by, recurrence,
                   archived, created_at, updated_at
-           FROM calendar_event WHERE id=? AND household_id=1 AND archived=0""",
+           FROM calendar_event WHERE id=? AND household_id={hh(ctx)} AND archived=0""",
         (event_id,),
     ).fetchone()
     if existing is None:
@@ -190,7 +191,7 @@ def update_event(ctx, person, event_id, data):
     responsible_id = fields["responsible_id"] if fields.get("_has_responsible") else existing["responsible_id"]
     if end_date and end_date < start_date:
         raise AppError(400, "validation", "La fin précède le début.", {"end_date": "La fin précède le début."})
-    if responsible_id is not None and _person_or_none(ctx.conn, responsible_id) is None:
+    if responsible_id is not None and _person_or_none(ctx, responsible_id) is None:
         raise AppError(400, "validation", "Responsable inconnu.", {"responsible_id": "Responsable inconnu."})
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
@@ -207,12 +208,12 @@ def update_event(ctx, person, event_id, data):
 
 
 def upcoming(ctx, person, *, within_days=30, limit=20):
-    require_household(ctx.conn)
-    household = require_household(ctx.conn)
+    require_household(ctx.conn, hh(ctx))
+    household = require_household(ctx.conn, hh(ctx))
     today = civil_today(ctx.clock, household["timezone"]).isoformat()
     rows = ctx.conn.execute(
         f"""{SELECT}
-            WHERE e.household_id=1 AND e.archived=0
+            WHERE e.household_id={hh(ctx)} AND e.archived=0
               AND e.start_date >= ?
               AND e.start_date <= date(?, '+' || ? || ' days')
             ORDER BY e.start_date, e.id

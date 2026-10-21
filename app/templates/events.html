@@ -4,8 +4,8 @@
 <h1>Calendrier</h1>
 <p class="muted">Événements du foyer · {{ listed.from_date|frdate }} → {{ listed.to_date|frdate }}</p>
 <p><a href="{{ url_for('pages.event_new') }}">Nouvel événement</a></p>
-{% if listed.items %}
-{% for item in listed.items %}
+{% if listed['items'] %}
+{% for item in listed['items'] %}
 <div class="row">
   <b><a href="{{ url_for('pages.event_get', event_id=item.id) }}">{{ item.title }}</a></b>
   <span class="muted">{{ item.start_date|frdate }}{% if item.end_date and item.end_date != item.start_date %} → {{ item.end_date|frdate }}{% endif %}</span>

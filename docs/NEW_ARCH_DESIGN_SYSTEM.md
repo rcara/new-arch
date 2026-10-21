@@ -50,7 +50,7 @@ Sémantiques : `--background`, `--surface`, `--text-primary`, `--text-secondary`
 
 ## Navigation
 
-Structure horizontale préservée (routes inchangées). Style mis à jour : pastilles, état actif navy. Sidebar complète reportée (évolution documentée, non bloquante).
+Sidebar gauche (rail desktop) + tiroir mobile via checkbox CSS (`#nav-toggle`), sans JavaScript — CSP `script-src 'none'`. Sélecteur de foyer + création dans la sidebar. État actif navy / sable en sombre.
 
 ## Accessibilité
 

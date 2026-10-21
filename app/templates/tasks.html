@@ -17,8 +17,8 @@
     <button type="submit">Filtrer</button>
   </form>
 </div>
-{% if listed.items %}
-{% for item in listed.items %}
+{% if listed['items'] %}
+{% for item in listed['items'] %}
 <div class="row">
   <b><a href="{{ url_for('pages.task_get', task_id=item.id) }}">{{ item.title }}</a></b>
   <span class="muted">{% if item.due_date %}{{ item.due_date|frdate }}{% else %}Sans date{% endif %}</span>

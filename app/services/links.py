@@ -1,6 +1,7 @@
 """Liens typés cross-module avec contrôle d'existence et d'ACL."""
 
 import sqlite3
+from ..tenancy import hh
 
 from ..audit import audit
 from ..clock import iso_utc
@@ -26,9 +27,9 @@ ALLOWED_RELATIONS = frozenset({
 })
 
 
-def _like_person(conn, person_id):
-    row = conn.execute(
-        "SELECT id, display_name, active FROM person WHERE id=? AND household_id=1",
+def _like_person(ctx, person_id):
+    row = ctx.conn.execute(
+        f'SELECT id, display_name, active FROM person WHERE id=? AND household_id={hh(ctx)}',
         (person_id,),
     ).fetchone()
     return row
@@ -39,19 +40,19 @@ def can_see_object(ctx, person, object_type, object_id):
     if object_type not in ALLOWED_TYPES:
         return False
     if object_type == "person":
-        return _like_person(ctx.conn, object_id) is not None
+        return _like_person(ctx, object_id) is not None
     if object_type == "milestone":
         if not person.get("can_view_index"):
             return False
         row = ctx.conn.execute(
-            "SELECT id FROM milestone WHERE id=? AND household_id=1", (object_id,)
+            f'SELECT id FROM milestone WHERE id=? AND household_id={hh(ctx)}', (object_id,)
         ).fetchone()
         return row is not None
     if object_type == "decision":
         row = ctx.conn.execute(
-            """SELECT d.id, d.author_id FROM decision d
+            f"""SELECT d.id, d.author_id FROM decision d
                JOIN milestone m ON m.id=d.milestone_id
-               WHERE d.id=? AND m.household_id=1""",
+               WHERE d.id=? AND m.household_id={hh(ctx)}""",
             (object_id,),
         ).fetchone()
         if row is None:
@@ -65,9 +66,9 @@ def can_see_object(ctx, person, object_type, object_id):
         return granted is not None
     if object_type == "stored_file":
         row = ctx.conn.execute(
-            """SELECT f.id, f.uploaded_by FROM stored_file f
+            f"""SELECT f.id, f.uploaded_by FROM stored_file f
                JOIN milestone m ON m.id=f.milestone_id
-               WHERE f.id=? AND m.household_id=1""",
+               WHERE f.id=? AND m.household_id={hh(ctx)}""",
             (object_id,),
         ).fetchone()
         if row is None:
@@ -81,26 +82,26 @@ def can_see_object(ctx, person, object_type, object_id):
         return granted is not None
     if object_type == "task":
         row = ctx.conn.execute(
-            "SELECT id FROM task WHERE id=? AND household_id=1 AND archived=0",
+            f'SELECT id FROM task WHERE id=? AND household_id={hh(ctx)} AND archived=0',
             (object_id,),
         ).fetchone()
         return row is not None
     if object_type == "calendar_event":
         row = ctx.conn.execute(
-            "SELECT id FROM calendar_event WHERE id=? AND household_id=1 AND archived=0",
+            f'SELECT id FROM calendar_event WHERE id=? AND household_id={hh(ctx)} AND archived=0',
             (object_id,),
         ).fetchone()
         return row is not None
     if object_type == "inventory_place":
         row = ctx.conn.execute(
-            "SELECT id FROM inventory_place WHERE id=? AND household_id=1 AND archived=0",
+            f'SELECT id FROM inventory_place WHERE id=? AND household_id={hh(ctx)} AND archived=0',
             (object_id,),
         ).fetchone()
         return row is not None
     if object_type == "inventory_item":
         row = ctx.conn.execute(
-            """SELECT id, visibility, created_by FROM inventory_item
-               WHERE id=? AND household_id=1 AND archived=0""",
+            f"""SELECT id, visibility, created_by FROM inventory_item
+               WHERE id=? AND household_id={hh(ctx)} AND archived=0""",
             (object_id,),
         ).fetchone()
         if row is None:
@@ -114,8 +115,8 @@ def can_see_object(ctx, person, object_type, object_id):
         return owned is not None
     if object_type == "finance_transaction":
         row = ctx.conn.execute(
-            """SELECT id, visibility, created_by, payer_id, beneficiary_id FROM finance_transaction
-               WHERE id=? AND household_id=1 AND archived=0""",
+            f"""SELECT id, visibility, created_by, payer_id, beneficiary_id FROM finance_transaction
+               WHERE id=? AND household_id={hh(ctx)} AND archived=0""",
             (object_id,),
         ).fetchone()
         if row is None:
@@ -131,8 +132,8 @@ def can_see_object(ctx, person, object_type, object_id):
         return split is not None
     if object_type == "media_work":
         row = ctx.conn.execute(
-            """SELECT id, visibility, created_by FROM media_work
-               WHERE id=? AND household_id=1 AND archived=0""",
+            f"""SELECT id, visibility, created_by FROM media_work
+               WHERE id=? AND household_id={hh(ctx)} AND archived=0""",
             (object_id,),
         ).fetchone()
         if row is None:
@@ -146,8 +147,8 @@ def can_see_object(ctx, person, object_type, object_id):
         return progress is not None
     if object_type == "media_asset":
         row = ctx.conn.execute(
-            """SELECT id, visibility, uploaded_by FROM media_asset
-               WHERE id=? AND household_id=1 AND archived=0""",
+            f"""SELECT id, visibility, uploaded_by FROM media_asset
+               WHERE id=? AND household_id={hh(ctx)} AND archived=0""",
             (object_id,),
         ).fetchone()
         if row is None:
@@ -168,7 +169,7 @@ def require_object(ctx, person, object_type, object_id):
 
 
 def create_link(ctx, person, data):
-    require_household(ctx.conn)
+    require_household(ctx.conn, hh(ctx))
     source_type = str(data.get("source_type") or "").strip()
     target_type = str(data.get("target_type") or "").strip()
     relation_type = str(data.get("relation_type") or "relates_to").strip()
@@ -195,10 +196,10 @@ def create_link(ctx, person, data):
     try:
         with write_tx(ctx):
             ctx.conn.execute(
-                """INSERT INTO object_link(
+                f"""INSERT INTO object_link(
                      household_id, source_type, source_id, target_type, target_id,
                      relation_type, created_by, created_at, archived
-                   ) VALUES(1,?,?,?,?,?,?,?,0)""",
+                   ) VALUES({hh(ctx)},?,?,?,?,?,?,?,0)""",
                 (source_type, source_id, target_type, target_id, relation_type, person["id"], moment),
             )
             link_id = ctx.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -209,11 +210,11 @@ def create_link(ctx, person, data):
 
 
 def archive_link(ctx, person, link_id):
-    require_household(ctx.conn)
+    require_household(ctx.conn, hh(ctx))
     row = ctx.conn.execute(
-        """SELECT id, household_id, source_type, source_id, target_type, target_id,
+        f"""SELECT id, household_id, source_type, source_id, target_type, target_id,
                   relation_type, created_by, created_at, archived
-           FROM object_link WHERE id=? AND household_id=1 AND archived=0""",
+           FROM object_link WHERE id=? AND household_id={hh(ctx)} AND archived=0""",
         (link_id,),
     ).fetchone()
     if row is None:
@@ -226,8 +227,8 @@ def archive_link(ctx, person, link_id):
 
 
 def list_links(ctx, person, *, source_type="", source_id=None, target_type="", target_id=None):
-    require_household(ctx.conn)
-    where = ["household_id=1", "archived=0"]
+    require_household(ctx.conn, hh(ctx))
+    where = [f'household_id={hh(ctx)}', "archived=0"]
     params = {}
     if source_type:
         where.append("source_type=:source_type")

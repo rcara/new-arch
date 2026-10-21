@@ -6,11 +6,12 @@ from ..validate import text_value
 from .links import can_see_object
 from .modules import require_module
 from .milestones import require_index
+from ..tenancy import hh
 
 
 def search(ctx, person, q, *, limit=40):
     require_module(ctx, "recherche")
-    require_household(ctx.conn)
+    require_household(ctx.conn, hh(ctx))
     query = text_value(q, "q", 120, required=True, label="La recherche")
     if len(query) < 2:
         raise AppError(400, "validation", "Saisissez au moins 2 caractères.", {"q": "Trop court."})
@@ -20,8 +21,8 @@ def search(ctx, person, q, *, limit=40):
 
     if person.get("can_view_index"):
         rows = ctx.conn.execute(
-            """SELECT id, name FROM milestone
-               WHERE household_id=1 AND archived=0 AND name LIKE ? ESCAPE '\\'
+            f"""SELECT id, name FROM milestone
+               WHERE household_id={hh(ctx)} AND archived=0 AND name LIKE ? ESCAPE '\\'
                ORDER BY id DESC LIMIT ?""",
             (like, limit),
         ).fetchall()
@@ -29,8 +30,8 @@ def search(ctx, person, q, *, limit=40):
             items.append({"type": "milestone", "id": row["id"], "title": row["name"], "href": f"/reperes/{row['id']}"})
 
     rows = ctx.conn.execute(
-        """SELECT id, title FROM task
-           WHERE household_id=1 AND archived=0 AND title LIKE ? ESCAPE '\\'
+        f"""SELECT id, title FROM task
+           WHERE household_id={hh(ctx)} AND archived=0 AND title LIKE ? ESCAPE '\\'
            ORDER BY id DESC LIMIT ?""",
         (like, limit),
     ).fetchall()
@@ -38,8 +39,8 @@ def search(ctx, person, q, *, limit=40):
         items.append({"type": "task", "id": row["id"], "title": row["title"], "href": f"/organisation/{row['id']}"})
 
     rows = ctx.conn.execute(
-        """SELECT id, title FROM calendar_event
-           WHERE household_id=1 AND archived=0 AND title LIKE ? ESCAPE '\\'
+        f"""SELECT id, title FROM calendar_event
+           WHERE household_id={hh(ctx)} AND archived=0 AND title LIKE ? ESCAPE '\\'
            ORDER BY id DESC LIMIT ?""",
         (like, limit),
     ).fetchall()
@@ -48,9 +49,9 @@ def search(ctx, person, q, *, limit=40):
 
     # Décisions : titre = choix uniquement si accessible ; jamais le corps expected/reconsider
     rows = ctx.conn.execute(
-        """SELECT d.id, d.choice, d.author_id, d.sealed_at FROM decision d
+        f"""SELECT d.id, d.choice, d.author_id, d.sealed_at FROM decision d
            JOIN milestone m ON m.id=d.milestone_id
-           WHERE m.household_id=1 AND d.choice LIKE ? ESCAPE '\\'
+           WHERE m.household_id={hh(ctx)} AND d.choice LIKE ? ESCAPE '\\'
            ORDER BY d.id DESC LIMIT ?""",
         (like, limit),
     ).fetchall()
@@ -62,9 +63,9 @@ def search(ctx, person, q, *, limit=40):
 
     # Fichiers : existence seule, jamais le nom original dans la recherche globale
     rows = ctx.conn.execute(
-        """SELECT f.id FROM stored_file f
+        f"""SELECT f.id FROM stored_file f
            JOIN milestone m ON m.id=f.milestone_id
-           WHERE m.household_id=1
+           WHERE m.household_id={hh(ctx)}
            ORDER BY f.id DESC LIMIT ?""",
         (limit,),
     ).fetchall()
@@ -77,8 +78,8 @@ def search(ctx, person, q, *, limit=40):
     # Personnes (foyer)
     if person.get("is_principal"):
         rows = ctx.conn.execute(
-            """SELECT id, display_name FROM person
-               WHERE household_id=1 AND active=1 AND display_name LIKE ? ESCAPE '\\'
+            f"""SELECT id, display_name FROM person
+               WHERE household_id={hh(ctx)} AND active=1 AND display_name LIKE ? ESCAPE '\\'
                ORDER BY id LIMIT ?""",
             (like, limit),
         ).fetchall()
@@ -86,8 +87,8 @@ def search(ctx, person, q, *, limit=40):
             items.append({"type": "person", "id": row["id"], "title": row["display_name"], "href": "/foyer"})
 
     rows = ctx.conn.execute(
-        """SELECT id, name, visibility, created_by FROM inventory_item
-           WHERE household_id=1 AND archived=0 AND name LIKE ? ESCAPE '\\'
+        f"""SELECT id, name, visibility, created_by FROM inventory_item
+           WHERE household_id={hh(ctx)} AND archived=0 AND name LIKE ? ESCAPE '\\'
            ORDER BY id DESC LIMIT ?""",
         (like, limit),
     ).fetchall()
@@ -102,8 +103,8 @@ def search(ctx, person, q, *, limit=40):
         })
 
     rows = ctx.conn.execute(
-        """SELECT id, title FROM media_work
-           WHERE household_id=1 AND archived=0 AND title LIKE ? ESCAPE '\\'
+        f"""SELECT id, title FROM media_work
+           WHERE household_id={hh(ctx)} AND archived=0 AND title LIKE ? ESCAPE '\\'
            ORDER BY id DESC LIMIT ?""",
         (like, limit),
     ).fetchall()
