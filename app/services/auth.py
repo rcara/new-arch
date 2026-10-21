@@ -63,6 +63,12 @@ def bootstrap(ctx, limiter, household_name, timezone, display_name, username, pa
                    VALUES(?,?,?,NULL,?)""",
                 (hash_token(token), person_id, expires, csrf),
             )
+            from .modules import DEFAULT_MODULES
+            for key, enabled in DEFAULT_MODULES:
+                ctx.conn.execute(
+                    "INSERT OR IGNORE INTO module_setting(household_id, module_key, enabled) VALUES(1,?,?)",
+                    (key, enabled),
+                )
     except sqlite3.IntegrityError:
         raise AppError(409, "conflict", "Le foyer existe déjà.")
     audit(ctx.home, ctx.clock, "bootstrap", "ok", person_id, "person", person_id)

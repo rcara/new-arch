@@ -6,7 +6,7 @@ from .. import current_ctx
 from ..errors import AppError
 from ..http import cookie_message, cookie_session, cookie_setup, safe_next
 from ..security import new_token
-from ..services import auth, decisions, milestones, people, vault
+from ..services import auth, decisions, events, home, links, milestones, modules, people, search, tasks, vault
 from ..validate import text_value
 
 pages = Blueprint("pages", __name__)
@@ -67,7 +67,7 @@ def bootstrap_post():
         return render_template("bootstrap.html", form=form, errors={"password_confirm": "Les deux saisies diffèrent."}), 400
     try:
         token, csrf, _profile = auth.bootstrap(
-            current_ctx(), _limiter(), form.get("household_name"), form.get("timezone") or "Europe/Berlin",
+            current_ctx(), _limiter(), form.get("household_name"), form.get("timezone") or "Europe/Zurich",
             form.get("display_name"), form.get("username"), form.get("password"),
         )
     except AppError as exc:
@@ -119,8 +119,205 @@ def logout():
 @pages.get("/")
 def today():
     person = _need()
-    summary = milestones.today_items(current_ctx(), person)
+    summary = home.dashboard(current_ctx(), person)
     return render_template("today.html", summary=summary)
+
+
+@pages.get("/organisation")
+def tasks_get():
+    person = _need()
+    modules.require_module(current_ctx(), "organisation")
+    status = request.args.get("status", "open")
+    listed = tasks.list_tasks(current_ctx(), person, status=status, q=request.args.get("q", ""))
+    return render_template("tasks.html", listed=listed, args=request.args)
+
+
+@pages.get("/organisation/nouvelle")
+def task_new():
+    _need()
+    modules.require_module(current_ctx(), "organisation")
+    return render_template(
+        "task_form.html", form={"priority": "normal", "recurrence": "none"}, errors={}, people=_members(), editing=False,
+    )
+
+
+@pages.post("/organisation")
+def task_create():
+    person = _need()
+    form = request.form.to_dict()
+    try:
+        tasks.create_task(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template(
+                "task_form.html", form=form, errors=exc.fields, people=_members(), editing=False,
+            ), 400
+        raise
+    return _go("task_saved", "pages.tasks_get")
+
+
+@pages.get("/organisation/<int:task_id>")
+def task_get(task_id):
+    person = _need()
+    item = tasks.get_task(current_ctx(), person, task_id)
+    related = links.list_links(current_ctx(), person, source_type="task", source_id=task_id)
+    return render_template("task.html", item=item, links=related["items"], people=_members())
+
+
+@pages.get("/organisation/<int:task_id>/modifier")
+def task_edit(task_id):
+    person = _need()
+    item = tasks.get_task(current_ctx(), person, task_id)
+    form = {
+        "title": item["title"],
+        "notes": item["notes"],
+        "priority": item["priority"],
+        "recurrence": item["recurrence"],
+        "due_date": item["due_date"] or "",
+        "assignee_id": "" if item["assignee_id"] is None else str(item["assignee_id"]),
+        "status": item["status"],
+    }
+    return render_template("task_form.html", form=form, errors={}, people=_members(), editing=True, task_id=task_id)
+
+
+@pages.post("/organisation/<int:task_id>")
+def task_update(task_id):
+    person = _need()
+    form = request.form.to_dict()
+    try:
+        tasks.update_task(current_ctx(), person, task_id, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template(
+                "task_form.html", form=form, errors=exc.fields, people=_members(), editing=True, task_id=task_id,
+            ), 400
+        raise
+    code = "task_done" if form.get("status") == "done" else "task_saved"
+    return _go(code, "pages.task_get", task_id=task_id)
+
+
+@pages.post("/organisation/<int:task_id>/lien")
+def task_link(task_id):
+    person = _need()
+    form = request.form.to_dict()
+    links.create_link(current_ctx(), person, {
+        "source_type": "task",
+        "source_id": task_id,
+        "target_type": form.get("target_type") or "milestone",
+        "target_id": form.get("target_id"),
+        "relation_type": form.get("relation_type") or "relates_to",
+    })
+    return _go("link_saved", "pages.task_get", task_id=task_id)
+
+
+@pages.get("/calendrier")
+def events_get():
+    person = _need()
+    modules.require_module(current_ctx(), "calendrier")
+    listed = events.list_events(
+        current_ctx(), person,
+        from_date=request.args.get("from") or None,
+        to_date=request.args.get("to") or None,
+        q=request.args.get("q", ""),
+    )
+    return render_template("events.html", listed=listed, args=request.args)
+
+
+@pages.get("/calendrier/nouveau")
+def event_new():
+    _need()
+    modules.require_module(current_ctx(), "calendrier")
+    return render_template(
+        "event_form.html",
+        form={"all_day": "1", "recurrence": "none", "timezone": (g.household or {}).get("timezone", "Europe/Zurich")},
+        errors={}, people=_members(), editing=False,
+    )
+
+
+@pages.post("/calendrier")
+def event_create():
+    person = _need()
+    form = request.form.to_dict()
+    form["all_day"] = "1" if request.form.get("all_day") == "1" else "0"
+    try:
+        events.create_event(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template(
+                "event_form.html", form=form, errors=exc.fields, people=_members(), editing=False,
+            ), 400
+        raise
+    return _go("event_saved", "pages.events_get")
+
+
+@pages.get("/calendrier/<int:event_id>")
+def event_get(event_id):
+    person = _need()
+    item = events.get_event(current_ctx(), person, event_id)
+    return render_template("event.html", item=item)
+
+
+@pages.get("/calendrier/<int:event_id>/modifier")
+def event_edit(event_id):
+    person = _need()
+    item = events.get_event(current_ctx(), person, event_id)
+    form = {
+        "title": item["title"],
+        "notes": item["notes"],
+        "start_date": item["start_date"],
+        "end_date": item["end_date"] or "",
+        "all_day": "1" if item["all_day"] else "0",
+        "timezone": item["timezone"],
+        "recurrence": item["recurrence"],
+        "responsible_id": "" if item["responsible_id"] is None else str(item["responsible_id"]),
+    }
+    return render_template("event_form.html", form=form, errors={}, people=_members(), editing=True, event_id=event_id)
+
+
+@pages.post("/calendrier/<int:event_id>")
+def event_update(event_id):
+    person = _need()
+    form = request.form.to_dict()
+    form["all_day"] = "1" if request.form.get("all_day") == "1" else "0"
+    try:
+        events.update_event(current_ctx(), person, event_id, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template(
+                "event_form.html", form=form, errors=exc.fields, people=_members(), editing=True, event_id=event_id,
+            ), 400
+        raise
+    return _go("event_saved", "pages.event_get", event_id=event_id)
+
+
+@pages.get("/recherche")
+def search_get():
+    person = _need()
+    modules.require_module(current_ctx(), "recherche")
+    q = request.args.get("q", "")
+    results = {"q": q, "items": [], "total": 0}
+    if q.strip():
+        try:
+            results = search.search(current_ctx(), person, q)
+        except AppError as exc:
+            if exc.status == 400:
+                return render_template("search.html", results=results, errors=exc.fields), 400
+            raise
+    return render_template("search.html", results=results, errors={})
+
+
+@pages.get("/foyer")
+def foyer_get():
+    person = _need()
+    modules.require_module(current_ctx(), "foyer")
+    return render_template("people.html", items=people.list_people(current_ctx(), person))
+
+
+@pages.get("/parametres")
+def settings_get():
+    person = _need()
+    modules.require_module(current_ctx(), "parametres")
+    return render_template("settings.html", modules=modules.list_modules(current_ctx()), household=g.household)
 
 
 @pages.get("/reperes")
@@ -531,6 +728,10 @@ def access_post(person_id):
 
 def _people():
     return people.list_people(current_ctx(), g.person)
+
+
+def _members():
+    return people.list_active_members(current_ctx(), g.person)
 
 
 def _person(person_id):

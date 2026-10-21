@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block content %}
+<h1>{{ item.title }}</h1>
+<p class="muted">{{ item.status_label }} · {{ item.priority_label }}{% if item.recurrence != 'none' %} · {{ item.recurrence_label }}{% endif %}</p>
+<dl>
+  <dt>Échéance</dt><dd>{% if item.due_date %}{{ item.due_date|frdate }}{% else %}—{% endif %}</dd>
+  <dt>Assigné</dt><dd>{{ item.assignee_name or '—' }}</dd>
+  <dt>Notes</dt><dd>{{ item.notes or '—' }}</dd>
+</dl>
+<p>
+  <a href="{{ url_for('pages.task_edit', task_id=item.id) }}">Modifier</a>
+</p>
+{% if item.status == 'open' %}
+<form method="post" action="{{ url_for('pages.task_update', task_id=item.id) }}" style="margin:16px 0">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="status" value="done">
+  <input type="hidden" name="title" value="{{ item.title }}">
+  <input type="hidden" name="notes" value="{{ item.notes }}">
+  <input type="hidden" name="priority" value="{{ item.priority }}">
+  <input type="hidden" name="recurrence" value="{{ item.recurrence }}">
+  <input type="hidden" name="due_date" value="{{ item.due_date or '' }}">
+  <input type="hidden" name="assignee_id" value="{{ item.assignee_id or '' }}">
+  <button type="submit">Marquer faite</button>
+</form>
+{% endif %}
+
+<section class="today-panel" aria-labelledby="task-links">
+  <h2 id="task-links">Liens</h2>
+  {% if links %}
+  {% for link in links %}
+  <div class="row">
+    <span class="badge">{{ link.relation_type }}</span>
+    <span>{{ link.target_type }} #{{ link.target_id }}</span>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Aucun lien pour l’instant.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('pages.task_link', task_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="target_type" value="milestone">
+    <input type="hidden" name="relation_type" value="relates_to">
+    <label>Lier un repère (identifiant)
+      <input name="target_id" required pattern="[0-9]+" inputmode="numeric">
+    </label>
+    <button type="submit">Ajouter le lien</button>
+  </form>
+</section>
+<p><a href="{{ url_for('pages.tasks_get') }}">Retour à Organisation</a></p>
+{% endblock %}

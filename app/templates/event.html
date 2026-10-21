@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block content %}
+<h1>{{ item.title }}</h1>
+<dl>
+  <dt>Début</dt><dd>{{ item.start_date|frdate }}</dd>
+  <dt>Fin</dt><dd>{% if item.end_date %}{{ item.end_date|frdate }}{% else %}—{% endif %}</dd>
+  <dt>Journée entière</dt><dd>{% if item.all_day %}Oui{% else %}Non{% endif %}</dd>
+  <dt>Fuseau</dt><dd>{{ item.timezone }}</dd>
+  <dt>Responsable</dt><dd>{{ item.responsible_name or '—' }}</dd>
+  <dt>Notes</dt><dd>{{ item.notes or '—' }}</dd>
+</dl>
+<p><a href="{{ url_for('pages.event_edit', event_id=item.id) }}">Modifier</a> · <a href="{{ url_for('pages.events_get') }}">Calendrier</a></p>
+{% endblock %}

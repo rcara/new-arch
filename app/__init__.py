@@ -135,16 +135,31 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             nav = "personnes"
         elif name.startswith("access"):
             nav = "acces"
+        elif name.startswith("task"):
+            nav = "organisation"
+        elif name.startswith("event"):
+            nav = "calendrier"
+        elif name.startswith("search"):
+            nav = "recherche"
+        elif name.startswith("foyer"):
+            nav = "foyer"
+        elif name.startswith("settings"):
+            nav = "parametres"
         elif name.startswith("today"):
             nav = "today"
         else:
             nav = ""
+        nav_modules = set()
+        if g.get("household") is not None and g.get("person") is not None and g.get("db") is not None:
+            from .services import modules as modules_svc
+            nav_modules = modules_svc.enabled_keys(current_ctx())
         return {
             "person": g.get("person"),
             "household": g.get("household"),
             "csrf_token": g.get("setup_token") or g.get("csrf_token") or "",
             "message": g.get("message") or "",
             "nav": nav,
+            "nav_modules": nav_modules,
             "categories": CATEGORIES,
             "status_label": STATUS_LABEL,
             "format_date": format_date,
@@ -161,7 +176,7 @@ def create_app(home=None, clock=None, testing=False, port=8765):
 
     @app.template_filter("frtime")
     def frtime(value):
-        timezone_name = (g.get("household") or {}).get("timezone", "Europe/Berlin")
+        timezone_name = (g.get("household") or {}).get("timezone", "Europe/Zurich")
         return format_timestamp(value, timezone_name) if value else ""
 
     @app.errorhandler(AppError)

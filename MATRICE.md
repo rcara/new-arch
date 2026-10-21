@@ -12,3 +12,7 @@
 | US15 R24 sauvegarde | `services/backup.py`, `cli.py` | `test_sauvegarde_et_restauration` |
 | R18 R20 hors périmètre | revue du dépôt | `test_perimetre_exclu_absent_du_code` ; aucun autre répertoire modifié |
 | CSRF, hôte, origine, limite de tentatives | `http.py`, `security.py` | `test_securite_des_requetes` |
+| V2B migration 003 | `migrations/003_v2_foundation.sql`, `db.py` | `test_migration_002_to_003_on_copied_v1` |
+| V2B tâches + récurrence | `services/tasks.py` | `test_task_recurrence_and_home`, `test_next_due_date_recurrence` |
+| V2B événements + recherche | `services/events.py`, `services/search.py` | `test_event_and_search` |
+| V2B liens ACL | `services/links.py` | `test_links_acl_and_search_privacy` |

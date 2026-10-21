@@ -2,11 +2,14 @@
 
 ## À quoi sert l'application
 
-Un seul foyer, sur cette machine. Trois couches :
+Un seul foyer, sur cette machine. New Arch V2 élargit le foyer en Home OS tout en conservant les couches V1 :
 
-- Aujourd'hui et Repères montrent le nom, la date, le statut et si une pièce existe. Ils ne montrent ni le fichier, ni le texte d'une décision.
+- Accueil agrège échéances de repères, tâches ouvertes et événements des 30 prochains jours (données réelles).
+- Organisation (tâches) et Calendrier (événements) complètent Repères.
+- Repères montrent le nom, la date, le statut et si une pièce existe. Ils ne montrent ni le fichier, ni le texte d'une décision.
 - Décision conserve une page écrite avant le résultat. Le scellement fige ce texte dans l'application. Le résultat s'ajoute ensuite, une seule fois.
 - Coffre reçoit les PDF, JPEG et PNG. Les ouvrir dépend d'un droit distinct.
+- Recherche transversale : sans fuite des contenus privés.
 
 Le premier compte est principal. Une autre personne peut avoir un compte, créé sur place. Le lien de parenté ne donne aucun droit. Trois droits sont indépendants : voir les repères, lire une page, ouvrir un fichier.
 
@@ -14,8 +17,8 @@ Il n'y a pas de paiement, d'e-mail, de rappel, de total d'argent, de coach ni d'
 
 ## Premier lancement
 
-1. Lancer l'application. L'écran demande le nom du foyer, le fuseau (Europe/Berlin par défaut), votre nom, un identifiant et un mot de passe de 12 à 128 caractères, saisi deux fois.
-2. Vous arrivez sur Aujourd'hui, vide.
+1. Lancer l'application. L'écran demande le nom du foyer, le fuseau (Europe/Zurich par défaut pour un nouveau foyer), votre nom, un identifiant et un mot de passe de 12 à 128 caractères, saisi deux fois.
+2. Vous arrivez sur Accueil, vide.
 3. Dans Personnes, ajoutez les titulaires. Un titulaire peut ne pas avoir de compte.
 4. Dans Repères, créez la fiche : nom, une des sept catégories, titulaire, et le reste si vous l'avez.
 5. La note ne doit contenir ni mot de passe ni numéro de compte complet. L'application ne peut pas le vérifier à votre place.

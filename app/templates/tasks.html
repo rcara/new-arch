@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Organisation{% endblock %}
+{% block content %}
+<h1>Organisation</h1>
+<p class="muted">Tâches et listes du foyer.</p>
+<div class="toolbar">
+  <p><a href="{{ url_for('pages.task_new') }}">Nouvelle tâche</a></p>
+  <form method="get" class="toolbar">
+    <label>Statut
+      <select name="status">
+        <option value="open" {% if args.get('status','open')=='open' %}selected{% endif %}>Ouvertes</option>
+        <option value="done" {% if args.get('status')=='done' %}selected{% endif %}>Faites</option>
+        <option value="cancelled" {% if args.get('status')=='cancelled' %}selected{% endif %}>Annulées</option>
+      </select>
+    </label>
+    <label>Recherche <input name="q" value="{{ args.get('q','') }}"></label>
+    <button type="submit">Filtrer</button>
+  </form>
+</div>
+{% if listed.items %}
+{% for item in listed.items %}
+<div class="row">
+  <b><a href="{{ url_for('pages.task_get', task_id=item.id) }}">{{ item.title }}</a></b>
+  <span class="muted">{% if item.due_date %}{{ item.due_date|frdate }}{% else %}Sans date{% endif %}</span>
+  <span class="badge">{{ item.priority_label }}</span>
+  {% if item.assignee_name %}<span class="muted">{{ item.assignee_name }}</span>{% endif %}
+</div>
+{% endfor %}
+{% else %}
+<section class="today-panel today-panel--empty">
+  <h2>Aucune tâche</h2>
+  <p>Créez une première tâche pour l’organisation du foyer.</p>
+  <p><a href="{{ url_for('pages.task_new') }}">Nouvelle tâche</a></p>
+</section>
+{% endif %}
+{% endblock %}

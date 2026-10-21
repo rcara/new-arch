@@ -103,18 +103,22 @@ def amount_from_form(value):
     return int(raw) * 100
 
 
-def due_date_value(value):
+def date_value(value, key="due_date", label="La date"):
     if value is None or value == "":
         return None
     if not isinstance(value, str):
-        field_error({"due_date": "La date est au format AAAA-MM-JJ."})
+        field_error({key: f"{label} est au format AAAA-MM-JJ."})
     try:
         parsed = date.fromisoformat(value)
     except ValueError:
-        field_error({"due_date": "Cette date n'existe pas."})
+        field_error({key: f"{label} n'existe pas."})
     if parsed.isoformat() != value:
-        field_error({"due_date": "La date est au format AAAA-MM-JJ."})
+        field_error({key: f"{label} est au format AAAA-MM-JJ."})
     return value
+
+
+def due_date_value(value):
+    return date_value(value, key="due_date", label="La date")
 
 
 def notice_days_value(value):

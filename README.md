@@ -1,11 +1,10 @@
 # New Arch
 
-Application locale pour un foyer : repères, décisions scellées, pièces au coffre.
-Le nom est provisoire. Ce dossier ne modifie aucun site existant.
+Home OS local-first pour un foyer : accueil transversal, organisation, calendrier, repères, décisions scellées, coffre.  
+Le cadrage V2 est dans [`docs/v2/`](docs/v2/). Journal : [`CHANGELOG.md`](CHANGELOG.md).
 
-Le guide d'usage, de sauvegarde et les limites du MVP sont dans [GUIDE.md](GUIDE.md).
-La matrice exigences → modules → tests est dans [MATRICE.md](MATRICE.md).
-Le compte rendu d'exécution est dans [RAPPORT-TESTS.md](RAPPORT-TESTS.md).
+Le guide d'usage, de sauvegarde et les limites sont dans [GUIDE.md](GUIDE.md).  
+La matrice exigences → modules → tests est dans [MATRICE.md](MATRICE.md).  
 Déploiement GitHub Actions → VPS + Cloudflare Tunnel : [DEPLOY.md](DEPLOY.md).
 
 ## Démarrage
@@ -31,3 +30,17 @@ L'application écoute sur `http://127.0.0.1:8765/`. Si le port est pris, le lanc
 `FOYER_NO_BROWSER=1` empêche l'ouverture automatique du navigateur.
 
 Sauvegarde et restauration : `python cli.py backup` et `python cli.py restore <archive> <dossier-neuf>`.
+
+## Tests
+
+```sh
+python -m pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest
+```
+
+## État V2 (socle B)
+
+Livré : foyer/personnes/permissions V1, liens typés, tâches, événements, recherche, accueil réel, navigation modulaire, migration `003`.  
+Backlog : finances, inventaire, médiathèque, light mode, chiffrement au repos (toujours **absent** — voir GUIDE).
+
+**ZIP spécification V1** (`Foyer_Local_V1_Complet`) : non présent dans ce dépôt au moment de l'audit ; l'audit s'appuie sur le code et la doc livrée.

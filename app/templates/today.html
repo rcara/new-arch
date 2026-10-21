@@ -1,24 +1,17 @@
 {% extends "base.html" %}
 {% from "_status.html" import status_chip, vault_mark with context %}
-{% block title %}Aujourd'hui{% endblock %}
+{% block title %}Accueil{% endblock %}
 {% block content %}
-<h1>Aujourd'hui</h1>
+<h1>Accueil</h1>
 <p class="muted">{{ summary.household_name }} · {{ summary.today|frdate }}</p>
 
-{% if summary.total == 0 %}
-<section class="today-panel today-panel--empty" aria-labelledby="today-empty">
-  <h2 id="today-empty">Rien à traiter</h2>
-  <p>Aucun repère pour le moment. Les échéances expirées ou sous 30 jours apparaîtront ici en premier.</p>
-  {% if person.is_principal %}
-  <p><a href="{{ url_for('pages.milestone_new') }}">Créer un repère</a></p>
-  {% endif %}
-</section>
-{% else %}
-<section class="today-panel" aria-labelledby="today-focus">
-  {% if summary.urgent_items %}
-  <h2 id="today-focus">À traiter</h2>
-  <p class="muted">Expiré ou sous 30 jours — le reste est sur Repères.</p>
-  {% for item in summary.urgent_items %}
+{% set ms = summary.milestones %}
+{% if ms and not ms.denied %}
+<section class="today-panel" aria-labelledby="home-milestones">
+  {% if ms.urgent_items %}
+  <h2 id="home-milestones">Échéances à traiter</h2>
+  <p class="muted">Repères expirés ou sous 30 jours.</p>
+  {% for item in ms.urgent_items %}
   <div class="row row--today">
     <b><a href="{{ url_for('pages.milestone_get', milestone_id=item.id) }}">{{ item.name }}</a></b>
     <span class="row-date">{{ item.due_date|frdate }}</span>
@@ -27,17 +20,50 @@
   </div>
   {% endfor %}
   {% else %}
-  <h2 id="today-focus">Rien d'urgent aujourd'hui</h2>
-  <p>Aucune échéance expirée ni sous 30 jours.</p>
+  <h2 id="home-milestones">Aucune échéance urgente</h2>
+  <p class="muted">Pas de repère expiré ni sous 30 jours.</p>
   {% endif %}
-  {% if summary.other_count %}
-  <p class="today-more">
-    <a href="{{ url_for('pages.milestones_get') }}">{{ summary.other_count }} autre{% if summary.other_count > 1 %}s{% endif %} sur Repères</a>
-  </p>
+  {% if ms.other_count %}
+  <p class="today-more"><a href="{{ url_for('pages.milestones_get') }}">{{ ms.other_count }} autre{% if ms.other_count > 1 %}s{% endif %} sur Repères</a></p>
+  {% elif ms.total == 0 %}
+  <p class="today-more">{% if person.is_principal %}<a href="{{ url_for('pages.milestone_new') }}">Créer un repère</a>{% else %}Aucun repère pour l’instant.{% endif %}</p>
   {% endif %}
 </section>
-{% if person.is_principal %}
-<p><a href="{{ url_for('pages.milestone_new') }}">Créer un repère</a></p>
+{% elif ms and ms.denied %}
+<section class="today-panel">
+  <h2>Repères</h2>
+  <p class="muted">Les repères ne vous sont pas accordés.</p>
+</section>
 {% endif %}
-{% endif %}
+
+<section class="today-panel" aria-labelledby="home-tasks">
+  <h2 id="home-tasks">Tâches ouvertes</h2>
+  {% if summary.tasks %}
+  {% for item in summary.tasks %}
+  <div class="row row--today">
+    <b><a href="{{ url_for('pages.task_get', task_id=item.id) }}">{{ item.title }}</a></b>
+    <span class="row-date">{% if item.due_date %}{{ item.due_date|frdate }}{% else %}Sans date{% endif %}</span>
+    <span class="badge">{{ item.priority_label }}</span>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Aucune tâche ouverte dans les 30 prochains jours.</p>
+  <p><a href="{{ url_for('pages.task_new') }}">Créer une tâche</a></p>
+  {% endif %}
+</section>
+
+<section class="today-panel" aria-labelledby="home-events">
+  <h2 id="home-events">Événements à venir</h2>
+  {% if summary.events %}
+  {% for item in summary.events %}
+  <div class="row row--today">
+    <b><a href="{{ url_for('pages.event_get', event_id=item.id) }}">{{ item.title }}</a></b>
+    <span class="row-date">{{ item.start_date|frdate }}</span>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Aucun événement sur les 30 prochains jours.</p>
+  <p><a href="{{ url_for('pages.event_new') }}">Créer un événement</a></p>
+  {% endif %}
+</section>
 {% endblock %}
