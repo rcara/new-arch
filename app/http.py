@@ -23,6 +23,9 @@ MESSAGES = {
     "restored": "Le repère est restauré.",
     "task_saved": "La tâche est enregistrée.",
     "task_done": "La tâche est marquée faite.",
+    "task_reopened": "La tâche est de nouveau à faire.",
+    "onboarding_hidden": "Guide de démarrage masqué. Vous pouvez le réafficher depuis Paramètres.",
+    "onboarding_shown": "Guide de démarrage réaffiché sur Aujourd'hui.",
     "event_saved": "L'événement est enregistré.",
     "link_saved": "Le lien est enregistré.",
     "finance_saved": "Enregistrement financier effectué.",
@@ -149,6 +152,17 @@ def cookie_setup(response, token):
     response.set_cookie(
         "foyer_setup", token, max_age=1800, httponly=True, samesite="Strict", path="/", secure=secure,
     )
+    return response
+
+
+def cookie_onboarding(response, hidden):
+    secure = _cookie_secure()
+    if hidden:
+        response.set_cookie(
+            "foyer_onboarding", "hidden", max_age=400 * 24 * 3600, httponly=True, samesite="Strict", path="/", secure=secure,
+        )
+    else:
+        response.delete_cookie("foyer_onboarding", path="/", secure=secure, samesite="Strict")
     return response
 
 

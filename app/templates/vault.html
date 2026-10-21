@@ -1,40 +1,108 @@
 {% extends "base.html" %}
+{% from "_ui.html" import page_header, empty_state %}
 {% block title %}Coffre{% endblock %}
 {% block content %}
-<h1>Coffre</h1>
-<p>Les fichiers s'ouvrent ici, selon les accès accordés.</p>
+{% set q = args.get('q', '') %}
+{% set kind = args.get('type', '') %}
+{% set repere = args.get('repere', '') %}
+{% call page_header("Bibliothèque", "Documents et coffre", "Pièces chiffrées du foyer. Chaque personne ne voit que les fichiers qui lui sont accordés.") %}
+{% if person.is_principal %}<a class="btn btn--primary" href="#depot">+ Déposer un document</a>{% endif %}
+{% endcall %}
+
 {% if errors.form %}<p class="error" role="alert">{{ errors.form }}</p>{% endif %}
-{% if errors.file %}<p class="error">{{ errors.file }}</p>{% endif %}
-{% if errors.milestone_id %}<p class="error">{{ errors.milestone_id }}</p>{% endif %}
-{% if person.is_principal %}
-<form class="upload" method="post" enctype="multipart/form-data">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <b>Déposer une pièce</b>
-  <p class="muted">PDF, JPEG ou PNG · 20 Mio maximum</p>
-  <label>Échéance
-    <select name="milestone_id" required>
-      <option value="">Choisir</option>
-      {% for choice in choices %}
-      <option value="{{ choice.id }}">{{ choice.name }} — {{ choice.holder_name }}</option>
+
+<div class="vault-layout">
+  <div class="vault-main">
+    {% if total %}
+    <form class="search-inline filter-bar" method="get" role="search">
+      <label><span class="sr-only">Rechercher un document</span><input type="search" name="q" value="{{ q }}" placeholder="Nom du fichier{% if reperes %} ou repère{% endif %}"></label>
+      <label><span class="sr-only">Type</span>
+        <select name="type" aria-label="Type de fichier">
+          <option value="">Tous les types</option>
+          <option value="PDF" {% if kind == 'PDF' %}selected{% endif %}>PDF</option>
+          <option value="Image" {% if kind == 'Image' %}selected{% endif %}>Images</option>
+        </select>
+      </label>
+      {% if reperes %}
+      <label><span class="sr-only">Repère</span>
+        <select name="repere" aria-label="Repère associé">
+          <option value="">Tous les repères</option>
+          {% for rid, rname in reperes %}<option value="{{ rid }}" {% if repere == rid|string %}selected{% endif %}>{{ rname }}</option>{% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <button type="submit" class="secondary">Filtrer</button>
+      {% if filtered %}<a class="btn btn--small" href="{{ url_for('pages.vault_get') }}">Effacer</a>{% endif %}
+    </form>
+    {% endif %}
+
+    {% if items %}
+    <p class="muted">{{ items|length }} document{% if items|length > 1 %}s{% endif %}{% if filtered %} sur {{ total }}{% endif %}.</p>
+    <ul class="file-list">
+      {% for item in items %}
+      <li class="file-row">
+        <span class="file-type file-type--{{ item.kind|lower }}" aria-hidden="true">{{ 'PDF' if item.kind == 'PDF' else ('IMG' if item.kind == 'Image' else 'DOC') }}</span>
+        <div class="file-main">
+          <a href="{{ url_for('pages.file_open', file_id=item.id) }}"><b>{{ item.original_name }}</b><span class="sr-only"> — ouvrir</span></a>
+          <span class="muted">
+            {{ item.kind }} · déposé le {{ item.created_at|frtime }}{% if item.version and item.version > 1 %} · version {{ item.version }}{% endif %}
+            {% if item.milestone_name is defined %} · <a href="{{ url_for('pages.milestone_get', milestone_id=item.milestone_id) }}">{{ item.milestone_name }}</a>{% endif %}
+          </span>
+        </div>
+        <div class="file-actions">
+          <a class="btn btn--small" href="{{ url_for('pages.file_open', file_id=item.id) }}">Ouvrir</a>
+          {% if person.is_principal %}
+          <details class="menu file-menu">
+            <summary class="btn btn--small" aria-label="Autres actions pour {{ item.original_name }}">…</summary>
+            <div class="menu-panel">
+              <ul>
+                <li><a href="{{ url_for('pages.file_replace_get', file_id=item.id) }}">Remplacer</a></li>
+                <li><a href="{{ url_for('pages.file_delete_get', file_id=item.id) }}">Retirer</a></li>
+              </ul>
+            </div>
+          </details>
+          {% endif %}
+        </div>
+      </li>
       {% endfor %}
-    </select>
-  </label>
-  <label>Fichier <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required></label>
-  <button type="submit" name="confirm" value="oui">Déposer</button>
-</form>
-{% endif %}
-<h2>Fichiers accessibles</h2>
-{% if not items %}<p>Aucun fichier accessible.</p>{% endif %}
-{% for item in items %}
-<div class="row">
-  <b>{{ item.original_name }}</b>
-  <span>Déposé le {{ item.created_at|frtime }}</span>
-  {% if item.milestone_name is defined %}<span>{{ item.milestone_name }}</span>{% endif %}
-  <a href="{{ url_for('pages.file_open', file_id=item.id) }}">Ouvrir</a>
+    </ul>
+    {% elif filtered %}
+    {{ empty_state("Aucun document trouvé", "Aucun document accessible ne correspond à ce filtre.", url_for('pages.vault_get'), "Voir tous les documents", kind="search") }}
+    {% elif person.is_principal %}
+    {{ empty_state("Le coffre est vide", "Déposez les pièces importantes (contrats, attestations, factures) : elles sont chiffrées et rattachées à un repère pour être retrouvées à l'échéance.", "#depot", "Déposer un premier document", example="« Attestation assurance ménage 2026.pdf », rattachée au repère Assurance ménage.") }}
+    {% else %}
+    {{ empty_state("Aucun document partagé avec vous", "Les documents du coffre apparaissent ici lorsque le compte principal vous y donne accès.", kind="denied") }}
+    {% endif %}
+  </div>
+
   {% if person.is_principal %}
-  <a href="{{ url_for('pages.file_replace_get', file_id=item.id) }}">Remplacer</a>
-  <a href="{{ url_for('pages.file_delete_get', file_id=item.id) }}">Retirer</a>
+  <aside class="vault-side">
+    <form class="upload-card" id="depot" method="post" enctype="multipart/form-data" action="{{ url_for('pages.vault_post') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <h2>Déposer un document</h2>
+      {% if choices %}
+      <label>Repère associé
+        <select name="milestone_id" required {% if errors.milestone_id %}aria-invalid="true"{% endif %}>
+          <option value="">Choisir un repère</option>
+          {% for choice in choices %}
+          <option value="{{ choice.id }}">{{ choice.name }} — {{ choice.holder_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% if errors.milestone_id %}<p class="error">{{ errors.milestone_id }}</p>{% endif %}
+      <label class="drop-zone">
+        <span class="drop-title">Choisir un fichier</span>
+        <span class="muted">ou le glisser sur ce champ · PDF, JPEG ou PNG · 20 Mio maximum</span>
+        <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required {% if errors.file %}aria-invalid="true"{% endif %}>
+      </label>
+      {% if errors.file %}<p class="error">{{ errors.file }}</p>{% endif %}
+      <button type="submit" name="confirm" value="oui">Déposer dans le coffre</button>
+      {% else %}
+      <p class="muted">Un document se rattache à un repère (contrat, pièce d'identité, assurance…).</p>
+      <p><a class="btn" href="{{ url_for('pages.milestone_new', next=request.path) }}">Créer d'abord un repère</a></p>
+      {% endif %}
+    </form>
+  </aside>
   {% endif %}
 </div>
-{% endfor %}
 {% endblock %}

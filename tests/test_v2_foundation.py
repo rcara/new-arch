@@ -116,7 +116,7 @@ def test_task_recurrence_and_home(world):
     assert "events" in home_payload
     page = web.get("/")
     assert page.status_code == 200
-    assert b"Accueil" in page.data
+    assert b"Aujourd" in page.data
     assert b"passeport.pdf" not in page.data
 
 

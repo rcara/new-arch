@@ -11,4 +11,7 @@
   <dt>Notes</dt><dd>{{ item.notes or '—' }}</dd>
 </dl>
 <p><a href="{{ url_for('pages.event_edit', event_id=item.id) }}">Modifier</a> · <a href="{{ url_for('pages.events_get') }}">Calendrier</a></p>
+{% with task_title="Préparer : " ~ item.title, task_due=item.start_date, link_type="calendar_event", link_id=item.id %}
+{% include "_linked_tasks.html" %}
+{% endwith %}
 {% endblock %}

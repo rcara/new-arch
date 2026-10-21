@@ -64,11 +64,16 @@ def _public(row):
     }
 
 
-def list_tasks(ctx, person, *, status="open", q="", page=1):
+def list_tasks(ctx, person, *, status="open", q="", page=1, assignee=""):
     require_module(ctx, "organisation")
     require_household(ctx.conn, hh(ctx))
     where = [f't.household_id={hh(ctx)}', "t.archived=0"]
     params = {}
+    if assignee == "moi":
+        where.append("t.assignee_id=:me")
+        params["me"] = person["id"]
+    elif assignee == "partage":
+        where.append("t.assignee_id IS NULL")
     if status:
         if status not in STATUSES:
             raise AppError(400, "validation", "Statut inconnu.", {"status": "Statut inconnu."})

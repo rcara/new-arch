@@ -1,13 +1,59 @@
 {% extends "base.html" %}
-{% block title %}Décision{% endblock %}
+{% from "_ui.html" import page_header, empty_state %}
+{% block title %}Décisions{% endblock %}
+{% macro decision_row(item) %}
+<li class="file-row">
+  <span class="file-type {% if item.sealed_at %}file-type--sealed{% endif %}" aria-hidden="true">{% if item.sealed_at %}✓{% else %}…{% endif %}</span>
+  <div class="file-main">
+    <a href="{{ url_for('pages.decision_get', decision_id=item.id) }}"><b>{% if item.milestone_name is defined %}{{ item.milestone_name }}{% else %}Décision{% endif %}</b><span class="sr-only"> — ouvrir</span></a>
+    <span class="muted">Rédigée le {{ item.created_at|frtime }}{% if item.sealed_at %} · scellée le {{ item.sealed_at|frtime }}{% endif %}</span>
+  </div>
+  {% if item.sealed_at %}<span class="chip chip--a_jour">Scellée</span>{% else %}<span class="chip chip--sous_30">Brouillon</span>{% endif %}
+</li>
+{% endmacro %}
+
 {% block content %}
-<h1>Décision</h1>
-{% if not items %}<p>Aucune décision accessible.</p>{% endif %}
-{% for item in items %}
-<div class="row">
-  <a href="{{ url_for('pages.decision_get', decision_id=item.id) }}">Page du {{ item.created_at|frtime }}</a>
-  {% if item.sealed_at %}<span>Scellée</span>{% else %}<span>Brouillon</span>{% endif %}
-  {% if item.milestone_name is defined %}<span>{{ item.milestone_name }}</span>{% endif %}
-</div>
-{% endfor %}
+{% call page_header("Bibliothèque", "Décisions", "Consigner une décision, la sceller pour qu'elle ne change plus, puis y ajouter le résultat le moment venu.") %}
+{% if can_create and choices %}<a class="btn btn--primary" href="#nouvelle-decision">+ Décision</a>{% endif %}
+{% endcall %}
+
+<ol class="steps steps--inline" aria-label="Cycle d'une décision">
+  <li><b>Rédiger</b><span class="muted">un brouillon rattaché à un repère, modifiable</span></li>
+  <li><b>Sceller</b><span class="muted">le contenu initial devient immuable</span></li>
+  <li><b>Compléter</b><span class="muted">ajouter le résultat, sans toucher à l'original</span></li>
+</ol>
+
+{% set drafts = items|rejectattr('sealed_at')|list %}
+{% set sealed = items|selectattr('sealed_at')|list %}
+{% if items %}
+{% if drafts %}
+<section class="task-group" aria-labelledby="dec-brouillons">
+  <h2 id="dec-brouillons">Brouillons <span class="muted">{{ drafts|length }}</span></h2>
+  <ul class="file-list file-list--flat">{% for item in drafts %}{{ decision_row(item) }}{% endfor %}</ul>
+</section>
+{% endif %}
+{% if sealed %}
+<section class="task-group" aria-labelledby="dec-scellees">
+  <h2 id="dec-scellees">Scellées <span class="muted">{{ sealed|length }}</span></h2>
+  <ul class="file-list file-list--flat">{% for item in sealed %}{{ decision_row(item) }}{% endfor %}</ul>
+</section>
+{% endif %}
+{% elif can_create %}
+{{ empty_state("Aucune décision pour l'instant", "Une décision consigne un choix important du foyer (contrat, école, travaux) et le fige une fois scellée. Les accès se donnent personne par personne.", "#nouvelle-decision" if choices else url_for('pages.milestone_new', next=request.path), "Rédiger une première décision" if choices else "Créer d'abord un repère", example="« Changer de caisse maladie au 1er janvier », rattachée au repère Assurance maladie.") }}
+{% else %}
+{{ empty_state("Aucune décision partagée avec vous", "Les décisions apparaissent ici lorsque le compte principal vous y donne accès.", kind="denied") }}
+{% endif %}
+
+{% if can_create and choices %}
+<form class="form-card" id="nouvelle-decision" method="get" action="{{ url_for('pages.decision_new') }}">
+  <h2>Nouvelle décision</h2>
+  <label>Repère concerné
+    <select name="repere" required>
+      <option value="">Choisir un repère</option>
+      {% for m in choices %}<option value="{{ m.id }}">{{ m.name }} — {{ m.holder_name }}</option>{% endfor %}
+    </select>
+  </label>
+  <div class="form-actions"><button type="submit">Continuer</button></div>
+</form>
+{% endif %}
 {% endblock %}

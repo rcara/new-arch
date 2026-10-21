@@ -11,109 +11,211 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='brand/apple-touch-icon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
-<body class="{% if person %}app-shell{% else %}guest-shell{% endif %}">
+{% if person %}
+{% set active_group, active_child = shell.active %}
+<body class="app">
   <a class="skip" href="#contenu">Aller au contenu</a>
-  {% if person %}
-  <input type="checkbox" id="nav-toggle" class="nav-toggle" autocomplete="off">
-  <label for="nav-toggle" class="nav-backdrop" aria-hidden="true"></label>
-  <aside class="sidebar" id="navigation">
-    <div class="sidebar-brand">
-      <a class="brand-link" href="{{ url_for('pages.today') }}">
+  <div class="shell">
+    <aside class="sidebar" id="navigation" aria-label="Menu New Arch">
+      <div class="sidebar-top">
+        <a class="brand-link" href="{{ url_for('pages.today') }}">
+          <img class="brand-mark" src="{{ url_for('static', filename='brand/logo-mark.png') }}" width="36" height="36" alt="">
+          <span class="brand-wordmark">New Arch</span>
+        </a>
+        <a class="sidebar-close" href="#contenu">Fermer<span class="sr-only"> le menu</span></a>
+      </div>
+      <nav class="sidebar-nav" aria-label="Navigation principale">
+        {% for section, section_label in [('principal', 'Principal'), ('administration', 'Administration')] %}
+        {% set groups = shell.groups|selectattr('section', 'equalto', section)|list %}
+        {% if groups %}
+        <p class="nav-section" id="nav-{{ section }}">{{ section_label }}</p>
+        <ul aria-labelledby="nav-{{ section }}">
+          {% for group in groups %}
+          {% set is_active = group.key == active_group %}
+          <li class="nav-group{% if is_active %} is-active{% endif %}">
+            <a class="nav-link" href="{{ group.href }}" {% if is_active and not group.children %}aria-current="page"{% endif %}>{{ group.label }}</a>
+            {% if group.children and is_active %}
+            <ul class="nav-sub">
+              {% for child in group.children %}
+              <li><a href="{{ child.href }}" {% if child.key == active_child %}aria-current="page"{% endif %}>{{ child.label }}</a></li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% endfor %}
+      </nav>
+      <details class="foyer-switcher">
+        <summary><span class="sr-only">Foyer actif : </span>{{ household.name }}</summary>
+        <div class="foyer-panel">
+          {% if memberships|length > 1 %}
+          <ul class="foyer-list" aria-label="Changer de foyer">
+            {% for item in memberships %}
+            <li>
+              {% if item.active %}
+              <span class="foyer-item foyer-item--active" aria-current="true">{{ item.household_name }}</span>
+              {% else %}
+              <form method="post" action="{{ url_for('pages.household_switch_post') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="household_id" value="{{ item.household_id }}">
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit" class="foyer-item">{{ item.household_name }}</button>
+              </form>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          <details class="foyer-create">
+            <summary>Nouveau foyer</summary>
+            <form method="post" action="{{ url_for('pages.household_create_post') }}" class="foyer-create-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <label>Nom du foyer
+                <input name="household_name" maxlength="120" required autocomplete="organization">
+              </label>
+              <label>Votre nom dans ce foyer
+                <input name="display_name" maxlength="120" required value="{{ person.display_name }}" autocomplete="name">
+              </label>
+              <label>Fuseau
+                <input name="timezone" maxlength="64" value="{{ household.timezone or 'Europe/Zurich' }}" autocomplete="off">
+              </label>
+              <button type="submit">Créer et ouvrir</button>
+            </form>
+          </details>
+        </div>
+      </details>
+    </aside>
+    <a class="drawer-backdrop" href="#contenu" tabindex="-1" aria-hidden="true"></a>
+
+    <div class="shell-main">
+      <header class="topbar">
+        <a class="menu-toggle" href="#navigation" aria-controls="navigation">Menu</a>
+        <a class="brand-link topbar-brand" href="{{ url_for('pages.today') }}">
+          <img class="brand-mark" src="{{ url_for('static', filename='brand/logo-mark.png') }}" width="32" height="32" alt="New Arch">
+        </a>
+        {% if shell.search %}
+        <form class="global-search" role="search" method="get" action="{{ url_for('pages.search_get') }}">
+          <label class="sr-only" for="recherche-globale">Rechercher dans le foyer</label>
+          <input id="recherche-globale" type="search" name="q" minlength="2" placeholder="Rechercher dans le foyer…" value="{{ request.args.get('q', '') if nav == 'recherche' else '' }}">
+          <button type="submit" class="secondary">Rechercher</button>
+        </form>
+        {% endif %}
+        <div class="topbar-actions">
+          {% if shell.create %}
+          <details class="menu create-menu">
+            <summary class="btn btn--primary"><span aria-hidden="true">+</span> Ajouter</summary>
+            <div class="menu-panel" role="group" aria-label="Ajouter">
+              <ul>
+                {% for item in shell.create %}
+                <li><a href="{% if item.panel %}#{{ item.panel }}{% else %}{{ item.href }}{% endif %}">{{ item.label }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+          </details>
+          {% endif %}
+          <details class="menu user-menu">
+            <summary aria-label="Menu de {{ person.display_name }}">
+              <span class="avatar" aria-hidden="true">{{ person.display_name[:1]|upper }}</span>
+              <span class="user-name">{{ person.display_name }}</span>
+            </summary>
+            <div class="menu-panel">
+              <p class="menu-head"><b>{{ person.display_name }}</b><br><span class="muted">{{ household.name }} · {% if person.is_principal %}compte principal{% else %}compte secondaire{% endif %}</span></p>
+              <ul>
+                <li><a href="{{ url_for('pages.profile_get') }}">Profil</a></li>
+                {% if 'parametres' in nav_modules %}<li><a href="{{ url_for('pages.settings_get') }}">Paramètres</a></li>{% endif %}
+              </ul>
+              <form method="post" action="{{ url_for('pages.logout') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="secondary">Se déconnecter</button>
+              </form>
+            </div>
+          </details>
+        </div>
+      </header>
+      <main id="contenu" tabindex="-1">
+        {% if message %}<p class="status" role="status">{{ message }}</p>{% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  {% set create_keys = shell.create|map(attribute='key')|list %}
+  {% if 'tache' in create_keys %}
+  <aside class="quick-panel" id="ajout-tache" aria-labelledby="ajout-tache-titre">
+    <div class="quick-head">
+      <h2 id="ajout-tache-titre">Nouvelle tâche</h2>
+      <a class="quick-close" href="#contenu">Fermer<span class="sr-only"> le panneau</span></a>
+    </div>
+    <form method="post" action="{{ url_for('pages.task_create') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <input type="hidden" name="priority" value="normal">
+      <input type="hidden" name="recurrence" value="none">
+      <label>Titre <input name="title" required maxlength="200" placeholder="Appeler la régie"></label>
+      <label>Échéance <input type="date" name="due_date"></label>
+      <label class="check-label"><input type="checkbox" name="for_me" value="1" checked> M'assigner la tâche</label>
+      <div class="form-actions">
+        <button type="submit">Ajouter</button>
+        <a class="btn" href="{{ url_for('pages.task_new', next=request.path) }}">Formulaire complet</a>
+      </div>
+    </form>
+  </aside>
+  {% endif %}
+  {% if 'evenement' in create_keys %}
+  <aside class="quick-panel" id="ajout-evenement" aria-labelledby="ajout-evenement-titre">
+    <div class="quick-head">
+      <h2 id="ajout-evenement-titre">Nouvel événement</h2>
+      <a class="quick-close" href="#contenu">Fermer<span class="sr-only"> le panneau</span></a>
+    </div>
+    <form method="post" action="{{ url_for('pages.event_create') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <input type="hidden" name="recurrence" value="none">
+      <label>Titre <input name="title" required maxlength="200" placeholder="Anniversaire de Lou"></label>
+      <label>Date <input type="date" name="start_date" required value="{{ today_iso }}"></label>
+      <p class="muted">Ajouté pour la journée entière. Horaires, récurrence et notes dans le formulaire complet.</p>
+      <div class="form-actions">
+        <button type="submit">Ajouter</button>
+        <a class="btn" href="{{ url_for('pages.event_new', next=request.path) }}">Formulaire complet</a>
+      </div>
+    </form>
+  </aside>
+  {% endif %}
+  <a class="quick-backdrop" href="#contenu" tabindex="-1" aria-hidden="true"></a>
+
+  <nav class="tabbar" aria-label="Accès rapide">
+    <ul>
+      {% for group in (shell.groups|selectattr('section', 'equalto', 'principal')|list)[:4] %}
+      <li><a href="{{ group.href }}" {% if group.key == active_group %}aria-current="page"{% endif %}>{{ group.short }}</a></li>
+      {% endfor %}
+      <li><a href="#navigation">Menu</a></li>
+    </ul>
+  </nav>
+</body>
+{% else %}
+<body class="guest-body">
+  <a class="skip" href="#contenu">Aller au contenu</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand-link" href="{{ url_for('pages.login_get') }}">
         <img class="brand-mark" src="{{ url_for('static', filename='brand/logo-mark.png') }}" width="40" height="40" alt="">
         <span class="brand-wordmark">New Arch</span>
       </a>
-      <p class="brand-tagline">Organiser le foyer, simplement.</p>
-      <label for="nav-toggle" class="nav-close">Fermer</label>
     </div>
-
-    <section class="foyer-switcher" aria-labelledby="foyer-switcher-title">
-      <h2 id="foyer-switcher-title" class="sidebar-section-title">Foyer</h2>
-      <p class="sidebar-context">{{ household.name }} · {{ person.display_name }}</p>
-      <ul class="foyer-list">
-        {% for item in memberships %}
-        <li>
-          {% if item.active %}
-          <span class="foyer-item foyer-item--active" aria-current="true">{{ item.household_name }}</span>
-          {% else %}
-          <form method="post" action="{{ url_for('pages.household_switch_post') }}" class="foyer-switch-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="household_id" value="{{ item.household_id }}">
-            <input type="hidden" name="next" value="{{ request.path }}">
-            <button type="submit" class="foyer-item">{{ item.household_name }}</button>
-          </form>
-          {% endif %}
-        </li>
-        {% endfor %}
-      </ul>
-      <details class="foyer-create">
-        <summary>Nouveau foyer</summary>
-        <form method="post" action="{{ url_for('pages.household_create_post') }}" class="foyer-create-form">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <label>Nom du foyer
-            <input name="household_name" maxlength="120" required autocomplete="organization">
-          </label>
-          <label>Votre nom dans ce foyer
-            <input name="display_name" maxlength="120" required value="{{ person.display_name }}" autocomplete="name">
-          </label>
-          <label>Fuseau
-            <input name="timezone" maxlength="64" value="{{ household.timezone or 'Europe/Zurich' }}" autocomplete="off">
-          </label>
-          <button type="submit">Créer et ouvrir</button>
-        </form>
-      </details>
-    </section>
-
-    <nav class="sidebar-nav" aria-label="Écrans">
-      <ul>
-        {% if 'accueil' in nav_modules %}<li><a href="{{ url_for('pages.today') }}" {% if nav == 'today' %}aria-current="page"{% endif %}>Accueil</a></li>{% endif %}
-        {% if 'finances' in nav_modules %}<li><a href="{{ url_for('pages.finance_get') }}" {% if nav == 'finances' %}aria-current="page"{% endif %}>Finances</a></li>{% endif %}
-        {% if 'inventaire' in nav_modules %}<li><a href="{{ url_for('pages.inventory_get') }}" {% if nav == 'inventaire' %}aria-current="page"{% endif %}>Inventaire</a></li>{% endif %}
-        {% if 'calendrier' in nav_modules %}<li><a href="{{ url_for('pages.events_get') }}" {% if nav == 'calendrier' %}aria-current="page"{% endif %}>Calendrier</a></li>{% endif %}
-        {% if 'organisation' in nav_modules %}<li><a href="{{ url_for('pages.tasks_get') }}" {% if nav == 'organisation' %}aria-current="page"{% endif %}>Organisation</a></li>{% endif %}
-        {% if 'reperes' in nav_modules %}<li><a href="{{ url_for('pages.milestones_get') }}" {% if nav == 'reperes' %}aria-current="page"{% endif %}>Repères</a></li>{% endif %}
-        {% if 'decisions' in nav_modules %}<li><a href="{{ url_for('pages.decisions_get') }}" {% if nav == 'decisions' %}aria-current="page"{% endif %}>Décisions</a></li>{% endif %}
-        {% if 'mediatheque' in nav_modules %}<li><a href="{{ url_for('pages.media_get') }}" {% if nav == 'mediatheque' %}aria-current="page"{% endif %}>Médiathèque</a></li>{% endif %}
-        {% if 'coffre' in nav_modules %}<li><a href="{{ url_for('pages.vault_get') }}" {% if nav == 'coffre' %}aria-current="page"{% endif %}>Coffre</a></li>{% endif %}
-        {% if person.is_principal and 'foyer' in nav_modules %}
-        <li><a href="{{ url_for('pages.foyer_get') }}" {% if nav == 'foyer' or nav == 'personnes' or nav == 'acces' %}aria-current="page"{% endif %}>Foyer</a></li>
-        {% endif %}
-        {% if 'recherche' in nav_modules %}<li><a href="{{ url_for('pages.search_get') }}" {% if nav == 'recherche' %}aria-current="page"{% endif %}>Recherche</a></li>{% endif %}
-        {% if 'parametres' in nav_modules %}<li><a href="{{ url_for('pages.settings_get') }}" {% if nav == 'parametres' %}aria-current="page"{% endif %}>Paramètres</a></li>{% endif %}
-        <li><a href="{{ url_for('pages.profile_get') }}" {% if nav == 'profil' %}aria-current="page"{% endif %}>Profil</a></li>
-      </ul>
-    </nav>
-
-    <div class="sidebar-footer">
-      <form method="post" action="{{ url_for('pages.logout') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button type="submit" class="secondary">Se déconnecter</button>
-      </form>
-    </div>
-  </aside>
-  {% endif %}
-
-  <div class="layout {% if not person %}guest{% endif %}">
-    {% if person %}
-    <header class="mobile-bar">
-      <label for="nav-toggle" class="nav-toggle-btn">Menu</label>
-      <a class="mobile-brand" href="{{ url_for('pages.today') }}">
-        <img class="brand-mark" src="{{ url_for('static', filename='brand/logo-mark.png') }}" width="28" height="28" alt="">
-        <span class="brand-wordmark">New Arch</span>
-      </a>
-      <span class="mobile-foyer">{{ household.name }}</span>
-    </header>
-    {% endif %}
+  </header>
+  <div class="layout guest">
     <main id="contenu">
-      {% if not person %}
       <div class="guest-brand">
         <img src="{{ url_for('static', filename='brand/logo-mark.png') }}" width="88" height="88" alt="New Arch">
         <p class="brand-wordmark">New Arch</p>
         <p class="brand-tagline">Organiser le foyer, simplement.</p>
       </div>
-      {% endif %}
       {% if message %}<p class="status" role="status">{{ message }}</p>{% endif %}
-      {% block content %}{% endblock %}
+      {{ self.content() }}
     </main>
   </div>
 </body>
+{% endif %}
 </html>

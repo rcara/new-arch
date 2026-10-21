@@ -1,12 +1,15 @@
 """Six écrans et les états d'entrée."""
 
-from flask import Blueprint, g, redirect, render_template, request, url_for
+from datetime import date
+
+from flask import Blueprint, current_app, g, redirect, render_template, request, url_for
 
 from .. import current_ctx
 from ..errors import AppError
-from ..http import THEMES, cookie_message, cookie_session, cookie_setup, cookie_theme, safe_next
+from ..money import format_minor
+from ..http import THEMES, cookie_message, cookie_onboarding, cookie_session, cookie_setup, cookie_theme, safe_next
 from ..security import new_token
-from ..services import auth, decisions, events, finance, home, households, inventory, links, media, milestones, modules, people, search, tasks, vault
+from ..services import agenda, auth, decisions, events, finance, home, households, inventory, links, media, milestones, modules, people, search, tasks, vault
 from ..validate import text_value
 
 pages = Blueprint("pages", __name__)
@@ -20,6 +23,60 @@ def _limiter():
 def _go(code, endpoint, **kwargs):
     response = redirect(url_for(endpoint, **kwargs))
     return cookie_message(response, code)
+
+
+def _next_target():
+    raw = request.values.get("next") or ""
+    return safe_next(raw) if raw else ""
+
+
+def _done(code, endpoint, **kwargs):
+    """Retour à la page d'origine (`next`, même site) sinon vers `endpoint`."""
+    response = redirect(_next_target() or url_for(endpoint, **kwargs))
+    return cookie_message(response, code)
+
+
+def _today_iso():
+    from ..clock import civil_today
+    return civil_today(current_app.config["CLOCK"], (g.household or {}).get("timezone", "Europe/Zurich")).isoformat()
+
+
+def _account_for_currency(person, form):
+    """Compte choisi, sinon le premier compte actif de la devise saisie."""
+    if form.get("ledger_account_id"):
+        return form["ledger_account_id"]
+    for account in finance.list_ledger_accounts(current_ctx(), person)["items"]:
+        if account["currency"] == form.get("currency") and not account.get("archived"):
+            return str(account["id"])
+    return ""
+
+
+CONTEXT_TYPES = {"calendar_event": "pages.event_get", "inventory_item": "pages.inventory_item_get"}
+
+
+def _context(person, values):
+    """Objet d'origine d'une création contextuelle, après contrôle de visibilité."""
+    kind = values.get("link_type") or ""
+    raw_id = str(values.get("link_id") or "")
+    if kind not in CONTEXT_TYPES or not raw_id.isdigit():
+        return None
+    links.require_object(current_ctx(), person, kind, int(raw_id))
+    if kind == "calendar_event":
+        title = events.get_event(current_ctx(), person, int(raw_id))["title"]
+    else:
+        title = inventory.get_item(current_ctx(), person, int(raw_id))["name"]
+    return {"type": kind, "id": int(raw_id), "title": title, "href": url_for(CONTEXT_TYPES[kind], **{
+        "event_id" if kind == "calendar_event" else "item_id": int(raw_id)})}
+
+
+def _linked_tasks(person, target_type, target_id):
+    found = []
+    for link in links.list_links(current_ctx(), person, source_type="task", target_type=target_type, target_id=target_id)["items"]:
+        try:
+            found.append(tasks.get_task(current_ctx(), person, link["source_id"]))
+        except AppError:
+            continue
+    return found
 
 
 def _need():
@@ -152,7 +209,18 @@ def household_create_post():
 def today():
     person = _need()
     summary = home.dashboard(current_ctx(), person)
-    return render_template("today.html", summary=summary)
+    hidden = request.cookies.get("foyer_onboarding") == "hidden"
+    return render_template("today.html", summary=summary, onboarding_hidden=hidden)
+
+
+@pages.post("/accueil/demarrage")
+def onboarding_post():
+    _need()
+    hidden = request.form.get("action") == "masquer"
+    target = "pages.settings_get" if request.form.get("from") == "parametres" else "pages.today"
+    response = redirect(url_for(target))
+    cookie_onboarding(response, hidden)
+    return cookie_message(response, "onboarding_hidden" if hidden else "onboarding_shown")
 
 
 @pages.get("/profil")
@@ -232,16 +300,26 @@ def tasks_get():
     person = _need()
     modules.require_module(current_ctx(), "organisation")
     status = request.args.get("status", "open")
-    listed = tasks.list_tasks(current_ctx(), person, status=status, q=request.args.get("q", ""))
-    return render_template("tasks.html", listed=listed, args=request.args)
+    assignee = request.args.get("pour", "")
+    listed = tasks.list_tasks(
+        current_ctx(), person, status=status, q=request.args.get("q", ""),
+        assignee=assignee if assignee in ("moi", "partage") else "",
+        page=int(request.args["page"]) if request.args.get("page", "").isdigit() else 1,
+    )
+    return render_template("tasks.html", listed=listed, args=request.args, status=status)
 
 
 @pages.get("/organisation/nouvelle")
 def task_new():
-    _need()
+    person = _need()
     modules.require_module(current_ctx(), "organisation")
+    form = {"priority": "normal", "recurrence": "none"}
+    for key in ("title", "due_date", "link_type", "link_id"):
+        if request.args.get(key):
+            form[key] = request.args[key]
     return render_template(
-        "task_form.html", form={"priority": "normal", "recurrence": "none"}, errors={}, people=_members(), editing=False,
+        "task_form.html", form=form, errors={}, people=_members(), editing=False,
+        context=_context(person, form),
     )
 
 
@@ -249,15 +327,24 @@ def task_new():
 def task_create():
     person = _need()
     form = request.form.to_dict()
+    if form.get("for_me") == "1" and not form.get("assignee_id"):
+        form["assignee_id"] = str(person["id"])
+    context = _context(person, form)
     try:
-        tasks.create_task(current_ctx(), person, form)
+        task_id = tasks.create_task(current_ctx(), person, form)
     except AppError as exc:
         if exc.status == 400:
             return render_template(
                 "task_form.html", form=form, errors=exc.fields, people=_members(), editing=False,
+                context=context,
             ), 400
         raise
-    return _go("task_saved", "pages.tasks_get")
+    if context:
+        links.create_link(current_ctx(), person, {
+            "source_type": "task", "source_id": task_id,
+            "target_type": context["type"], "target_id": context["id"], "relation_type": "concerns",
+        })
+    return _done("task_saved", "pages.tasks_get")
 
 
 @pages.get("/organisation/<int:task_id>")
@@ -300,6 +387,22 @@ def task_update(task_id):
     return _go(code, "pages.task_get", task_id=task_id)
 
 
+@pages.post("/organisation/<int:task_id>/terminer")
+def task_complete(task_id):
+    person = _need()
+    tasks.update_task(current_ctx(), person, task_id, {"status": "done"})
+    response = redirect(safe_next(request.form.get("next") or url_for("pages.tasks_get")))
+    return cookie_message(response, "task_done")
+
+
+@pages.post("/organisation/<int:task_id>/rouvrir")
+def task_reopen(task_id):
+    person = _need()
+    tasks.update_task(current_ctx(), person, task_id, {"status": "open"})
+    response = redirect(safe_next(request.form.get("next") or url_for("pages.tasks_get")))
+    return cookie_message(response, "task_reopened")
+
+
 @pages.post("/organisation/<int:task_id>/lien")
 def task_link(task_id):
     person = _need()
@@ -318,13 +421,17 @@ def task_link(task_id):
 def events_get():
     person = _need()
     modules.require_module(current_ctx(), "calendrier")
-    listed = events.list_events(
+    legacy_from = request.args.get("from")
+    view = request.args.get("vue") or ("liste" if legacy_from or request.args.get("q") else "mois")
+    member = request.args.get("membre", "")
+    cal = agenda.build(
         current_ctx(), person,
-        from_date=request.args.get("from") or None,
-        to_date=request.args.get("to") or None,
+        view=view,
+        anchor=request.args.get("date") or legacy_from or "",
+        member_id=int(member) if member.isdigit() else None,
         q=request.args.get("q", ""),
     )
-    return render_template("events.html", listed=listed, args=request.args)
+    return render_template("events.html", cal=cal, people=_members(), args=request.args)
 
 
 @pages.get("/calendrier/nouveau")
@@ -333,7 +440,10 @@ def event_new():
     modules.require_module(current_ctx(), "calendrier")
     return render_template(
         "event_form.html",
-        form={"all_day": "1", "recurrence": "none", "timezone": (g.household or {}).get("timezone", "Europe/Zurich")},
+        form={
+            "all_day": "1", "recurrence": "none", "timezone": (g.household or {}).get("timezone", "Europe/Zurich"),
+            "title": request.args.get("title", ""), "start_date": request.args.get("start_date", ""),
+        },
         errors={}, people=_members(), editing=False,
     )
 
@@ -342,7 +452,11 @@ def event_new():
 def event_create():
     person = _need()
     form = request.form.to_dict()
-    form["all_day"] = "1" if request.form.get("all_day") == "1" else "0"
+    if "all_day_present" in request.form:
+        form["all_day"] = "1" if request.form.get("all_day") == "1" else "0"
+    else:
+        form["all_day"] = "1"
+    form.setdefault("timezone", (g.household or {}).get("timezone", "Europe/Zurich"))
     try:
         events.create_event(current_ctx(), person, form)
     except AppError as exc:
@@ -351,14 +465,14 @@ def event_create():
                 "event_form.html", form=form, errors=exc.fields, people=_members(), editing=False,
             ), 400
         raise
-    return _go("event_saved", "pages.events_get")
+    return _done("event_saved", "pages.events_get")
 
 
 @pages.get("/calendrier/<int:event_id>")
 def event_get(event_id):
     person = _need()
     item = events.get_event(current_ctx(), person, event_id)
-    return render_template("event.html", item=item)
+    return render_template("event.html", item=item, linked_tasks=_linked_tasks(person, "calendar_event", event_id))
 
 
 @pages.get("/calendrier/<int:event_id>/modifier")
@@ -405,7 +519,7 @@ def search_get():
             results = search.search(current_ctx(), person, q)
         except AppError as exc:
             if exc.status == 400:
-                return render_template("search.html", results=results, errors=exc.fields), 400
+                return render_template("search.html", results=results, errors={"q": exc.message}), 400
             raise
     return render_template("search.html", results=results, errors={})
 
@@ -427,7 +541,38 @@ def settings_get():
         modules=modules.list_modules(current_ctx()),
         household=g.household,
         theme=resolve_theme(request.cookies.get("foyer_theme")),
+        onboarding_hidden=request.cookies.get("foyer_onboarding") == "hidden",
     )
+
+
+@pages.get("/parametres/avance")
+def settings_advanced_get():
+    person = _need()
+    modules.require_module(current_ctx(), "parametres")
+    if not person["is_principal"]:
+        raise AppError(403, "forbidden", "Réservé au compte principal.")
+    from ..crypto import status as crypto_status
+    return render_template("settings_advanced.html", crypto=crypto_status(current_app.config["HOME"]))
+
+
+@pages.get("/agenda")
+def alias_agenda():
+    return redirect(url_for("pages.events_get"))
+
+
+@pages.get("/a-faire")
+def alias_afaire():
+    return redirect(url_for("pages.tasks_get"))
+
+
+@pages.get("/maison")
+def alias_maison():
+    return redirect(url_for("pages.inventory_get"))
+
+
+@pages.get("/bibliotheque")
+def alias_bibliotheque():
+    return redirect(url_for("pages.vault_get"))
 
 
 @pages.post("/parametres/theme")
@@ -442,20 +587,50 @@ def settings_theme_post():
     return cookie_message(response, "theme_saved")
 
 
+FINANCE_VIEWS = ("apercu", "transactions", "budgets", "comptes", "repartition")
+
+
 @pages.get("/finances")
 def finance_get():
     person = _need()
+    ctx = current_ctx()
     currency = request.args.get("currency", "CHF")
-    finance.seed_defaults(current_ctx(), person)
-    return render_template(
-        "finance.html",
-        accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
-        transactions=finance.list_transactions(current_ctx(), person, currency=currency)["items"],
-        balances=finance.person_balances(current_ctx(), person, currency=currency),
-        budgets=finance.list_budgets(current_ctx(), person, currency=currency)["items"],
-        currency=currency,
-        currencies=("CHF", "EUR"),
-    )
+    view = request.args.get("vue", "apercu")
+    view = view if view in FINANCE_VIEWS else "apercu"
+    finance.seed_defaults(ctx, person)
+    today = date.fromisoformat(_today_iso())
+    data = {"view": view, "currency": currency, "currencies": ("CHF", "EUR"), "today": today}
+    if view == "apercu":
+        months = []
+        for back in range(5, -1, -1):
+            index = today.year * 12 + today.month - 1 - back
+            year, month = divmod(index, 12)
+            spent = next((s for s in finance.month_spending(ctx, person, year=year, month=month + 1)
+                          if s["currency"] == currency), None)
+            months.append({"year": year, "month": month + 1, "minor": spent["spent_minor"] if spent else 0,
+                           "label": spent["spent_label"] if spent else format_minor(0, currency)})
+        peak = max([m["minor"] for m in months] + [1])
+        for m in months:
+            m["percent"] = round(100 * m["minor"] / peak)
+        data.update(
+            months=months,
+            current=months[-1],
+            budgets=finance.list_budgets(ctx, person, currency=currency, year=today.year, month=today.month)["items"],
+            balances=finance.person_balances(ctx, person, currency=currency),
+            transactions=finance.list_transactions(ctx, person, currency=currency)["items"][:8],
+        )
+    elif view == "transactions":
+        kind = request.args.get("type", "")
+        page = int(request.args["page"]) if request.args.get("page", "").isdigit() else 1
+        listed = finance.list_transactions(ctx, person, currency=currency, kind=kind if kind in finance.TXN_KINDS else "", page=page)
+        data.update(listed=listed, kind=kind)
+    elif view == "budgets":
+        data.update(budgets=finance.list_budgets(ctx, person, currency=currency)["items"])
+    elif view == "comptes":
+        data.update(accounts=finance.list_ledger_accounts(ctx, person)["items"])
+    else:
+        data.update(balances=finance.person_balances(ctx, person, currency=currency))
+    return render_template("finance.html", **data)
 
 
 @pages.get("/finances/depense")
@@ -468,7 +643,7 @@ def finance_expense_new():
             "currency": "CHF",
             "visibility": "household",
             "split_method": "equal",
-            "txn_date": "",
+            "txn_date": _today_iso(),
         },
         errors={},
         accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
@@ -483,6 +658,7 @@ def finance_expense_create():
     form = request.form.to_dict()
     form["kind"] = "expense"
     form["split_person_ids"] = request.form.getlist("split_person_ids")
+    form["ledger_account_id"] = _account_for_currency(person, form)
     try:
         finance.create_transaction(current_ctx(), person, form)
     except AppError as exc:
@@ -497,7 +673,7 @@ def finance_expense_create():
                 people=_members(),
             ), 400
         raise
-    return _go("finance_saved", "pages.finance_get")
+    return _done("finance_saved", "pages.finance_get")
 
 
 @pages.get("/finances/remboursement")
@@ -597,14 +773,24 @@ def finance_import_post():
 @pages.get("/inventaire")
 def inventory_get():
     person = _need()
+    place_id = request.args.get("place_id", "")
     listed = inventory.list_items(
         current_ctx(), person,
         q=request.args.get("q", ""),
-        place_id=request.args.get("place_id") or None,
+        place_id=place_id if place_id.isdigit() else None,
+        category=request.args.get("categorie", ""),
+        page=int(request.args["page"]) if request.args.get("page", "").isdigit() else 1,
     )
+    first = inventory.list_items(current_ctx(), person)
+    found = {item["category"] for item in first["items"] if item["category"]}
+    for page in range(2, (first["total"] + first["page_size"] - 1) // first["page_size"] + 1):
+        found |= {item["category"] for item in inventory.list_items(current_ctx(), person, page=page)["items"] if item["category"]}
     return render_template(
         "inventory.html",
         listed=listed,
+        view="liste" if request.args.get("vue") == "liste" else "galerie",
+        has_items=first["total"] > 0,
+        categories=sorted(found, key=str.lower),
         places=inventory.list_places(current_ctx(), person)["items"],
         warranties=inventory.upcoming_warranties(current_ctx(), person),
         args=request.args,
@@ -671,7 +857,7 @@ def inventory_item_create():
                 editing=False,
             ), 400
         raise
-    return _go("inventory_saved", "pages.inventory_item_get", item_id=item_id)
+    return _done("inventory_saved", "pages.inventory_item_get", item_id=item_id)
 
 
 @pages.get("/inventaire/<int:item_id>")
@@ -679,7 +865,10 @@ def inventory_item_get(item_id):
     person = _need()
     item = inventory.get_item(current_ctx(), person, item_id)
     related = links.list_links(current_ctx(), person, source_type="inventory_item", source_id=item_id)
-    return render_template("inventory_item.html", item=item, links=related["items"])
+    return render_template(
+        "inventory_item.html", item=item, links=related["items"],
+        linked_tasks=_linked_tasks(person, "inventory_item", item_id),
+    )
 
 
 @pages.get("/inventaire/<int:item_id>/modifier")
@@ -768,14 +957,17 @@ def inventory_link_purchase(item_id):
 def media_get():
     person = _need()
     dash = media.dashboard(current_ctx(), person)
+    tab = request.args.get("onglet", "catalogue")
+    status = {"en-cours": "in_progress", "envies": "wishlist"}.get(tab, request.args.get("status", ""))
     works = media.list_works(
         current_ctx(), person,
         kind=request.args.get("kind", ""),
         q=request.args.get("q", ""),
-        status=request.args.get("status", ""),
+        status=status,
     )
     return render_template(
         "media.html",
+        tab=tab if tab in ("catalogue", "en-cours", "envies", "fichiers", "listes") else "catalogue",
         dash=dash,
         works=works,
         assets=media.list_assets(current_ctx(), person)["items"],
@@ -809,7 +1001,7 @@ def media_work_create():
                 "media_work_form.html", form=form, errors=exc.fields or {"form": exc.message}, kinds=media.WORK_KIND_LABEL,
             ), 400
         raise
-    return _go("media_saved", "pages.media_work_get", work_id=work_id)
+    return _done("media_saved", "pages.media_work_get", work_id=work_id)
 
 
 @pages.get("/mediatheque/oeuvres/<int:work_id>")
@@ -950,7 +1142,7 @@ def milestone_create():
         if exc.status == 400:
             return render_template("milestone_form.html", form=form, errors=exc.fields, people=_people(), editing=False), 400
         raise
-    return _go("saved", "pages.milestone_get", milestone_id=new_id)
+    return _done("saved", "pages.milestone_get", milestone_id=new_id)
 
 
 @pages.get("/reperes/<int:milestone_id>")
@@ -1035,8 +1227,10 @@ def milestone_restore_post(milestone_id):
 @pages.get("/decisions")
 def decisions_get():
     person = _need()
-    items = decisions.list_decisions(current_ctx(), person)
-    return render_template("decisions.html", items=items)
+    items = sorted(decisions.list_decisions(current_ctx(), person), key=lambda d: (d["created_at"], d["id"]), reverse=True)
+    can_create = bool(person["is_principal"] and person["can_view_index"] and "reperes" in modules.enabled_keys(current_ctx()))
+    choices = [m for m in _all_milestones(person) if not m["archived"]] if can_create else []
+    return render_template("decisions.html", items=items, can_create=can_create, choices=choices)
 
 
 @pages.get("/decisions/nouvelle")
@@ -1133,10 +1327,35 @@ def decision_result_post(decision_id):
 
 @pages.get("/coffre")
 def vault_get():
-    person = _need()
-    items = vault.list_files(current_ctx(), person)
+    return _vault_page(_need(), {})
+
+
+VAULT_KINDS = {"pdf": "PDF", "png": "Image", "jpg": "Image", "jpeg": "Image"}
+
+
+def _vault_page(person, errors, status=200):
+    """Explorateur : filtres appliqués sur la liste déjà restreinte par `vault.list_files`."""
+    every = vault.list_files(current_ctx(), person)
+    for item in every:
+        extension = item["original_name"].rsplit(".", 1)[-1].lower() if "." in item["original_name"] else ""
+        item["kind"] = VAULT_KINDS.get(extension, "Fichier")
+    q = request.args.get("q", "").strip().lower()
+    kind = request.args.get("type", "")
+    repere = request.args.get("repere", "")
+    items = [
+        item for item in every
+        if (not q or q in item["original_name"].lower() or q in (item.get("milestone_name") or "").lower())
+        and (not kind or item["kind"] == kind)
+        and (not repere or str(item.get("milestone_id", "")) == repere)
+    ]
+    items.sort(key=lambda item: (item["created_at"], item["id"]), reverse=True)
     choices = _all_milestones(person) if person["is_principal"] and person["can_view_index"] else []
-    return render_template("vault.html", items=items, choices=choices, errors={})
+    linked = sorted({(item["milestone_id"], item["milestone_name"]) for item in every if "milestone_id" in item},
+                    key=lambda pair: pair[1].lower())
+    return render_template(
+        "vault.html", items=items, total=len(every), choices=choices, errors=errors,
+        reperes=linked, args=request.args, filtered=bool(q or kind or repere),
+    ), status
 
 
 @pages.post("/coffre")
@@ -1149,10 +1368,7 @@ def vault_post():
         )
     except AppError as exc:
         if exc.status in {400, 413, 415, 409}:
-            items = vault.list_files(current_ctx(), person)
-            return render_template(
-                "vault.html", items=items, choices=_all_milestones(person), errors=exc.fields or {"form": exc.message},
-            ), exc.status
+            return _vault_page(person, exc.fields or {"form": exc.message}, exc.status)
         raise
     return _go("uploaded", "pages.vault_get")
 

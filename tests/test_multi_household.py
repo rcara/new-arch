@@ -68,8 +68,9 @@ def test_create_switch_and_isolate_tasks(world):
     assert today.status_code == 200
     assert b"Secret foyer 1" not in today.data
     assert b"sidebar" in today.data or b'class="sidebar"' in today.data
-    assert b'id="nav-toggle"' in today.data
+    assert b'id="navigation"' in today.data
     assert b"Nouveau foyer" in today.data
+    assert b'class="foyer-item foyer-item--active" aria-current="true">Chalet<' in today.data
 
     # Liste API memberships
     listed = web.api("GET", "/api/households")
@@ -114,9 +115,9 @@ def test_sidebar_css_has_drawer_without_script(world):
     page = web.get("/")
     assert page.status_code == 200
     assert b"<script" not in page.data.lower()
-    assert b'id="nav-toggle"' in page.data
-    assert b"nav-backdrop" in page.data
+    assert b'href="#navigation"' in page.data
+    assert b"drawer-backdrop" in page.data
     css = web.c.get("/static/app.css", headers={"Host": "127.0.0.1:8765"})
     body = css.data.decode("utf-8")
-    assert ".nav-toggle:checked" in body
+    assert ".sidebar:target" in body
     assert "--sidebar-w" in body

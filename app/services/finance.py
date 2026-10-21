@@ -644,6 +644,33 @@ def list_budgets(ctx, person, *, year=None, month=None, currency="CHF"):
     return {"items": items, "currency": currency}
 
 
+def month_spending(ctx, person, *, year, month):
+    """Dépenses visibles du mois, par devise, sans conversion entre devises."""
+    _require(ctx)
+    prefix = f"{int(year):04d}-{int(month):02d}"
+    rows = ctx.conn.execute(
+        """SELECT t.id, t.amount_minor, t.currency, t.visibility, t.payer_id, t.created_by, t.beneficiary_id
+           FROM finance_transaction t
+           WHERE t.household_id=? AND t.archived=0 AND t.kind='expense' AND t.txn_date LIKE ?""",
+        (hh(ctx), prefix + "%"),
+    ).fetchall()
+    totals = {}
+    for row in rows:
+        if _can_see_txn(ctx, person, row):
+            entry = totals.setdefault(row["currency"], {"minor": 0, "count": 0})
+            entry["minor"] += row["amount_minor"]
+            entry["count"] += 1
+    return [
+        {
+            "currency": currency,
+            "spent_minor": entry["minor"],
+            "spent_label": format_minor(entry["minor"], currency),
+            "count": entry["count"],
+        }
+        for currency, entry in sorted(totals.items())
+    ]
+
+
 def _spent_in_period(ctx, person, category_id, period, year, month, currency):
     if period == "month":
         prefix = f"{year:04d}-{month:02d}"

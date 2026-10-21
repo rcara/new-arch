@@ -10,7 +10,7 @@ zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, 
 - Calendrier + Organisation + Recherche : cause racine `listed.items` (méthode `dict.items`) → lecture par clé.
 - Tests : lint gabarits, crawl foyer vide + démo, allers-retours HTML.
 
-## Sprint 1 — Navigation (App Shell)
+## Sprint 1 — Navigation (App Shell) ✅
 
 - `app/navigation.py` : construit les groupes à partir de `nav_modules` + droits de la personne.
 - `base.html` : sidebar groupée, header (recherche, + Ajouter, menu utilisateur), tiroir `:target`, barre mobile.
@@ -20,36 +20,67 @@ zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, 
 - Tests : chaque lien de nav répond 200, modules désactivés masqués, compte secondaire sans entrées admin,
   état actif correct.
 
-## Sprint 2 — Accueil
+## Sprint 2 — Accueil ✅
 
 - Service `home.dashboard` étendu (lecture seule) : agenda 14 jours, tâches (moi + partagées), dépenses du mois par
   devise, budgets du mois, soldes, activité récente autorisée.
 - `today.html` en grille ; action « Terminer » (POST) sur les tâches ; onboarding facultatif (masquable via
   cookie, reprenable depuis Paramètres) basé sur l'état réel.
 
-## Sprint 3 — Création rapide
+## Sprint 3 — Création rapide ✅
 
-- Menu « + Ajouter » ; formulaires rapides (champs essentiels d'abord, « Plus d'options » en `<details>`),
-  redirection vers la page d'origine (`next` validé, même origine), messages de retour.
-- Création contextuelle depuis un bien / un événement.
+- Menu « + Ajouter » : Tâche et Événement ouvrent un **panneau latéral `:target`** (CSS seul) ; les autres
+  entrées ouvrent le formulaire complet avec `?next=<page courante>`.
+- Formulaires rapides (champs essentiels d'abord, « Plus d'options » en `<details>`), redirection vers la page
+  d'origine (`next` validé par `safe_next`, même site), messages de retour existants.
+- Création contextuelle depuis un événement ou un bien (« Tâches liées », lien `concerns` après contrôle de
+  visibilité).
+- Reste hors périmètre sans JS : fermeture du menu « + Ajouter » au clic extérieur, focus automatique dans le
+  panneau (voir D1).
 
-## Sprint 4 — Modules
+## Sprint 4 — Modules ✅
 
-Finances (sous-nav, tableaux, indicateurs), Inventaire (galerie/liste, filtres), Agenda (mois / semaine / liste en
-HTML pur), À faire (liste rapide, terminer en 1 clic), Coffre (explorateur, dépôt simple), Médiathèque (catalogue /
-envies / en cours / fichiers), Décisions (présentation, création guidée — règles de scellement intactes).
+- Composants partagés `_ui.html` : `page_header`, `subnav` (onglets), `empty_state` (données / recherche / droit).
+- Agenda : vues mois, semaine, liste (HTML pur, `?vue=&date=`), Précédent / Aujourd'hui / Suivant, filtre par
+  membre (responsable), échéances de repères si l'index est accordé ; grille repliée en liste de jours sur mobile.
+  Anciens paramètres `from` / `q` toujours acceptés (vue liste).
+- À faire : ajout rapide en ligne, groupes En retard / Aujourd'hui / À venir / Sans date, onglets statut et
+  responsable, terminer et rouvrir en un clic (POST + CSRF), récurrence affichée (le moteur recrée l'occurrence).
+- Finances : onglets Vue d'ensemble / Transactions / Budgets / Comptes / Répartition (sidebar alignée), devise
+  CHF / EUR en onglets séparés, dépenses du mois + évolution 6 mois (barres CSS, sans style inline), tableaux.
+- Inventaire : galerie / liste, filtres lieu et catégorie (catégories issues des seuls biens visibles).
+- Coffre : explorateur (filtres nom, type, repère), zone de dépôt, actions secondaires en menu.
+- Médiathèque : onglets Catalogue / En cours / Envies / Listes / Mes fichiers, galerie d'affiches (placeholder
+  typé : aucune image d'œuvre n'existe en base).
+- Décisions : cycle Rédiger → Sceller → Compléter, Brouillons / Scellées, choix du repère puis formulaire existant.
+  Aucune règle de scellement ni d'accès modifiée.
 
-## Sprint 5 — Qualité
+## Sprint 5 — Qualité ✅
 
-Desktop / tablette / mobile, clair / sombre, clavier, lecteurs d'écran, permissions dans la recherche, états vides,
-erreurs.
+- Accessibilité : audit axe-core (WCAG 2.1 AA) sur 20 pages × clair / sombre × desktop / mobile, foyer démo et
+  foyer vide, plus connexion et 404 invité : **0 violation**. Corrections : jeton `--text-sage` (#4E6A61 clair,
+  5,9:1 sur blanc ; #A8C0B6 sombre) pour liens et sur-titres, au lieu du sauge de marque #5F7E74 (4,44:1) ;
+  règle sombre des liens passée en `:where()` (elle écrasait boutons primaires, sidebar et barre mobile) ;
+  rouge danger sombre éclairci ; jours hors mois sans opacité.
+- Clavier : lien d'évitement en premier, anneau de focus visible partout, sidebar mobile masquée hors du parcours,
+  panneaux d'ajout rapide : Tab → « Fermer » puis Titre (ancre `:target`, sans JS).
+- Erreurs : une page par famille de statut (403 accès, 404 introuvable, 400/409/413/415 action non enregistrée,
+  405, 423/429/503 indisponible, 500) avec code, message, action de retour, « Réessayer » si pertinent, lien de
+  connexion pour un invité ; aucun détail technique exposé.
+- Recherche : sources filtrées par module actif (un module désactivé ne remonte plus rien), résultats groupés
+  par type, états « Que cherchez-vous ? », trop court (message complet, `aria-invalid`), aucun résultat.
+  Permissions inchangées (`can_see_object`, index, principal seul pour les personnes).
+- Garde-fous testés : aucune page sans CSP `script-src 'none'`, aucun `<script>`, `style=` ni `on*=` ;
+  un seul `h1`, `main#contenu` et `lang="fr"` par page.
 
 ## Décisions à prendre (Roger)
 
 | # | Sujet | Proposition | Statut |
 |---|---|---|---|
-| D1 | **JS / CSP** — glisser-déposer (Coffre) et panneau latéral (création rapide) nécessitent du JavaScript. | Livré sans JS : dépôt par `<input type=file>` (le navigateur accepte déjà le glisser-déposer *sur* le champ), panneaux via pages dédiées / `:target`. Pour un vrai glisser-déposer sur zone ou un panneau dynamique : autoriser un script **local** (`script-src 'self'`) limité à l'amélioration progressive. CSP **non modifiée** tant que non validé. | Bloquant pour l'amélioration, pas pour la livraison |
+| D1 | **JS / CSP** — glisser-déposer (Coffre) et panneau latéral (création rapide) nécessitent du JavaScript. | Livré sans JS : dépôt par `<input type=file>` (le navigateur accepte déjà le glisser-déposer *sur* le champ), panneaux d'ajout rapide via `:target` (livrés au Sprint 3 : `#ajout-tache`, `#ajout-evenement`, fermeture par « Fermer » ou le fond ; le menu `<details>` reste ouvert derrière le panneau et le focus n'y est pas déplacé automatiquement). Coffre (Sprint 4) : zone de dépôt agrandie autour du champ fichier natif, qui accepte le glisser-déposer sans script. Pour un vrai glisser-déposer sur zone ou un panneau dynamique : autoriser un script **local** (`script-src 'self'`) limité à l'amélioration progressive. CSP **non modifiée** tant que non validé. | Bloquant pour l'amélioration, pas pour la livraison |
 | D2 | **Connexion locale HTTP** : Chrome envoie `Origin: null` (`Referrer-Policy: no-referrer`) → « Origine refusée » sur `127.0.0.1`. | Option A : `Referrer-Policy: same-origin` (le navigateur envoie alors l'Origin exacte). Option B : accepter `null` quand l'hôte est exactement `127.0.0.1:port` (CSRF reste requis). Non modifié (sécurité). | À décider |
-| D3 | Modules activables affichés mais non basculables dans l'UI. | Ajouter un interrupteur (principal seul) en Sprint 4/5. | À décider |
+| D3 | Modules activables affichés mais non basculables dans l'UI. | Non livré en V2.1 (touche aux permissions de navigation) : ajouter un interrupteur principal seul, POST + CSRF, journalisé. La navigation, la création rapide et la recherche respectent déjà l'état des modules. | À décider |
 | D4 | Notifications : aucun moteur existant. | Ne pas inventer ; rappels réels sur Aujourd'hui. | Proposé |
 | D5 | Wordmark : le logo validé dit « New Arch » (pas « NEW ARCH. »). | Conserver le logo validé de PR #16. | Proposé |
+| D6 | Événements récurrents : la récurrence est stockée mais aucune occurrence n'est générée dans les listes. | Badge « récurrent » seulement ; générer les occurrences demande une évolution du service `events` (hors UX). | À décider |
+| D7 | Photos de biens / affiches d'œuvres : aucun champ image en base. | Vignettes typées (initiale, couleur par type). Ajouter une image = migration additive + stockage, à valider. | À décider |

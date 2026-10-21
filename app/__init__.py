@@ -11,7 +11,7 @@ from .audit import audit
 from .clock import SystemClock
 from .db import any_household, connect, ensure_layout, household_row
 from .errors import AppError
-from .http import MESSAGES, cookie_message, guard_local, resolve_theme
+from .http import MESSAGES, cookie_message, guard_local, resolve_theme, safe_next
 from .locks import OpLock
 from .present import STATUS_LABEL, format_cents, format_date, format_timestamp
 from .security import AttemptLimiter, hash_password, new_token
@@ -153,6 +153,7 @@ def create_app(home=None, clock=None, testing=False, port=8765):
     def shell():
         endpoint = request.endpoint or ""
         name = endpoint.split(".")[-1]
+        sub = ""
         if name.startswith("milestone"):
             nav = "reperes"
         elif name.startswith("decision"):
@@ -171,12 +172,22 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             nav = "recherche"
         elif name.startswith("foyer"):
             nav = "foyer"
+        elif name.startswith("settings_advanced"):
+            nav = "avance"
         elif name.startswith("settings"):
             nav = "parametres"
         elif name.startswith("profile"):
             nav = "profil"
         elif name.startswith("finance"):
             nav = "finances"
+            if name == "finance_get":
+                sub = request.args.get("vue") or "apercu"
+            elif name.startswith("finance_budget"):
+                sub = "budgets"
+            elif name.startswith("finance_reimburse"):
+                sub = "repartition"
+            else:
+                sub = "transactions"
         elif name.startswith("inventory") or name.startswith("inventaire"):
             nav = "inventaire"
         elif name.startswith("media"):
@@ -193,7 +204,11 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             ctx = current_ctx()
             nav_modules = modules_svc.enabled_keys(ctx)
             memberships = households_svc.list_memberships(ctx)
+        from .navigation import build as build_navigation
         return {
+            "shell": build_navigation(g.get("person"), nav_modules, nav, request.path if request.method == "GET" else "/", sub),
+            "today_iso": _today_iso(),
+            "next_url": safe_next(request.values.get("next")) if request.values.get("next") else "",
             "person": g.get("person"),
             "household": g.get("household"),
             "memberships": memberships,
@@ -227,25 +242,25 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             return jsonify(exc.payload()), exc.status
         if exc.status == 401:
             return redirect(url_for("pages.login_get"))
-        return render_template("error.html", title="Information", text=exc.message), exc.status
+        return render_template("error.html", status=exc.status, text=exc.message), exc.status
 
     @app.errorhandler(404)
     def on_404(_exc):
         if request.path.startswith("/api"):
             return jsonify({"error": {"code": "not_found", "message": "Introuvable.", "fields": {}}}), 404
-        return render_template("error.html", title="Introuvable", text="Introuvable."), 404
+        return render_template("error.html", status=404, text="Introuvable."), 404
 
     @app.errorhandler(405)
     def on_405(_exc):
         if request.path.startswith("/api"):
             return jsonify({"error": {"code": "validation", "message": "Méthode refusée.", "fields": {}}}), 405
-        return render_template("error.html", title="Information", text="Méthode refusée."), 405
+        return render_template("error.html", status=405, text="Méthode refusée."), 405
 
     @app.errorhandler(RequestEntityTooLarge)
     def on_large(_exc):
         if request.path.startswith("/api"):
             return jsonify({"error": {"code": "too_large", "message": "Le fichier dépasse 20 Mio.", "fields": {}}}), 413
-        return render_template("error.html", title="Information", text="Le fichier dépasse 20 Mio."), 413
+        return render_template("error.html", status=413, text="Le fichier dépasse 20 Mio."), 413
 
     @app.errorhandler(Exception)
     def on_error(exc):
@@ -256,9 +271,18 @@ def create_app(home=None, clock=None, testing=False, port=8765):
         audit(home, app.config["CLOCK"], "error", type(exc).__name__)
         if request.path.startswith("/api"):
             return jsonify({"error": {"code": "storage", "message": "Opération impossible.", "fields": {}}}), 500
-        return render_template("error.html", title="Information", text="Opération impossible."), 500
+        return render_template("error.html", status=500, text="Opération impossible."), 500
 
     return app
+
+
+def _today_iso():
+    from flask import current_app
+    from .clock import civil_today
+    household = g.get("household")
+    if not household:
+        return ""
+    return civil_today(current_app.config["CLOCK"], household.get("timezone", "Europe/Zurich")).isoformat()
 
 
 def current_ctx():

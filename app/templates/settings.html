@@ -30,13 +30,29 @@
   {% endfor %}
 </section>
 
-<section class="today-panel" aria-labelledby="ops-title">
-  <h2 id="ops-title">Exploitation</h2>
-  <p class="muted">Sauvegarde (base + coffre + média) : <code>python cli.py backup</code></p>
-  <p class="muted">Restauration dans un dossier neuf : <code>python cli.py restore &lt;archive&gt; &lt;dossier&gt;</code></p>
-  <p class="muted">Chiffrement des fichiers coffre/média : <code>python cli.py crypto enable</code> puis <code>FOYER_PASSPHRASE</code> — SQLite reste en clair.</p>
-  <p class="muted">Dataset démo (foyer vide uniquement) : <code>python cli.py seed-demo</code> — voir <code>WINDOWS.md</code> et <code>GUIDE.md</code>.</p>
+<section class="today-panel" aria-labelledby="onboarding-title">
+  <h2 id="onboarding-title">Guide de démarrage</h2>
+  <p class="muted">Les premières étapes proposées sur Aujourd'hui (membres, dépense, événement, bien). Elles disparaissent d'elles-mêmes une fois faites.</p>
+  <form method="post" action="{{ url_for('pages.onboarding_post') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="from" value="parametres">
+    {% if onboarding_hidden %}
+    <input type="hidden" name="action" value="afficher">
+    <button type="submit" class="secondary">Réafficher le guide</button>
+    {% else %}
+    <input type="hidden" name="action" value="masquer">
+    <button type="submit" class="secondary">Masquer le guide</button>
+    {% endif %}
+  </form>
 </section>
+
+{% if person.is_principal %}
+<section class="today-panel" aria-labelledby="ops-title">
+  <h2 id="ops-title">Administration avancée</h2>
+  <p class="muted">Sauvegarde, restauration, chiffrement des fichiers et foyer de démonstration.</p>
+  <p><a href="{{ url_for('pages.settings_advanced_get') }}">Ouvrir l'administration avancée</a></p>
+</section>
+{% endif %}
 
 <p class="today-more"><a href="{{ url_for('pages.profile_get') }}">Gérer mon profil et mon mot de passe</a></p>
 {% endblock %}
