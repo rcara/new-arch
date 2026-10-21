@@ -96,6 +96,8 @@ def _daily(ctx, person, enabled, payload):
             agenda.append({
                 "kind": "event", "id": item["id"], "title": item["title"], "date": item["start_date"],
                 "end_date": item["end_date"], "who": item["responsible_name"],
+                "occurrence": item["start_date"] if item["is_occurrence"] else None,
+                "recurrence_label": item["recurrence_label"],
             })
     ms = payload.get("milestones") or {}
     for item in ms.get("urgent_items", []) if not ms.get("denied") else []:

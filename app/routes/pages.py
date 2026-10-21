@@ -472,7 +472,12 @@ def event_create():
 def event_get(event_id):
     person = _need()
     item = events.get_event(current_ctx(), person, event_id)
-    return render_template("event.html", item=item, linked_tasks=_linked_tasks(person, "calendar_event", event_id))
+    raw = request.args.get("occurrence", "")
+    occurrence = raw if item["recurrence"] != "none" and events.is_occurrence(item, raw) else None
+    return render_template(
+        "event.html", item=item, occurrence=occurrence,
+        linked_tasks=_linked_tasks(person, "calendar_event", event_id),
+    )
 
 
 @pages.get("/calendrier/<int:event_id>/modifier")

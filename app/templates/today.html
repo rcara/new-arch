@@ -85,8 +85,8 @@
         <span class="timeline-date">{{ entry.date|frdate }}</span>
         <div>
           {% if entry.kind == 'event' %}
-          <a href="{{ url_for('pages.event_get', event_id=entry.id) }}">{{ entry.title }}</a>
-          <span class="muted">Événement{% if entry.end_date and entry.end_date != entry.date %} · jusqu'au {{ entry.end_date|frdate }}{% endif %}{% if entry.who %} · {{ entry.who }}{% endif %}</span>
+          <a href="{{ url_for('pages.event_get', event_id=entry.id, occurrence=entry.occurrence) }}">{{ entry.title }}</a>
+          <span class="muted">Événement{% if entry.end_date and entry.end_date != entry.date %} · jusqu'au {{ entry.end_date|frdate }}{% endif %}{% if entry.occurrence %} · <span class="recur-mark" aria-hidden="true">↻</span> {{ entry.recurrence_label }}{% endif %}{% if entry.who %} · {{ entry.who }}{% endif %}</span>
           {% else %}
           <a href="{{ url_for('pages.milestone_get', milestone_id=entry.id) }}">{{ entry.title }}</a>
           <span class="muted">Échéance{% if entry.who %} · {{ entry.who }}{% endif %}</span>
