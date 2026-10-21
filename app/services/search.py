@@ -85,6 +85,22 @@ def search(ctx, person, q, *, limit=40):
         for row in rows:
             items.append({"type": "person", "id": row["id"], "title": row["display_name"], "href": "/foyer"})
 
+    rows = ctx.conn.execute(
+        """SELECT id, name, visibility, created_by FROM inventory_item
+           WHERE household_id=1 AND archived=0 AND name LIKE ? ESCAPE '\\'
+           ORDER BY id DESC LIMIT ?""",
+        (like, limit),
+    ).fetchall()
+    for row in rows:
+        if not can_see_object(ctx, person, "inventory_item", row["id"]):
+            continue
+        items.append({
+            "type": "inventory_item",
+            "id": row["id"],
+            "title": row["name"],
+            "href": f"/inventaire/{row['id']}",
+        })
+
     return {"q": query, "items": items[:limit], "total": min(len(items), limit)}
 
 

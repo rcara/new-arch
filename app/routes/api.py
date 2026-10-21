@@ -5,7 +5,7 @@ from flask import Blueprint, g, jsonify, request
 from .. import current_ctx
 from ..errors import AppError
 from ..http import json_body
-from ..services import auth, decisions, events, finance, home, links, milestones, modules, people, search, tasks, vault
+from ..services import auth, decisions, events, finance, home, inventory, links, milestones, modules, people, search, tasks, vault
 
 api = Blueprint("api", __name__)
 
@@ -487,6 +487,90 @@ def finance_import():
         raise AppError(400, "validation", "Fichier CSV requis.")
     result = finance.import_csv(current_ctx(), actor(), upload.read())
     return jsonify(result)
+
+
+@api.get("/inventory/places")
+def inventory_places():
+    return jsonify(inventory.list_places(current_ctx(), actor()))
+
+
+@api.post("/inventory/places")
+def inventory_place_create():
+    data = json_body({"name", "notes"})
+    new_id = inventory.create_place(current_ctx(), actor(), data)
+    items = inventory.list_places(current_ctx(), actor())["items"]
+    return jsonify(next(row for row in items if row["id"] == new_id)), 201
+
+
+@api.get("/inventory/items")
+def inventory_items():
+    page = request.args.get("page", "1")
+    page = int(page) if page.isdigit() else 1
+    return jsonify(inventory.list_items(
+        current_ctx(), actor(),
+        q=request.args.get("q", ""),
+        place_id=request.args.get("place_id") or None,
+        category=request.args.get("category", ""),
+        page=page,
+    ))
+
+
+@api.post("/inventory/items")
+def inventory_item_create():
+    data = json_body({
+        "name", "category", "place_id", "condition", "serial_number",
+        "purchase_date", "purchase_price", "purchase_price_minor", "purchase_currency",
+        "estimated_value", "estimated_value_minor", "estimated_currency",
+        "notes", "visibility", "owner_ids", "owners",
+        "purchase_transaction_id", "invoice_file_id",
+    })
+    new_id = inventory.create_item(current_ctx(), actor(), data)
+    return jsonify(inventory.get_item(current_ctx(), actor(), new_id)), 201
+
+
+@api.get("/inventory/items/<int:item_id>")
+def inventory_item_get(item_id):
+    return jsonify(inventory.get_item(current_ctx(), actor(), item_id))
+
+
+@api.patch("/inventory/items/<int:item_id>")
+def inventory_item_patch(item_id):
+    data = json_body({
+        "name", "category", "place_id", "condition", "serial_number",
+        "purchase_date", "purchase_price", "purchase_price_minor", "purchase_currency",
+        "estimated_value", "estimated_value_minor", "estimated_currency",
+        "notes", "visibility", "owner_ids", "owners",
+    })
+    return jsonify(inventory.update_item(current_ctx(), actor(), item_id, data))
+
+
+@api.post("/inventory/items/<int:item_id>/warranties")
+def inventory_warranty_create(item_id):
+    data = json_body({"label", "starts_on", "ends_on", "provider", "notes", "create_deadline"})
+    return jsonify(inventory.add_warranty(current_ctx(), actor(), item_id, data)), 201
+
+
+@api.post("/inventory/items/<int:item_id>/maintenances")
+def inventory_maintenance_create(item_id):
+    data = json_body({"label", "performed_on", "cost", "cost_minor", "currency", "notes"})
+    return jsonify(inventory.add_maintenance(current_ctx(), actor(), item_id, data)), 201
+
+
+@api.post("/inventory/items/<int:item_id>/invoice")
+def inventory_invoice_link(item_id):
+    data = json_body({"invoice_file_id"})
+    return jsonify(inventory.link_invoice(current_ctx(), actor(), item_id, data.get("invoice_file_id")))
+
+
+@api.post("/inventory/items/<int:item_id>/purchase")
+def inventory_purchase_link(item_id):
+    data = json_body({"purchase_transaction_id"})
+    return jsonify(inventory.link_purchase(current_ctx(), actor(), item_id, data.get("purchase_transaction_id")))
+
+
+@api.get("/inventory/warranties/upcoming")
+def inventory_warranties_upcoming():
+    return jsonify({"items": inventory.upcoming_warranties(current_ctx(), actor())})
 
 
 def _limiter():

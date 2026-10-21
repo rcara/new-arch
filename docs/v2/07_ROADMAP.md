@@ -9,7 +9,7 @@ Migration 003, modules, liens, tâches, événements, recherche, nav V2, accueil
 ## Étape C — Finances ✅ (cette livraison)
 Comptes, transactions, catégories, budgets, splits (50/50, %, fixe, prorata), remboursements sans double comptage, CHF/EUR, CSV, UI + tests arrondis.
 
-## Étape D — Inventaire & coffre enrichi
+## Étape D — Inventaire & coffre enrichi ✅ (cette livraison)
 Biens, lieux, garanties, maintenance, liens achat↔facture↔échéance, permissions.
 
 ## Étape E — Décisions & médiathèque

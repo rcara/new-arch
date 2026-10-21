@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0-v2d] — 2026-10-21
+
+### Ajouté
+- Migration `005_inventory.sql` (`user_version=5`)
+- Module Inventaire : lieux, biens, propriétaires, garanties, maintenance, historique
+- Liens typés achat (`finance_transaction`) et facture (`stored_file`) ; échéance calendrier pour garanties
+- UI `/inventaire`, API `/api/inventory/*`, recherche et accueil (garanties à venir)
+- Tests `tests/test_inventory.py`
+
 ## [0.3.0-v2c] — 2026-10-21
 
 ### Ajouté

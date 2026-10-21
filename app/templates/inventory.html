@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Inventaire{% endblock %}
+{% block content %}
+<h1>Inventaire</h1>
+<p class="muted">Biens, lieux, garanties et maintenance — liés aux achats et au coffre.</p>
+<div class="toolbar">
+  <a href="{{ url_for('pages.inventory_item_new') }}">Ajouter un bien</a>
+  <a href="{{ url_for('pages.inventory_place_new') }}">Ajouter un lieu</a>
+  <form method="get" class="toolbar">
+    <label>Recherche <input name="q" value="{{ args.get('q','') }}"></label>
+    <label>Lieu
+      <select name="place_id">
+        <option value="">Tous</option>
+        {% for place in places %}
+        <option value="{{ place.id }}" {% if args.get('place_id')==place.id|string %}selected{% endif %}>{{ place.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Filtrer</button>
+  </form>
+</div>
+
+{% if warranties %}
+<section class="today-panel" aria-labelledby="inv-warranties">
+  <h2 id="inv-warranties">Garanties à venir</h2>
+  {% for w in warranties %}
+  <div class="row">
+    <b><a href="{{ url_for('pages.inventory_item_get', item_id=w.item_id) }}">{{ w.item_name }}</a></b>
+    <span class="muted">{{ w.label }} · {{ w.ends_on|frdate }}</span>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="today-panel" aria-labelledby="inv-places">
+  <h2 id="inv-places">Lieux</h2>
+  {% if places %}
+  {% for place in places %}
+  <div class="row"><b>{{ place.name }}</b>{% if place.notes %}<span class="muted">{{ place.notes }}</span>{% endif %}</div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Aucun lieu. <a href="{{ url_for('pages.inventory_place_new') }}">Créer un lieu</a></p>
+  {% endif %}
+</section>
+
+<section class="today-panel" aria-labelledby="inv-items">
+  <h2 id="inv-items">Biens</h2>
+  {% if listed['items'] %}
+  {% for item in listed['items'] %}
+  <div class="row">
+    <b><a href="{{ url_for('pages.inventory_item_get', item_id=item.id) }}">{{ item.name }}</a></b>
+    <span class="badge">{{ item.condition_label }}</span>
+    {% if item.place_name %}<span class="muted">{{ item.place_name }}</span>{% endif %}
+    {% if item.purchase_price_label %}<span>{{ item.purchase_price_label }}</span>{% endif %}
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Aucun bien. <a href="{{ url_for('pages.inventory_item_new') }}">Ajouter un bien</a></p>
+  {% endif %}
+</section>
+{% endblock %}

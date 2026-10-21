@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Modifier le bien{% else %}Nouveau bien{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if editing %}Modifier le bien{% else %}Nouveau bien{% endif %}</h1>
+{% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+<form method="post" action="{% if editing %}{{ url_for('pages.inventory_item_update', item_id=item_id) }}{% else %}{{ url_for('pages.inventory_item_create') }}{% endif %}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Nom <input name="name" required maxlength="200" value="{{ form.get('name','') }}"></label>
+  {% if errors.name %}<p class="error">{{ errors.name }}</p>{% endif %}
+  <label>Catégorie <input name="category" maxlength="120" value="{{ form.get('category','') }}" placeholder="Électroménager, meuble…"></label>
+  <label>Lieu
+    <select name="place_id">
+      <option value="">—</option>
+      {% for place in places %}
+      <option value="{{ place.id }}" {% if form.get('place_id')==place.id|string %}selected{% endif %}>{{ place.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>État
+    <select name="condition">
+      <option value="new" {% if form.get('condition')=='new' %}selected{% endif %}>Neuf</option>
+      <option value="good" {% if form.get('condition','good')=='good' %}selected{% endif %}>Bon</option>
+      <option value="fair" {% if form.get('condition')=='fair' %}selected{% endif %}>Correct</option>
+      <option value="poor" {% if form.get('condition')=='poor' %}selected{% endif %}>Usé</option>
+      <option value="broken" {% if form.get('condition')=='broken' %}selected{% endif %}>En panne</option>
+      <option value="disposed" {% if form.get('condition')=='disposed' %}selected{% endif %}>Cédé / sorti</option>
+    </select>
+  </label>
+  <label>N° de série <input name="serial_number" maxlength="120" value="{{ form.get('serial_number','') }}"></label>
+  <label>Date d'achat <input type="date" name="purchase_date" value="{{ form.get('purchase_date','') }}"></label>
+  <label>Prix d'achat <input name="purchase_price" placeholder="499,00" value="{{ form.get('purchase_price','') }}"></label>
+  <label>Devise achat
+    <select name="purchase_currency">
+      <option value="CHF" {% if form.get('purchase_currency','CHF')=='CHF' %}selected{% endif %}>CHF</option>
+      <option value="EUR" {% if form.get('purchase_currency')=='EUR' %}selected{% endif %}>EUR</option>
+    </select>
+  </label>
+  <label>Valeur estimée <input name="estimated_value" placeholder="300,00" value="{{ form.get('estimated_value','') }}"></label>
+  <label>Devise valeur
+    <select name="estimated_currency">
+      <option value="CHF" {% if form.get('estimated_currency','CHF')=='CHF' %}selected{% endif %}>CHF</option>
+      <option value="EUR" {% if form.get('estimated_currency')=='EUR' %}selected{% endif %}>EUR</option>
+    </select>
+  </label>
+  <fieldset>
+    <legend>Propriétaire(s)</legend>
+    {% set selected = form.get('owner_ids') %}
+    {% for p in people %}
+    <label class="permission">
+      <input type="checkbox" name="owner_ids" value="{{ p.id }}"
+        {% if selected is sequence and selected is not string %}
+          {% if (p.id|string) in selected or p.id in selected %}checked{% endif %}
+        {% else %}
+          {% if p.id == person.id %}checked{% endif %}
+        {% endif %}>
+      {{ p.display_name }}
+    </label>
+    {% endfor %}
+  </fieldset>
+  <label>Visibilité
+    <select name="visibility">
+      <option value="household" {% if form.get('visibility','household')=='household' %}selected{% endif %}>Foyer</option>
+      <option value="private" {% if form.get('visibility')=='private' %}selected{% endif %}>Privée (propriétaires)</option>
+    </select>
+  </label>
+  <label>Notes <textarea name="notes" rows="3">{{ form.get('notes','') }}</textarea></label>
+  <button type="submit">Enregistrer</button>
+</form>
+{% endblock %}

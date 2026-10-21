@@ -6,7 +6,7 @@ from .. import current_ctx
 from ..errors import AppError
 from ..http import cookie_message, cookie_session, cookie_setup, safe_next
 from ..security import new_token
-from ..services import auth, decisions, events, finance, home, links, milestones, modules, people, search, tasks, vault
+from ..services import auth, decisions, events, finance, home, inventory, links, milestones, modules, people, search, tasks, vault
 from ..validate import text_value
 
 pages = Blueprint("pages", __name__)
@@ -472,6 +472,166 @@ def finance_import_post():
     return render_template("finance_import.html", errors={}, result=result)
 
 
+@pages.get("/inventaire")
+def inventory_get():
+    person = _need()
+    listed = inventory.list_items(
+        current_ctx(), person,
+        q=request.args.get("q", ""),
+        place_id=request.args.get("place_id") or None,
+    )
+    return render_template(
+        "inventory.html",
+        listed=listed,
+        places=inventory.list_places(current_ctx(), person)["items"],
+        warranties=inventory.upcoming_warranties(current_ctx(), person),
+        args=request.args,
+    )
+
+
+@pages.get("/inventaire/lieux/nouveau")
+def inventory_place_new():
+    _need()
+    return render_template("inventory_place_form.html", form={}, errors={})
+
+
+@pages.post("/inventaire/lieux")
+def inventory_place_create():
+    person = _need()
+    form = request.form.to_dict()
+    try:
+        inventory.create_place(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template("inventory_place_form.html", form=form, errors=exc.fields), 400
+        raise
+    return _go("inventory_saved", "pages.inventory_get")
+
+
+@pages.get("/inventaire/nouveau")
+def inventory_item_new():
+    person = _need()
+    return render_template(
+        "inventory_item_form.html",
+        form={"condition": "good", "visibility": "household", "purchase_currency": "CHF", "estimated_currency": "CHF"},
+        errors={},
+        places=inventory.list_places(current_ctx(), person)["items"],
+        people=_members(),
+        editing=False,
+    )
+
+
+@pages.post("/inventaire")
+def inventory_item_create():
+    person = _need()
+    form = request.form.to_dict()
+    form["owner_ids"] = request.form.getlist("owner_ids")
+    try:
+        item_id = inventory.create_item(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template(
+                "inventory_item_form.html",
+                form=form,
+                errors=exc.fields or {"form": exc.message},
+                places=inventory.list_places(current_ctx(), person)["items"],
+                people=_members(),
+                editing=False,
+            ), 400
+        raise
+    return _go("inventory_saved", "pages.inventory_item_get", item_id=item_id)
+
+
+@pages.get("/inventaire/<int:item_id>")
+def inventory_item_get(item_id):
+    person = _need()
+    item = inventory.get_item(current_ctx(), person, item_id)
+    related = links.list_links(current_ctx(), person, source_type="inventory_item", source_id=item_id)
+    return render_template("inventory_item.html", item=item, links=related["items"])
+
+
+@pages.get("/inventaire/<int:item_id>/modifier")
+def inventory_item_edit(item_id):
+    person = _need()
+    item = inventory.get_item(current_ctx(), person, item_id)
+    form = {
+        "name": item["name"],
+        "category": item["category"],
+        "place_id": "" if item["place_id"] is None else str(item["place_id"]),
+        "condition": item["condition"],
+        "serial_number": item["serial_number"],
+        "purchase_date": item["purchase_date"] or "",
+        "purchase_price": _minor_form(item["purchase_price_minor"]),
+        "purchase_currency": item["purchase_currency"] or "CHF",
+        "estimated_value": _minor_form(item["estimated_value_minor"]),
+        "estimated_currency": item["estimated_currency"] or "CHF",
+        "notes": item["notes"],
+        "visibility": item["visibility"],
+        "owner_ids": [str(o["id"]) for o in item["owners"]],
+    }
+    return render_template(
+        "inventory_item_form.html",
+        form=form,
+        errors={},
+        places=inventory.list_places(current_ctx(), person)["items"],
+        people=_members(),
+        editing=True,
+        item_id=item_id,
+    )
+
+
+@pages.post("/inventaire/<int:item_id>")
+def inventory_item_update(item_id):
+    person = _need()
+    form = request.form.to_dict()
+    form["owner_ids"] = request.form.getlist("owner_ids")
+    try:
+        inventory.update_item(current_ctx(), person, item_id, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template(
+                "inventory_item_form.html",
+                form=form,
+                errors=exc.fields or {"form": exc.message},
+                places=inventory.list_places(current_ctx(), person)["items"],
+                people=_members(),
+                editing=True,
+                item_id=item_id,
+            ), 400
+        raise
+    return _go("inventory_saved", "pages.inventory_item_get", item_id=item_id)
+
+
+@pages.post("/inventaire/<int:item_id>/garantie")
+def inventory_warranty_create(item_id):
+    person = _need()
+    form = request.form.to_dict()
+    inventory.add_warranty(current_ctx(), person, item_id, form)
+    return _go("inventory_saved", "pages.inventory_item_get", item_id=item_id)
+
+
+@pages.post("/inventaire/<int:item_id>/maintenance")
+def inventory_maintenance_create(item_id):
+    person = _need()
+    form = request.form.to_dict()
+    inventory.add_maintenance(current_ctx(), person, item_id, form)
+    return _go("inventory_saved", "pages.inventory_item_get", item_id=item_id)
+
+
+@pages.post("/inventaire/<int:item_id>/lien-facture")
+def inventory_link_invoice(item_id):
+    person = _need()
+    inventory.link_invoice(current_ctx(), person, item_id, request.form.get("invoice_file_id"))
+    return _go("inventory_saved", "pages.inventory_item_get", item_id=item_id)
+
+
+@pages.post("/inventaire/<int:item_id>/lien-achat")
+def inventory_link_purchase(item_id):
+    person = _need()
+    inventory.link_purchase(current_ctx(), person, item_id, request.form.get("purchase_transaction_id"))
+    return _go("inventory_saved", "pages.inventory_item_get", item_id=item_id)
+
+
 @pages.get("/reperes")
 def milestones_get():
     person = _need()
@@ -884,6 +1044,13 @@ def _people():
 
 def _members():
     return people.list_active_members(current_ctx(), g.person)
+
+
+def _minor_form(minor):
+    if minor is None:
+        return ""
+    whole, cents = divmod(int(minor), 100)
+    return f"{whole},{cents:02d}"
 
 
 def _person(person_id):

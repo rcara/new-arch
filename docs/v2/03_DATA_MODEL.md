@@ -49,3 +49,11 @@ Kinds : `expense`, `income`, `transfer`, `reimbursement`. Montants en unités mi
 
 ### `finance_budget`
 Budgets mensuels/annuels par catégorie et devise.
+
+## Ajouts migration 005 (`user_version=5`)
+
+### `inventory_place` / `inventory_item` / `inventory_item_owner`
+Lieux et biens (état, série, prix/valeur en unités mineures, visibilité, lien optionnel transaction/facture).
+
+### `inventory_warranty` / `inventory_maintenance` / `inventory_history`
+Garanties (échéance calendrier optionnelle), interventions, historique de cession/état.

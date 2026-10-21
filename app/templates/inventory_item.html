@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+<h1>{{ item.name }}</h1>
+<p class="muted">{{ item.condition_label }}{% if item.place_name %} · {{ item.place_name }}{% endif %}{% if item.category %} · {{ item.category }}{% endif %}</p>
+<p><a href="{{ url_for('pages.inventory_item_edit', item_id=item.id) }}">Modifier</a> · <a href="{{ url_for('pages.inventory_get') }}">Inventaire</a></p>
+
+<dl>
+  <dt>Propriétaires</dt>
+  <dd>{% for o in item.owners %}{{ o.display_name }}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</dd>
+  <dt>N° de série</dt><dd>{{ item.serial_number or '—' }}</dd>
+  <dt>Achat</dt>
+  <dd>{% if item.purchase_date %}{{ item.purchase_date|frdate }}{% else %}—{% endif %}{% if item.purchase_price_label %} · {{ item.purchase_price_label }}{% endif %}</dd>
+  <dt>Valeur estimée</dt><dd>{{ item.estimated_value_label or '—' }}</dd>
+  <dt>Visibilité</dt><dd>{{ item.visibility }}</dd>
+  <dt>Notes</dt><dd>{{ item.notes or '—' }}</dd>
+  <dt>Transaction d'achat</dt><dd>{% if item.purchase_transaction_id %}#{{ item.purchase_transaction_id }}{% else %}—{% endif %}</dd>
+  <dt>Facture (coffre)</dt><dd>{% if item.invoice_file_id %}#{{ item.invoice_file_id }}{% else %}—{% endif %}</dd>
+</dl>
+
+<section class="today-panel" aria-labelledby="item-warranty">
+  <h2 id="item-warranty">Garanties</h2>
+  {% for w in item.warranties %}
+  <div class="row">
+    <b>{{ w.label }}</b>
+    <span class="muted">{% if w.ends_on %}jusqu'au {{ w.ends_on|frdate }}{% else %}sans échéance{% endif %}{% if w.provider %} · {{ w.provider }}{% endif %}</span>
+  </div>
+  {% else %}
+  <p class="muted">Aucune garantie.</p>
+  {% endfor %}
+  <form method="post" action="{{ url_for('pages.inventory_warranty_create', item_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Libellé <input name="label" required placeholder="Garantie constructeur"></label>
+    <label>Début <input type="date" name="starts_on"></label>
+    <label>Fin <input type="date" name="ends_on"></label>
+    <label>Prestataire <input name="provider"></label>
+    <label class="permission"><input type="checkbox" name="create_deadline" value="1" checked> Créer une échéance calendrier</label>
+    <button type="submit">Ajouter la garantie</button>
+  </form>
+</section>
+
+<section class="today-panel" aria-labelledby="item-maint">
+  <h2 id="item-maint">Maintenance</h2>
+  {% for m in item.maintenances %}
+  <div class="row">
+    <span class="row-date">{{ m.performed_on|frdate }}</span>
+    <b>{{ m.label }}</b>
+    {% if m.cost_label %}<span>{{ m.cost_label }}</span>{% endif %}
+  </div>
+  {% else %}
+  <p class="muted">Aucune intervention.</p>
+  {% endfor %}
+  <form method="post" action="{{ url_for('pages.inventory_maintenance_create', item_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Libellé <input name="label" required></label>
+    <label>Date <input type="date" name="performed_on" required></label>
+    <label>Coût <input name="cost" placeholder="80,00"></label>
+    <label>Devise
+      <select name="currency">
+        <option value="CHF">CHF</option>
+        <option value="EUR">EUR</option>
+      </select>
+    </label>
+    <button type="submit">Ajouter</button>
+  </form>
+</section>
+
+<section class="today-panel" aria-labelledby="item-links">
+  <h2 id="item-links">Liens</h2>
+  {% for link in links %}
+  <div class="row"><span class="badge">{{ link.relation_type }}</span><span>{{ link.target_type }} #{{ link.target_id }}</span></div>
+  {% else %}
+  <p class="muted">Aucun lien typé pour l’instant.</p>
+  {% endfor %}
+  <form method="post" action="{{ url_for('pages.inventory_link_purchase', item_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Lier une transaction d'achat (id) <input name="purchase_transaction_id" required pattern="[0-9]+"></label>
+    <button type="submit">Lier l'achat</button>
+  </form>
+  <form method="post" action="{{ url_for('pages.inventory_link_invoice', item_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Lier une facture du coffre (id fichier) <input name="invoice_file_id" required pattern="[0-9]+"></label>
+    <button type="submit">Lier la facture</button>
+  </form>
+</section>
+
+<section class="today-panel" aria-labelledby="item-history">
+  <h2 id="item-history">Historique</h2>
+  {% for h in item.history %}
+  <div class="row">
+    <span class="badge">{{ h.event_type }}</span>
+    <span>{{ h.body }}</span>
+    <span class="muted">{{ h.actor_name }} · {{ h.created_at|frtime }}</span>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

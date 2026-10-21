@@ -20,3 +20,6 @@
 | V2C dépenses + remboursements | `services/finance.py` | `test_expense_split_reimbursement_no_double_count` |
 | V2C confidentialité finances | `services/finance.py` | `test_finance_privacy_private_transaction` |
 | V2C CSV / UI | `routes` + templates | `test_finance_csv_roundtrip` |
+| V2D inventaire + garanties | `services/inventory.py` | `test_item_warranty_deadline_and_links` |
+| V2D confidentialité biens | `services/inventory.py` | `test_inventory_privacy` |
+| V2D cession / historique | `services/inventory.py` | `test_transfer_and_dispose` |
