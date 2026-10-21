@@ -45,7 +45,7 @@ def _group(key, label, short, children, section="principal"):
     }
 
 
-def build(person, enabled, nav, here="/"):
+def build(person, enabled, nav, here="/", sub=""):
     if not person:
         return {"groups": [], "create": [], "active": (None, None), "search": False}
     principal = bool(person.get("is_principal"))
@@ -67,10 +67,11 @@ def build(person, enabled, nav, here="/"):
             on("organisation") and _entry("faites", "Terminées", "pages.tasks_get", status="done"),
         ]),
         _group("finances", "Finances", "Finances", [
-            on("finances") and _entry("finances", "Vue d'ensemble", "pages.finance_get"),
-            on("finances") and _entry("depense", "Nouvelle dépense", "pages.finance_expense_new"),
-            on("finances") and _entry("budget", "Budgets", "pages.finance_budget_new"),
-            on("finances") and _entry("remboursement", "Remboursements", "pages.finance_reimburse_new"),
+            on("finances") and _entry("apercu", "Vue d'ensemble", "pages.finance_get"),
+            on("finances") and _entry("transactions", "Transactions", "pages.finance_get", vue="transactions"),
+            on("finances") and _entry("budgets", "Budgets", "pages.finance_get", vue="budgets"),
+            on("finances") and _entry("comptes", "Comptes", "pages.finance_get", vue="comptes"),
+            on("finances") and _entry("repartition", "Répartition", "pages.finance_get", vue="repartition"),
         ]),
         _group("maison", "Maison", "Maison", [
             on("inventaire") and _entry("inventaire", "Inventaire", "pages.inventory_get"),
@@ -106,6 +107,6 @@ def build(person, enabled, nav, here="/"):
     return {
         "groups": groups,
         "create": [item for item in create if item],
-        "active": ACTIVE.get(nav, (None, None)),
+        "active": ("finances", sub) if nav == "finances" and sub else ACTIVE.get(nav, (None, None)),
         "search": on("recherche"),
     }

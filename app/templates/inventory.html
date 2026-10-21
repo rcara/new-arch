@@ -106,6 +106,6 @@
   {% else %}
   <p class="muted">Aucun lieu pour l'instant. <a href="{{ url_for('pages.inventory_place_new') }}">Créer une pièce ou un emplacement</a> pour ranger vos biens.</p>
   {% endif %}
-  <p><a class="btn btn--small" href="{{ url_for('pages.inventory_export_page') }}">Exporter en CSV</a></p>
+  {% if has_items %}<p><a class="btn btn--small" href="{{ url_for('pages.inventory_export_page') }}">Exporter en CSV</a></p>{% endif %}
 </section>
 {% endblock %}

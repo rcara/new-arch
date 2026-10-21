@@ -202,6 +202,15 @@ def test_finance_sections_and_currencies(alex, camille):
     assert "Aucune transaction de ce type" in expenses
 
 
+def test_finance_sidebar_matches_tabs(alex):
+    page = alex.get("/finances?vue=budgets").data.decode()
+    sidebar = page[page.index('<aside class="sidebar"'):page.index("</aside>")]
+    assert 'href="/finances?vue=budgets" aria-current="page">Budgets' in sidebar
+    assert "Nouvelle dépense" not in sidebar
+    reimburse = alex.get("/finances/remboursement").data.decode()
+    assert 'href="/finances?vue=repartition" aria-current="page">Répartition' in reimburse
+
+
 def test_finance_month_total_respects_visibility(alex, camille):
     me = _people(alex)["Alex Martin"]["id"]
     _expense(alex, "Visible", "10,00", "CHF", me, date="2027-02-05")

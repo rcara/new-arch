@@ -129,6 +129,7 @@ def create_app(home=None, clock=None, testing=False, port=8765):
     def shell():
         endpoint = request.endpoint or ""
         name = endpoint.split(".")[-1]
+        sub = ""
         if name.startswith("milestone"):
             nav = "reperes"
         elif name.startswith("decision"):
@@ -155,6 +156,14 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             nav = "profil"
         elif name.startswith("finance"):
             nav = "finances"
+            if name == "finance_get":
+                sub = request.args.get("vue") or "apercu"
+            elif name.startswith("finance_budget"):
+                sub = "budgets"
+            elif name.startswith("finance_reimburse"):
+                sub = "repartition"
+            else:
+                sub = "transactions"
         elif name.startswith("inventory") or name.startswith("inventaire"):
             nav = "inventaire"
         elif name.startswith("media"):
@@ -169,7 +178,7 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             nav_modules = modules_svc.enabled_keys(current_ctx())
         from .navigation import build as build_navigation
         return {
-            "shell": build_navigation(g.get("person"), nav_modules, nav, request.path if request.method == "GET" else "/"),
+            "shell": build_navigation(g.get("person"), nav_modules, nav, request.path if request.method == "GET" else "/", sub),
             "today_iso": _today_iso(),
             "next_url": safe_next(request.values.get("next")) if request.values.get("next") else "",
             "person": g.get("person"),

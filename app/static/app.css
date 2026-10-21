@@ -1250,7 +1250,8 @@ td.is-today .day-num{background:var(--nav-active-bg);color:var(--nav-active-fg)}
   .agenda-grid td.has-entries,.agenda-grid td.is-today{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:start}
   .agenda-grid td.is-outside{display:none!important}
   .agenda-grid .day-num .sr-only:first-child{position:static;width:auto;height:auto;clip:auto;margin:0;overflow:visible;font-size:.7rem;display:block;font-weight:500;color:var(--text-secondary)}
-  .day-num{flex-direction:column}
+  .agenda-grid .day-num{flex-direction:column;width:44px;min-height:44px;border-radius:var(--radius-sm);padding:4px 0;line-height:1.1}
+  .agenda-grid td.is-today .day-num .sr-only:first-child{color:inherit}
   .agenda-entry a{white-space:normal}
   .quick-panel{padding:16px 16px calc(16px + var(--touch))}
   dl{grid-template-columns:1fr;gap:2px 0}

@@ -9,7 +9,9 @@
   {% for item in items %}
   <li class="poster poster--{{ item.kind }}">
     <a href="{{ url_for('pages.media_work_get', work_id=item.id) }}">
-      <span class="poster-art" aria-hidden="true"><span>{{ item.kind_label }}</span><b>{{ item.title[:2] }}</b></span>
+      {% set words = item.title.replace("'", " ").replace("’", " ").split() %}
+      {% set word = words[1] if words|length > 1 and words[0]|lower in ('le', 'la', 'les', 'l', 'un', 'une', 'des', 'the', 'a') else words[0] %}
+      <span class="poster-art" aria-hidden="true"><span>{{ item.kind_label }}</span><b>{{ word[:1]|upper }}</b></span>
       <span class="poster-title">{{ item.title }}</span>
       <span class="poster-meta">{{ item.creator or item.kind_label }}{% if item.year %} · {{ item.year }}{% endif %}</span>
       {% if item.my_status_label %}<span class="chip">{{ item.my_status_label }}{% if item.my_percent %} · {{ item.my_percent }} %{% endif %}</span>{% endif %}
