@@ -73,6 +73,10 @@ Comptes fictifs : `alex` / `DemoFoyer-2026!` et `camille` / `DemoCamille-2026!`.
 
 Paramètres → Apparence : thème sombre (défaut) ou clair (`foyer_theme`). Lien « Aller au contenu », focus visible, `prefers-reduced-motion` respecté.
 
+## Profil et mot de passe
+
+Dans **Profil** (navigation) : modifier le nom affiché et changer le mot de passe (mot de passe actuel + confirmation). L’identifiant de connexion n’est pas modifiable. Les autres sessions sont fermées après un changement de mot de passe. L’Accueil affiche un **tableau de bord** personnel (mes tâches, mon solde, échéances).
+
 ## Limites du MVP
 
 - La base et les fichiers sont en clair. Quelqu'un qui peut lire le disque ou modifier SQLite contourne les droits et le scellement.
