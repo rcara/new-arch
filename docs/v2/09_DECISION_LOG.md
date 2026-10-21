@@ -26,7 +26,7 @@
 | B-06 | P0 | Recherche | Filtrage permissions |
 | B-07 | P0 | Nav modules | Masque désactivés |
 | C-01 | P1 | Finances bout-en-bout | ✅ Splits exacts ; CHF/EUR ; confidentialité ; migration 004 |
-| D-01 | P1 | Inventaire + liens facture | Voir roadmap D |
+| D-01 | P1 | Inventaire + liens facture | ✅ Migration 005 ; garanties → calendrier ; ACL privée |
 | E-01 | P2 | Médiathèque simple | Catalogue ≠ fichiers |
 | F-01 | P2 | E2E + backup étendu | DoD §5 |
 

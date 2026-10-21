@@ -43,4 +43,8 @@ def dashboard(ctx, person):
         finance.seed_defaults(ctx, person)
         payload["finance_balances"] = finance.person_balances(ctx, person, currency="CHF")
 
+    if "inventaire" in enabled:
+        from . import inventory
+        payload["warranties"] = inventory.upcoming_warranties(ctx, person, within_days=90, limit=10)
+
     return payload

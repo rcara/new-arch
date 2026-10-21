@@ -85,4 +85,18 @@
   <p class="today-more"><a href="{{ url_for('pages.finance_get') }}">Ouvrir Finances</a></p>
 </section>
 {% endif %}
+
+{% if summary.warranties %}
+<section class="today-panel" aria-labelledby="home-warranties">
+  <h2 id="home-warranties">Garanties à venir</h2>
+  {% for w in summary.warranties %}
+  <div class="row row--today">
+    <b><a href="{{ url_for('pages.inventory_item_get', item_id=w.item_id) }}">{{ w.item_name }}</a></b>
+    <span class="row-date">{{ w.ends_on|frdate }}</span>
+    <span class="muted">{{ w.label }}</span>
+  </div>
+  {% endfor %}
+  <p class="today-more"><a href="{{ url_for('pages.inventory_get') }}">Inventaire</a></p>
+</section>
+{% endif %}
 {% endblock %}

@@ -27,6 +27,7 @@ MESSAGES = {
     "link_saved": "Le lien est enregistré.",
     "finance_saved": "Enregistrement financier effectué.",
     "finance_imported": "Import CSV terminé.",
+    "inventory_saved": "Inventaire mis à jour.",
 }
 
 

@@ -39,7 +39,10 @@ def init_db(path):
         if version == 3:
             conn.executescript((MIGRATIONS / "004_finances.sql").read_text(encoding="utf-8"))
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-        if version != 4:
+        if version == 4:
+            conn.executescript((MIGRATIONS / "005_inventory.sql").read_text(encoding="utf-8"))
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version != 5:
             raise RuntimeError("schema incompatible")
     finally:
         conn.close()

@@ -8,7 +8,10 @@ from ..db import require_household, write_tx
 from ..errors import AppError
 from .milestones import require_index
 
-ALLOWED_TYPES = frozenset({"milestone", "decision", "stored_file", "person", "task", "calendar_event"})
+ALLOWED_TYPES = frozenset({
+    "milestone", "decision", "stored_file", "person", "task", "calendar_event",
+    "inventory_item", "inventory_place", "finance_transaction",
+})
 ALLOWED_RELATIONS = frozenset({
     "relates_to",
     "documents",
@@ -16,6 +19,8 @@ ALLOWED_RELATIONS = frozenset({
     "concerns",
     "follows",
     "supports",
+    "purchased_via",
+    "warranty_deadline",
 })
 
 
@@ -84,6 +89,44 @@ def can_see_object(ctx, person, object_type, object_id):
             (object_id,),
         ).fetchone()
         return row is not None
+    if object_type == "inventory_place":
+        row = ctx.conn.execute(
+            "SELECT id FROM inventory_place WHERE id=? AND household_id=1 AND archived=0",
+            (object_id,),
+        ).fetchone()
+        return row is not None
+    if object_type == "inventory_item":
+        row = ctx.conn.execute(
+            """SELECT id, visibility, created_by FROM inventory_item
+               WHERE id=? AND household_id=1 AND archived=0""",
+            (object_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        if person.get("is_principal") or row["visibility"] == "household" or row["created_by"] == person["id"]:
+            return True
+        owned = ctx.conn.execute(
+            "SELECT 1 FROM inventory_item_owner WHERE item_id=? AND person_id=?",
+            (object_id, person["id"]),
+        ).fetchone()
+        return owned is not None
+    if object_type == "finance_transaction":
+        row = ctx.conn.execute(
+            """SELECT id, visibility, created_by, payer_id, beneficiary_id FROM finance_transaction
+               WHERE id=? AND household_id=1 AND archived=0""",
+            (object_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        if person.get("is_principal") or row["visibility"] == "household":
+            return True
+        if row["created_by"] == person["id"] or row["payer_id"] == person["id"] or row["beneficiary_id"] == person["id"]:
+            return True
+        split = ctx.conn.execute(
+            "SELECT 1 FROM finance_split WHERE transaction_id=? AND person_id=?",
+            (object_id, person["id"]),
+        ).fetchone()
+        return split is not None
     return False
 
 

@@ -38,9 +38,9 @@ python -m pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest
 ```
 
-## État V2 (B + C)
+## État V2 (B + C + D)
 
-Livré : foyer/personnes/permissions V1, liens, tâches, événements, recherche, accueil, **finances** (splits, remboursements, CHF/EUR, budgets, CSV), migrations `003`–`004`.  
-Backlog : inventaire, médiathèque, light mode, chiffrement au repos (toujours **absent** — voir GUIDE).
+Livré : foyer V1, liens, tâches, événements, recherche, accueil, finances, **inventaire** (biens/lieux/garanties/maintenance + liens achat/facture), migrations `003`–`005`.  
+Backlog : médiathèque, light mode, chiffrement au repos (toujours **absent** — voir GUIDE).
 
 **ZIP spécification V1** (`Foyer_Local_V1_Complet`) : non présent dans ce dépôt au moment de l'audit ; l'audit s'appuie sur le code et la doc livrée.

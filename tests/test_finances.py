@@ -62,7 +62,7 @@ def test_migration_to_finances(tmp_path):
     # start empty via init_db full path
     init_db(db_path)
     conn = connect(db_path)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert conn.execute("PRAGMA user_version").fetchone()[0] >= 4
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert "finance_transaction" in tables
     assert "finance_split" in tables

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Nouveau lieu{% endblock %}
+{% block content %}
+<h1>Nouveau lieu</h1>
+<form method="post" action="{{ url_for('pages.inventory_place_create') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Nom <input name="name" required maxlength="120" value="{{ form.get('name','') }}"></label>
+  {% if errors.name %}<p class="error">{{ errors.name }}</p>{% endif %}
+  <label>Notes <textarea name="notes" rows="3">{{ form.get('notes','') }}</textarea></label>
+  <button type="submit">Enregistrer</button>
+</form>
+{% endblock %}

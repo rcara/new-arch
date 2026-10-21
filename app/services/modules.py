@@ -6,7 +6,7 @@ DEFAULT_MODULES = (
     ("accueil", 1),
     ("foyer", 1),
     ("finances", 1),
-    ("inventaire", 0),
+    ("inventaire", 1),
     ("calendrier", 1),
     ("organisation", 1),
     ("coffre", 1),
