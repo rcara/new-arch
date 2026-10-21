@@ -1,5 +1,33 @@
 # UX Changelog — New Arch V2.1
 
+## Sprint 4 — Modules
+
+**Ajouté**
+- `app/templates/_ui.html` : macros `page_header`, `subnav`, `empty_state` (variantes données / recherche /
+  droit refusé, avec exemple illustratif présenté comme tel). Utilisées par tous les modules ci-dessous.
+- `app/services/agenda.py` (lecture seule) : vues mois / semaine / liste au-dessus de `events.list_events` et
+  `milestones.list_milestones` (repères seulement si module actif et index accordé). Événements multi-jours sur
+  chaque jour en grille, une seule fois en liste.
+- `POST /organisation/<id>/rouvrir` (CSRF, `next` même site) ; `tasks.list_tasks(assignee="moi"|"partage")`
+  (paramètre optionnel, API inchangée).
+- Finances : `?vue=apercu|transactions|budgets|comptes|repartition` ; évolution des dépenses sur 6 mois via
+  `finance.month_spending` (aucune règle de calcul modifiée, devises séparées).
+
+**Modifié**
+- Agenda (`events.html`) : grille mois / semaine (tableau accessible, en-têtes de colonnes), liste par jour,
+  navigation de période, filtre membre + titre, légende événement / échéance, état vide ou « aucun résultat ».
+- À faire (`tasks.html`) : ajout rapide en ligne, groupes par échéance, onglets statut / responsable, pagination.
+- Finances (`finance.html`) : onglets, cartes Vue d'ensemble, tableau des transactions (filtre type, export /
+  import), budgets avec jauge, comptes en cartes, répartition. Sidebar Finances alignée sur les onglets.
+- Inventaire : galerie / liste, filtres lieu + catégorie, garanties en bandeau, lieux en pastilles.
+- Coffre : explorateur (filtres nom / type / repère, tri récent d'abord), carte de dépôt latérale, menu
+  « … » pour Remplacer / Retirer, états vide / aucun résultat / aucun accès distincts.
+- Médiathèque : onglets, galerie d'affiches typées, fichiers personnels séparés du catalogue.
+- Décisions : explication du cycle, Brouillons / Scellées, sélection du repère (GET vers le formulaire existant).
+  « + Ajouter → Décision » mène à ce formulaire.
+- `tests/test_ux_stability.py` : le crawl ignore le paramètre `date=` (navigation de période infinie) et le test
+  Calendrier utilise les vues liste / mois (comportement vérifié identique).
+
 ## Sprint 3 — Création rapide
 
 **Ajouté**

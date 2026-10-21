@@ -47,9 +47,11 @@ def _crawl(web):
     seen, todo, failures = set(), ["/"], []
     while todo:
         url = todo.pop()
-        if url in seen:
+        # La navigation par période (Précédent / Suivant) est infinie : une seule visite par vue.
+        shape = re.sub(r"([?&])date=[^&]*", r"\1", url)
+        if shape in seen:
             continue
-        seen.add(url)
+        seen.add(shape)
         response = web.get(url)
         if response.status_code >= 500 or "Opération impossible".encode() in response.data:
             failures.append(url)
@@ -83,14 +85,14 @@ def test_every_linked_page_renders(household, request):
 def test_calendar_lists_and_edits_events(empty):
     page = empty.get("/calendrier")
     assert page.status_code == 200
-    assert "Aucun événement".encode() in page.data
+    assert "Rien de prévu sur cette période".encode() in page.data
     empty.get("/calendrier/nouveau")
     created = empty.submit("/calendrier", {
         "title": "Dentiste Léa", "start_date": "2027-03-02", "all_day": "1",
         "timezone": "Europe/Berlin", "recurrence": "none",
     })
     assert created.status_code == 200
-    page = empty.get("/calendrier")
+    page = empty.get("/calendrier?vue=liste")
     assert "Dentiste Léa".encode() in page.data
     event_id = int(re.search(rb'href="/calendrier/(\d+)"', page.data).group(1))
     empty.get(f"/calendrier/{event_id}/modifier")
@@ -98,9 +100,9 @@ def test_calendar_lists_and_edits_events(empty):
         "title": "Dentiste Léa (déplacé)", "start_date": "2027-03-03", "all_day": "1",
         "timezone": "Europe/Berlin", "recurrence": "none",
     })
-    page = empty.get("/calendrier")
+    page = empty.get("/calendrier?vue=mois&date=2027-03-01")
     assert "Dentiste Léa (déplacé)".encode() in page.data
-    assert "03.03.2027".encode() in page.data or "3 mars 2027".encode() in page.data
+    assert "03.03.2027".encode() in empty.get("/calendrier?vue=liste").data or "3 mars 2027".encode() in empty.get("/calendrier?vue=liste").data
 
 
 def test_organisation_lists_and_completes_tasks(empty):

@@ -56,3 +56,18 @@ Données de capture : foyer démo + éléments datés d'octobre 2026 ajoutés vi
 Limites connues : sans JS, le menu « + Ajouter » reste ouvert derrière le panneau et le focus n'est pas placé
 dans le champ Titre ; le panneau se ferme par « Fermer », le fond, ou après envoi. Sur les captures pleine page,
 l'en-tête et la barre mobile fixes apparaissent au milieu (artefact de capture).
+
+## Sprint 4
+
+| Vérification | Résultat |
+|---|---|
+| `pytest` complet | 128 passés |
+| `tests/test_ux_modules.py` (22 tests) | Agenda : événement 3 jours présent sur chaque case et une seule fois en liste, hors mois exclu, case du jour marquée, semaine et mois suivants, liens Précédent / Suivant ; filtre membre (responsable) et titre, échéance de repère affichée puis masquée quand l'index est retiré au compte secondaire. À faire : ordre En retard → Aujourd'hui → À venir, récurrence affichée, filtre « Pour moi », ajout rapide, terminer puis rouvrir, rouvrir sans CSRF refusé. Finances : 5 vues + vue inconnue en 200, CHF et EUR jamais mélangés, transaction privée invisible pour le compte secondaire (tableau et vue d'ensemble), total du mois : écart exact de 1000,00 CHF entre principal et secondaire (dépense privée), aucun `style=` inline (CSP), sidebar alignée sur l'onglet. Inventaire : galerie, liste, filtres catégorie et lieu, aucun résultat ; bien privé et sa catégorie invisibles pour le compte secondaire. Coffre : dépôt, filtres type / texte, compte secondaire sans accès : ni fichier, ni repère, ni formulaire de dépôt, recherche sans fuite. Médiathèque : 6 onglets en 200. Décisions : cycle affiché, sélection du repère → formulaire existant, compte secondaire sans formulaire ; « + Ajouter » → `/decisions#nouvelle-decision`. États vides (9 pages, foyer vide) : titre explicite + action principale |
+| Visuel avant | `s4-avant-{vide,demo}-{calendrier,organisation,finances,inventaire,coffre,mediatheque,decisions}-{desktop,mobile}.png` |
+| Visuel après | `s4-apres-{vide,demo}-…` mêmes pages + `calendrier-vue-semaine`, `calendrier-vue-liste`, `finances-vue-transactions`, `finances-vue-budgets`, `inventaire-vue-liste` (desktop, mobile) ; tablette : `calendrier`, `organisation`, `finances`, `inventaire` |
+
+Données de capture : foyer démo enrichi (3 lieux, 5 biens, 5 œuvres, 1 bail au coffre, 1 décision brouillon)
+via l'API locale. Quelques tâches en double proviennent des captures du Sprint 3.
+
+Limites connues : événements récurrents non développés en occurrences (D6) ; pas d'images de biens ni d'œuvres
+(D7) ; sur mobile, la grille du mois est remplacée par la liste des jours occupés (et le jour même).

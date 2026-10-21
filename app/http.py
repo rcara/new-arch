@@ -23,6 +23,7 @@ MESSAGES = {
     "restored": "Le repère est restauré.",
     "task_saved": "La tâche est enregistrée.",
     "task_done": "La tâche est marquée faite.",
+    "task_reopened": "La tâche est de nouveau à faire.",
     "onboarding_hidden": "Guide de démarrage masqué. Vous pouvez le réafficher depuis Paramètres.",
     "onboarding_shown": "Guide de démarrage réaffiché sur Aujourd'hui.",
     "event_saved": "L'événement est enregistré.",

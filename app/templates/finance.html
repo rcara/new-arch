@@ -1,80 +1,175 @@
 {% extends "base.html" %}
+{% from "_ui.html" import page_header, subnav, empty_state %}
 {% block title %}Finances{% endblock %}
-{% block content %}
-<h1>Finances</h1>
-<p class="muted">Montants en unités exactes · CHF et EUR · pas de conversion implicite.</p>
+{% set MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'] %}
+{% set KINDS = {'expense': 'Dépense', 'income': 'Revenu', 'transfer': 'Virement', 'reimbursement': 'Remboursement'} %}
+{% macro fin(v, cur=currency) -%}{{ url_for('pages.finance_get', vue=None if v == 'apercu' else v, currency=None if cur == 'CHF' else cur) }}{%- endmacro %}
 
-<div class="toolbar">
-  <a href="{{ url_for('pages.finance_expense_new') }}">Ajouter une dépense</a>
-  <a href="{{ url_for('pages.finance_reimburse_new') }}">Enregistrer un remboursement</a>
-  <a href="{{ url_for('pages.finance_budget_new') }}">Budget</a>
-  <a href="{{ url_for('pages.finance_export_page', currency=currency) }}">Export CSV</a>
-  <a href="{{ url_for('pages.finance_import_get') }}">Import CSV</a>
-  <form method="get" class="toolbar">
-    <label>Devise
-      <select name="currency">
-        {% for c in currencies %}
-        <option value="{{ c }}" {% if currency==c %}selected{% endif %}>{{ c }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit">Filtrer</button>
-  </form>
+{% macro txn_table(items, caption) %}
+<div class="table-wrap">
+  <table class="data-table">
+    <caption class="sr-only">{{ caption }}</caption>
+    <thead>
+      <tr><th scope="col">Date</th><th scope="col">Libellé</th><th scope="col">Catégorie</th><th scope="col">Payé par</th><th scope="col">Type</th><th scope="col" class="num">Montant</th></tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td data-label="Date">{{ item.txn_date|frdate }}</td>
+        <td data-label="Libellé"><b>{{ item.label }}</b>{% if item.visibility == 'private' %} <span class="chip">Privée</span>{% endif %}</td>
+        <td data-label="Catégorie">{{ item.category_name or '—' }}</td>
+        <td data-label="Payé par">{{ item.payer_name or '—' }}</td>
+        <td data-label="Type">{{ KINDS.get(item.kind, item.kind) }}</td>
+        <td data-label="Montant" class="num{% if item.kind == 'income' %} is-positive{% endif %}">{{ item.amount_label }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{% macro budget_list(items) %}
+<ul class="budget-list">
+  {% for item in items %}
+  {% set ratio = (item.spent_minor / item.amount_minor) if item.amount_minor else 0 %}
+  <li>
+    <div class="budget-head">
+      <b>{{ item.category_name }}</b>
+      <span class="muted">{% if item.period == 'month' %}{{ MONTHS[item.month - 1] }} {{ item.year }}{% else %}année {{ item.year }}{% endif %}</span>
+    </div>
+    <meter min="0" max="{{ [item.amount_minor, 1]|max }}" low="{{ (item.amount_minor * 0.8)|int }}" high="{{ item.amount_minor }}" optimum="0" value="{{ [item.spent_minor, item.amount_minor]|min }}" aria-label="{{ item.category_name }} : {{ item.spent_label }} sur {{ item.amount_label }}"></meter>
+    <div class="budget-foot">
+      <span>{{ item.spent_label }} / {{ item.amount_label }}</span>
+      <span class="{% if item.remaining_minor < 0 %}is-late{% else %}muted{% endif %}">{% if item.remaining_minor < 0 %}Dépassé de {{ item.remaining_label|replace('-', '') }}{% else %}Reste {{ item.remaining_label }}{% endif %}</span>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% endmacro %}
+
+{% macro balance_list(balances) %}
+<ul class="plain-list balances">
+  {% for item in balances.entries %}
+  <li><b>{{ item.display_name }}</b> <span class="{% if item.net_minor < 0 %}is-late{% elif item.net_minor > 0 %}is-positive{% else %}muted{% endif %}">{{ item.net_label }} · {{ item.meaning }}</span></li>
+  {% else %}
+  <li class="muted">Aucun membre actif.</li>
+  {% endfor %}
+</ul>
+{% endmacro %}
+
+{% block content %}
+{% call page_header("Finances", "Finances", "Montants exacts en " ~ currency ~ " · CHF et EUR restent séparés, sans conversion.") %}
+<a class="btn btn--primary" href="{{ url_for('pages.finance_expense_new', next=request.path) }}">+ Dépense</a>
+<a class="btn" href="{{ url_for('pages.finance_reimburse_new') }}">Remboursement</a>
+{% endcall %}
+
+<div class="list-toolbar">
+  {{ subnav([
+    ('apercu', "Vue d'ensemble", fin('apercu')),
+    ('transactions', 'Transactions', fin('transactions')),
+    ('budgets', 'Budgets', fin('budgets')),
+    ('comptes', 'Comptes', fin('comptes')),
+    ('repartition', 'Répartition', fin('repartition')),
+  ], view, "Sections des finances") }}
+  {% if view != 'comptes' %}
+  {{ subnav([('CHF', 'CHF', fin(view, 'CHF')), ('EUR', 'EUR', fin(view, 'EUR'))], currency, "Devise") }}
+  {% endif %}
 </div>
 
-<section class="today-panel" aria-labelledby="fin-balances">
-  <h2 id="fin-balances">Soldes entre personnes ({{ currency }})</h2>
-  {% for item in balances.entries %}
-  <div class="row">
-    <b>{{ item.display_name }}</b>
-    <span class="muted">{{ item.net_label }} · {{ item.meaning }}</span>
-  </div>
-  {% else %}
-  <p class="muted">Aucun membre actif.</p>
-  {% endfor %}
-</section>
+{% if view == 'apercu' %}
+<div class="dash-grid">
+  <section class="dash-card" aria-labelledby="fin-mois">
+    <h2 id="fin-mois">Dépensé ce mois-ci</h2>
+    <p class="stat-big">{{ current.label }}</p>
+    <p class="muted">{{ MONTHS[today.month - 1] }} {{ today.year }} · dépenses visibles pour vous</p>
+    <h3 class="sr-only">Évolution sur six mois</h3>
+    <ol class="month-bars" aria-label="Dépenses des six derniers mois en {{ currency }}">
+      {% for m in months %}
+      <li{% if loop.last %} class="is-current"{% endif %}>
+        <span class="bar bar--{{ ((m.percent / 10)|round|int) * 10 }}"></span>
+        <span class="bar-label">{{ MONTHS[m.month - 1] }}</span>
+        <span class="sr-only">{{ m.label }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+  <section class="dash-card dash-card--wide" aria-labelledby="fin-budgets">
+    <h2 id="fin-budgets">Budgets du mois</h2>
+    {% if budgets %}{{ budget_list(budgets) }}
+    {% else %}
+    <div class="empty-inline"><p>Aucun budget pour {{ MONTHS[today.month - 1] }} en {{ currency }}.</p><a class="btn btn--small" href="{{ url_for('pages.finance_budget_new') }}">Fixer un budget</a></div>
+    {% endif %}
+  </section>
+  <section class="dash-card" aria-labelledby="fin-soldes">
+    <h2 id="fin-soldes">Qui doit quoi</h2>
+    {{ balance_list(balances) }}
+    <p><a href="{{ fin('repartition') }}">Voir la répartition</a></p>
+  </section>
+  <section class="dash-card dash-card--wide" aria-labelledby="fin-recent">
+    <h2 id="fin-recent">Dernières transactions</h2>
+    {% if transactions %}
+    {{ txn_table(transactions, "Dernières transactions en " ~ currency) }}
+    <p><a href="{{ fin('transactions') }}">Toutes les transactions</a></p>
+    {% else %}
+    <div class="empty-inline"><p>Aucune transaction en {{ currency }}.</p><a class="btn btn--small" href="{{ url_for('pages.finance_expense_new', next=request.path) }}">Ajouter une dépense</a></div>
+    {% endif %}
+  </section>
+</div>
 
-<section class="today-panel" aria-labelledby="fin-accounts">
-  <h2 id="fin-accounts">Comptes de suivi</h2>
+{% elif view == 'transactions' %}
+<form class="search-inline filter-bar" method="get">
+  <input type="hidden" name="vue" value="transactions">
+  {% if currency != 'CHF' %}<input type="hidden" name="currency" value="{{ currency }}">{% endif %}
+  <label>Type
+    <select name="type">
+      <option value="">Tous</option>
+      {% for key, label in KINDS.items() %}<option value="{{ key }}" {% if kind == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="secondary">Filtrer</button>
+  <a class="btn btn--small" href="{{ url_for('pages.finance_export_page', currency=currency) }}">Export CSV</a>
+  <a class="btn btn--small" href="{{ url_for('pages.finance_import_get') }}">Import CSV</a>
+</form>
+{% if listed['items'] %}
+{{ txn_table(listed['items'], "Transactions en " ~ currency) }}
+<p class="muted">{{ listed.total }} transaction{% if listed.total > 1 %}s{% endif %} visible{% if listed.total > 1 %}s{% endif %} (200 plus récentes au maximum).</p>
+<nav class="period-nav" aria-label="Pages">
+  {% if listed.page > 1 %}<a class="btn btn--small" href="{{ url_for('pages.finance_get', vue='transactions', currency=None if currency == 'CHF' else currency, type=kind or None, page=listed.page - 1) }}">Précédentes</a>{% endif %}
+  {% if listed.total > listed.page * listed.page_size %}<a class="btn btn--small" href="{{ url_for('pages.finance_get', vue='transactions', currency=None if currency == 'CHF' else currency, type=kind or None, page=listed.page + 1) }}">Suivantes</a>{% endif %}
+</nav>
+{% elif kind %}
+{{ empty_state("Aucune transaction de ce type", "Aucune transaction « " ~ KINDS.get(kind, kind) ~ " » en " ~ currency ~ ".", fin('transactions'), "Voir toutes les transactions", kind="search") }}
+{% else %}
+{{ empty_state("Aucune transaction en " ~ currency, "Enregistrez les dépenses du foyer : la répartition entre membres et les budgets se calculent automatiquement.", url_for('pages.finance_expense_new', next=request.path), "Ajouter une dépense", example="« Courses Migros », 84,20 CHF, payé par Alex, partagé à parts égales.") }}
+{% endif %}
+
+{% elif view == 'budgets' %}
+<p><a class="btn btn--primary" href="{{ url_for('pages.finance_budget_new') }}">+ Nouveau budget</a></p>
+{% if budgets %}
+<section class="dash-card">{{ budget_list(budgets) }}</section>
+{% else %}
+{{ empty_state("Aucun budget en " ~ currency, "Un budget fixe un plafond par catégorie, par mois ou par an. Les dépenses de la catégorie s'y imputent automatiquement.", url_for('pages.finance_budget_new'), "Créer un budget", example="Alimentation : 600 CHF par mois.") }}
+{% endif %}
+
+{% elif view == 'comptes' %}
+<p class="muted">Comptes de suivi : ils servent à classer les mouvements, pas à refléter un solde bancaire.</p>
+<div class="card-grid">
   {% for item in accounts %}
-  <div class="row">
-    <b>{{ item.name }}</b>
-    <span class="badge">{{ item.currency }}</span>
-    <span class="muted">{{ item.account_kind }}{% if item.owner_name %} · {{ item.owner_name }}{% else %} · foyer{% endif %}</span>
-  </div>
+  <section class="card">
+    <h2>{{ item.name }}</h2>
+    <p><span class="badge">{{ item.currency }}</span> <span class="muted">{{ {'checking': 'Compte courant', 'savings': 'Épargne', 'cash': 'Espèces', 'credit': 'Crédit', 'other': 'Autre'}.get(item.account_kind, item.account_kind) }} · {{ item.owner_name or 'Foyer' }}</span></p>
+  </section>
   {% endfor %}
-</section>
+</div>
 
-<section class="today-panel" aria-labelledby="fin-budgets">
-  <h2 id="fin-budgets">Budgets</h2>
-  {% if budgets %}
-  {% for item in budgets %}
-  <div class="row">
-    <b>{{ item.category_name }}</b>
-    <span class="muted">{{ item.period }} {{ item.month or '' }}/{{ item.year }}</span>
-    <span>{{ item.spent_label }} / {{ item.amount_label }}</span>
-  </div>
-  {% endfor %}
-  {% else %}
-  <p class="muted">Aucun budget. <a href="{{ url_for('pages.finance_budget_new') }}">Créer un budget</a></p>
-  {% endif %}
-</section>
-
-<section class="today-panel" aria-labelledby="fin-txns">
-  <h2 id="fin-txns">Transactions</h2>
-  {% if transactions %}
-  {% for item in transactions %}
-  <div class="row">
-    <span class="row-date">{{ item.txn_date|frdate }}</span>
-    <b>{{ item.label }}</b>
-    <span class="badge">{{ item.kind }}</span>
-    <span>{{ item.amount_label }}</span>
-    <span class="muted">{{ item.payer_name }}{% if item.category_name %} · {{ item.category_name }}{% endif %}</span>
-  </div>
-  {% endfor %}
-  {% else %}
-  <p class="muted">Aucune transaction en {{ currency }}.</p>
-  <p><a href="{{ url_for('pages.finance_expense_new') }}">Ajouter une dépense</a></p>
-  {% endif %}
-</section>
+{% else %}
+<div class="dash-grid">
+  <section class="dash-card" aria-labelledby="fin-rep">
+    <h2 id="fin-rep">Soldes en {{ currency }}</h2>
+    {{ balance_list(balances) }}
+    <p class="muted">Positif : la personne a avancé plus que sa part. Les remboursements réduisent l'écart sans recompter la dépense.</p>
+    <p><a class="btn btn--primary" href="{{ url_for('pages.finance_reimburse_new') }}">Enregistrer un remboursement</a></p>
+  </section>
+</div>
+{% endif %}
 {% endblock %}
