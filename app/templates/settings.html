@@ -30,13 +30,13 @@
   {% endfor %}
 </section>
 
+{% if person.is_principal %}
 <section class="today-panel" aria-labelledby="ops-title">
-  <h2 id="ops-title">Exploitation</h2>
-  <p class="muted">Sauvegarde (base + coffre + média) : <code>python cli.py backup</code></p>
-  <p class="muted">Restauration dans un dossier neuf : <code>python cli.py restore &lt;archive&gt; &lt;dossier&gt;</code></p>
-  <p class="muted">Chiffrement des fichiers coffre/média : <code>python cli.py crypto enable</code> puis <code>FOYER_PASSPHRASE</code> — SQLite reste en clair.</p>
-  <p class="muted">Dataset démo (foyer vide uniquement) : <code>python cli.py seed-demo</code> — voir <code>WINDOWS.md</code> et <code>GUIDE.md</code>.</p>
+  <h2 id="ops-title">Administration avancée</h2>
+  <p class="muted">Sauvegarde, restauration, chiffrement des fichiers et foyer de démonstration.</p>
+  <p><a href="{{ url_for('pages.settings_advanced_get') }}">Ouvrir l'administration avancée</a></p>
 </section>
+{% endif %}
 
 <p class="today-more"><a href="{{ url_for('pages.profile_get') }}">Gérer mon profil et mon mot de passe</a></p>
 {% endblock %}

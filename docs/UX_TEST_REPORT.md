@@ -20,3 +20,15 @@ Foyers : **vide** (initialisé) et **démo** (`python cli.py seed-demo`, donnée
 Captures : store projet `media/ux-v2/s0-avant-*.png`, `s0-apres-*.png`.
 
 Anomalies restantes : voir `UX_AUDIT_V2.md` §5 (A1–A4) et décisions D1–D5 dans `UX_IMPLEMENTATION_PLAN.md`.
+
+## Sprint 1
+
+| Vérification | Résultat |
+|---|---|
+| `pytest` complet | 89 passés |
+| `tests/test_ux_navigation.py` (15 tests) | passés : 7 groupes au lieu de 14 entrées, chaque lien sidebar + « + Ajouter » répond 200 depuis 7 pages, état actif groupe/sous-entrée, compte secondaire sans entrées admin (et `/parametres/avance` → 403), modules désactivés masqués (+ 404 serveur), alias 302, anciennes routes 200, déconnexion POST + CSRF, aucune balise `<script>` et CSP inchangée |
+| Visuel desktop 1440 / tablette 820 / mobile 390 | `s1-apres-*` : sidebar, tiroir tablette ouvert, menu « + Ajouter » ouvert, barre mobile |
+| Thème sombre | `s1-apres-demo-finances-sombre-desktop.png` |
+
+Limites connues : les menus `<details>` ne se ferment pas au clic extérieur (pas de JS) — un second clic sur le
+bouton ou la navigation les ferme. Le tiroir se ferme via « Fermer » ou le fond.

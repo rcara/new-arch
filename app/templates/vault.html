@@ -7,7 +7,7 @@
 {% if errors.file %}<p class="error">{{ errors.file }}</p>{% endif %}
 {% if errors.milestone_id %}<p class="error">{{ errors.milestone_id }}</p>{% endif %}
 {% if person.is_principal %}
-<form class="upload" method="post" enctype="multipart/form-data">
+<form class="upload" id="depot" method="post" enctype="multipart/form-data">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <b>Déposer une pièce</b>
   <p class="muted">PDF, JPEG ou PNG · 20 Mio maximum</p>

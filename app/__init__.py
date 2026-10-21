@@ -147,6 +147,8 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             nav = "recherche"
         elif name.startswith("foyer"):
             nav = "foyer"
+        elif name.startswith("settings_advanced"):
+            nav = "avance"
         elif name.startswith("settings"):
             nav = "parametres"
         elif name.startswith("profile"):
@@ -165,7 +167,9 @@ def create_app(home=None, clock=None, testing=False, port=8765):
         if g.get("household") is not None and g.get("person") is not None and g.get("db") is not None:
             from .services import modules as modules_svc
             nav_modules = modules_svc.enabled_keys(current_ctx())
+        from .navigation import build as build_navigation
         return {
+            "shell": build_navigation(g.get("person"), nav_modules, nav),
             "person": g.get("person"),
             "household": g.get("household"),
             "csrf_token": g.get("setup_token") or g.get("csrf_token") or "",

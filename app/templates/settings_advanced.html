@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Administration avancée{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Paramètres</p>
+    <h1>Administration avancée</h1>
+    <p class="muted">Opérations de maintenance du foyer, réservées au compte principal. Elles s'exécutent sur la machine qui héberge New Arch, application arrêtée.</p>
+  </div>
+</header>
+
+<div class="card-grid">
+  <section class="card" aria-labelledby="backup-title">
+    <h2 id="backup-title">Sauvegarde</h2>
+    <p>Une archive complète : base, coffre et médiathèque. À faire régulièrement et à conserver hors de la machine.</p>
+    <details class="tech">
+      <summary>Détails techniques</summary>
+      <p><code>python cli.py backup</code> — archive créée dans le dossier <code>backups/</code>.</p>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="restore-title">
+    <h2 id="restore-title">Restauration</h2>
+    <p>Recrée un foyer à partir d'une archive, dans un dossier neuf. Le foyer actuel n'est jamais écrasé.</p>
+    <details class="tech">
+      <summary>Détails techniques</summary>
+      <p><code>python cli.py restore &lt;archive&gt; &lt;dossier-neuf&gt;</code></p>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="crypto-title">
+    <h2 id="crypto-title">Chiffrement des fichiers</h2>
+    <p>
+      État : <span class="chip {% if crypto.enabled %}chip--a_jour{% endif %}">{% if crypto.enabled %}Activé{% else %}Non activé{% endif %}</span>
+    </p>
+    <p>Chiffre les fichiers du coffre et de la médiathèque avec une phrase secrète. La base de données reste lisible sur la machine.</p>
+    <details class="tech">
+      <summary>Détails techniques</summary>
+      <p><code>python cli.py crypto enable</code>, puis variable <code>FOYER_PASSPHRASE</code> au démarrage. Voir <code>docs/v2/10_ENCRYPTION.md</code>.</p>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="demo-title">
+    <h2 id="demo-title">Foyer de démonstration</h2>
+    <p>Des données fictives pour découvrir New Arch, uniquement dans un dossier vide — jamais dans ce foyer.</p>
+    <details class="tech">
+      <summary>Détails techniques</summary>
+      <p><code>python cli.py seed-demo</code> avec un <code>FOYER_HOME</code> neuf. Voir <code>GUIDE.md</code> et <code>WINDOWS.md</code>.</p>
+    </details>
+  </section>
+</div>
+{% endblock %}
