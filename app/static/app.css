@@ -439,7 +439,6 @@ html[data-theme=dark] .sidebar-nav a[aria-current=page]{
 }
 .nav-toggle-btn,
 .nav-close{
-  display:inline-flex;
   align-items:center;
   justify-content:center;
   min-height:var(--touch);
@@ -454,11 +453,7 @@ html[data-theme=dark] .sidebar-nav a[aria-current=page]{
   font-weight:600;
   cursor:pointer;
 }
-.nav-close{
-  position:absolute;
-  top:0;
-  right:0;
-}
+.nav-close{position:absolute;top:0;right:0}
 
 /* ——— Contrôles ——— */
 button,input,select,textarea{
