@@ -4,7 +4,7 @@ from flask import Blueprint, g, redirect, render_template, request, url_for
 
 from .. import current_ctx
 from ..errors import AppError
-from ..http import cookie_message, cookie_session, cookie_setup, safe_next
+from ..http import THEMES, cookie_message, cookie_session, cookie_setup, cookie_theme, safe_next
 from ..security import new_token
 from ..services import auth, decisions, events, finance, home, inventory, links, media, milestones, modules, people, search, tasks, vault
 from ..validate import text_value
@@ -317,7 +317,25 @@ def foyer_get():
 def settings_get():
     person = _need()
     modules.require_module(current_ctx(), "parametres")
-    return render_template("settings.html", modules=modules.list_modules(current_ctx()), household=g.household)
+    from ..http import resolve_theme
+    return render_template(
+        "settings.html",
+        modules=modules.list_modules(current_ctx()),
+        household=g.household,
+        theme=resolve_theme(request.cookies.get("foyer_theme")),
+    )
+
+
+@pages.post("/parametres/theme")
+def settings_theme_post():
+    _need()
+    modules.require_module(current_ctx(), "parametres")
+    theme = (request.form.get("theme") or "").strip()
+    if theme not in THEMES:
+        raise AppError(400, "validation", "Thème inconnu.")
+    response = redirect(url_for("pages.settings_get"))
+    cookie_theme(response, theme)
+    return cookie_message(response, "theme_saved")
 
 
 @pages.get("/finances")
@@ -487,6 +505,16 @@ def inventory_get():
         warranties=inventory.upcoming_warranties(current_ctx(), person),
         args=request.args,
     )
+
+
+@pages.get("/inventaire/export.csv")
+def inventory_export_page():
+    from flask import Response
+    person = _need()
+    body = inventory.export_csv(current_ctx(), person)
+    return Response(body, mimetype="text/csv; charset=utf-8", headers={
+        "Content-Disposition": 'attachment; filename="inventaire.csv"',
+    })
 
 
 @pages.get("/inventaire/lieux/nouveau")

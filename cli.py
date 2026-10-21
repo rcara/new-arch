@@ -1,4 +1,4 @@
-"""Sauvegarde et restauration, l'application étant arrêtée pour la restauration."""
+"""Sauvegarde, restauration et seed démo — l'application arrêtée pour restore."""
 
 import os
 import sys
@@ -7,8 +7,9 @@ from pathlib import Path
 from app import Ctx, create_app
 from app.clock import SystemClock
 from app.db import connect
-from app.locks import OpLock
+from app.security import AttemptLimiter
 from app.services.backup import create_backup, restore_archive
+from app.services.demo import seed_demo
 
 
 def _alive(pid):
@@ -30,10 +31,19 @@ def _running(home):
     return _alive(pid)
 
 
+def _usage():
+    return (
+        "Usage :\n"
+        "  python cli.py backup\n"
+        "  python cli.py restore <archive> <dossier-neuf>\n"
+        "  python cli.py seed-demo\n"
+    )
+
+
 def main(argv):
     home = Path(os.environ.get("FOYER_HOME", Path(__file__).resolve().parent))
-    if len(argv) < 2 or argv[1] not in {"backup", "restore"}:
-        print("Usage : python cli.py backup | python cli.py restore <archive> <dossier-neuf>", file=sys.stderr)
+    if len(argv) < 2 or argv[1] not in {"backup", "restore", "seed-demo"}:
+        print(_usage(), file=sys.stderr)
         return 1
     if argv[1] == "backup":
         app = create_app(home=home)
@@ -47,8 +57,28 @@ def main(argv):
                 g.db.close()
         print(path)
         return 0
+    if argv[1] == "seed-demo":
+        if _running(home):
+            print("Arrêtez l'application avant le seed démo.", file=sys.stderr)
+            return 1
+        app = create_app(home=home)
+        with app.app_context():
+            from flask import g
+            g.db = connect(home / "data" / "metadata.sqlite")
+            ctx = Ctx(g.db, app.config["CLOCK"], home, app.config["LOCK"], app.config["DUMMY_HASH"])
+            try:
+                info = seed_demo(ctx, AttemptLimiter())
+            finally:
+                g.db.close()
+        print(
+            f"Foyer démo prêt : {info['household']}\n"
+            f"  compte : {info['username']} / {info['password']}\n"
+            f"  second : {info['secondary_username']} / {info['secondary_password']}\n"
+            "Données fictives uniquement — ne pas utiliser pour un foyer réel."
+        )
+        return 0
     if len(argv) != 4:
-        print("Usage : python cli.py restore <archive> <dossier-neuf>", file=sys.stderr)
+        print(_usage(), file=sys.stderr)
         return 1
     archive, dest = Path(argv[2]), Path(argv[3])
     if _running(dest):

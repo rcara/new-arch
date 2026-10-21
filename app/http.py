@@ -29,7 +29,27 @@ MESSAGES = {
     "finance_imported": "Import CSV terminé.",
     "inventory_saved": "Inventaire mis à jour.",
     "media_saved": "Médiathèque mise à jour.",
+    "theme_saved": "Thème enregistré.",
 }
+
+THEMES = frozenset({"dark", "light"})
+
+
+def resolve_theme(cookie_value):
+    """Thème explicite via cookie ; défaut sombre (langage Ars Codicis)."""
+    if cookie_value in THEMES:
+        return cookie_value
+    return "dark"
+
+
+def cookie_theme(response, theme):
+    if theme not in THEMES:
+        theme = "dark"
+    secure = _cookie_secure()
+    response.set_cookie(
+        "foyer_theme", theme, max_age=400 * 24 * 3600, httponly=False, samesite="Strict", path="/", secure=secure,
+    )
+    return response
 
 
 def expected_host():

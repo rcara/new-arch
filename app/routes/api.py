@@ -573,6 +573,15 @@ def inventory_warranties_upcoming():
     return jsonify({"items": inventory.upcoming_warranties(current_ctx(), actor())})
 
 
+@api.get("/inventory/export.csv")
+def inventory_export():
+    from flask import Response
+    body = inventory.export_csv(current_ctx(), actor())
+    return Response(body, mimetype="text/csv; charset=utf-8", headers={
+        "Content-Disposition": 'attachment; filename="inventaire.csv"',
+    })
+
+
 @api.get("/media/works")
 def media_works():
     page = request.args.get("page", "1")

@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.6.0-v2f] — 2026-10-21
+
+### Ajouté
+- Backup / restore étendus : `media/objects` + empreintes dans `manifest.json` (`manifest_version: 2`)
+- `python cli.py seed-demo` — foyer fictif non sensible (refuse si foyer existant)
+- Thème clair / sombre (Paramètres, cookie `foyer_theme`, CSS `data-theme`)
+- Export CSV inventaire (`/inventaire/export.csv`, `/api/inventory/export.csv`)
+- Guide Windows : `WINDOWS.md`
+- Tests e2e / solidification : `tests/test_solidification.py`
+
+### Modifié
+- `GUIDE.md`, `README.md`, `MATRICE.md`, `RAPPORT-TESTS.md`, roadmap V2
+
+## [0.5.0-v2e] — 2026-10-21
+
+### Ajouté
+- Migration `006_mediatheque.sql` (`user_version=6`)
+- Module Médiathèque : catalogue culturel ≠ bibliothèque personnelle (`media/objects/`)
+- Progression, listes, ACL assets, UI `/mediatheque`, API `/api/media/*`
+- Tests `tests/test_media.py`
+
 ## [0.4.0-v2d] — 2026-10-21
 
 ### Ajouté
@@ -38,7 +59,3 @@
 
 ### Conservé
 - Toutes les capacités V1 (repères, décisions scellées, coffre ACL, personnes, backup)
-- Empreinte figée de `migrations/001_schema.sql`
-
-### Non livré (backlog)
-- Finances, inventaire, médiathèque, light mode, chiffrement au repos

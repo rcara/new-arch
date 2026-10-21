@@ -27,11 +27,11 @@
 | B-07 | P0 | Nav modules | Masque désactivés |
 | C-01 | P1 | Finances bout-en-bout | ✅ Splits exacts ; CHF/EUR ; confidentialité ; migration 004 |
 | D-01 | P1 | Inventaire + liens facture | ✅ Migration 005 ; garanties → calendrier ; ACL privée |
-| E-01 | P2 | Médiathèque simple | Catalogue ≠ fichiers |
-| F-01 | P2 | E2E + backup étendu | DoD §5 |
+| E-01 | P2 | Médiathèque simple | ✅ Catalogue ≠ fichiers ; migration 006 |
+| F-01 | P2 | E2E + backup étendu | ✅ `test_solidification.py` ; backup media ; seed-demo ; WINDOWS.md |
 
 ### Déjà fait (V1)
 Foyer, auth, repères, décisions scellées, coffre ACL, backup, tests R01–R24 (hors R02 partiel).
 
-### Non fait (avant cette livraison)
-Calendrier générique, tâches, liens, recherche UI, modules, finances, inventaire, médiathèque, light mode, UUID.
+### Non fait (hors périmètre F)
+Chiffrement au repos, multi-foyer runtime, SPA.

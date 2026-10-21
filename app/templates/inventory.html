@@ -6,6 +6,7 @@
 <div class="toolbar">
   <a href="{{ url_for('pages.inventory_item_new') }}">Ajouter un bien</a>
   <a href="{{ url_for('pages.inventory_place_new') }}">Ajouter un lieu</a>
+  <a href="{{ url_for('pages.inventory_export_page') }}">Exporter CSV</a>
   <form method="get" class="toolbar">
     <label>Recherche <input name="q" value="{{ args.get('q','') }}"></label>
     <label>Lieu
