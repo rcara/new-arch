@@ -5,7 +5,7 @@ from flask import Blueprint, g, jsonify, request
 from .. import current_ctx
 from ..errors import AppError
 from ..http import json_body
-from ..services import auth, decisions, milestones, people, vault
+from ..services import auth, decisions, events, home, links, milestones, modules, people, search, tasks, vault
 
 api = Blueprint("api", __name__)
 
@@ -274,6 +274,117 @@ def people_revoke_file(person_id, file_id):
     actor()
     people.revoke_file(current_ctx(), g.person, person_id, file_id)
     return "", 204
+
+
+@api.get("/home")
+def home_get():
+    return jsonify(home.dashboard(current_ctx(), actor()))
+
+
+@api.get("/modules")
+def modules_get():
+    actor()
+    return jsonify({"items": modules.list_modules(current_ctx())})
+
+
+@api.get("/tasks")
+def task_list():
+    page = request.args.get("page", "1")
+    page = int(page) if page.isdigit() else 1
+    return jsonify(tasks.list_tasks(
+        current_ctx(), actor(),
+        status=request.args.get("status", "open"),
+        q=request.args.get("q", ""),
+        page=page,
+    ))
+
+
+@api.post("/tasks")
+def task_create():
+    data = json_body({"title", "notes", "priority", "assignee_id", "due_date", "recurrence"})
+    new_id = tasks.create_task(current_ctx(), actor(), data)
+    return jsonify(tasks.get_task(current_ctx(), actor(), new_id)), 201
+
+
+@api.get("/tasks/<int:task_id>")
+def task_get(task_id):
+    return jsonify(tasks.get_task(current_ctx(), actor(), task_id))
+
+
+@api.patch("/tasks/<int:task_id>")
+def task_patch(task_id):
+    data = json_body({"title", "notes", "priority", "assignee_id", "due_date", "recurrence", "status"})
+    return jsonify(tasks.update_task(current_ctx(), actor(), task_id, data))
+
+
+@api.get("/events")
+def event_list():
+    page = request.args.get("page", "1")
+    page = int(page) if page.isdigit() else 1
+    return jsonify(events.list_events(
+        current_ctx(), actor(),
+        from_date=request.args.get("from") or None,
+        to_date=request.args.get("to") or None,
+        q=request.args.get("q", ""),
+        page=page,
+    ))
+
+
+@api.post("/events")
+def event_create():
+    data = json_body({
+        "title", "notes", "all_day", "start_date", "end_date",
+        "timezone", "responsible_id", "recurrence",
+    })
+    new_id = events.create_event(current_ctx(), actor(), data)
+    return jsonify(events.get_event(current_ctx(), actor(), new_id)), 201
+
+
+@api.get("/events/<int:event_id>")
+def event_get(event_id):
+    return jsonify(events.get_event(current_ctx(), actor(), event_id))
+
+
+@api.patch("/events/<int:event_id>")
+def event_patch(event_id):
+    data = json_body({
+        "title", "notes", "all_day", "start_date", "end_date",
+        "timezone", "responsible_id", "recurrence",
+    })
+    return jsonify(events.update_event(current_ctx(), actor(), event_id, data))
+
+
+@api.get("/links")
+def link_list():
+    source_id = request.args.get("source_id")
+    target_id = request.args.get("target_id")
+    return jsonify(links.list_links(
+        current_ctx(), actor(),
+        source_type=request.args.get("source_type", ""),
+        source_id=int(source_id) if source_id and source_id.isdigit() else None,
+        target_type=request.args.get("target_type", ""),
+        target_id=int(target_id) if target_id and target_id.isdigit() else None,
+    ))
+
+
+@api.post("/links")
+def link_create():
+    data = json_body({"source_type", "source_id", "target_type", "target_id", "relation_type"})
+    new_id = links.create_link(current_ctx(), actor(), data)
+    listed = links.list_links(current_ctx(), actor())
+    item = next((row for row in listed["items"] if row["id"] == new_id), {"id": new_id})
+    return jsonify(item), 201
+
+
+@api.delete("/links/<int:link_id>")
+def link_delete(link_id):
+    links.archive_link(current_ctx(), actor(), link_id)
+    return "", 204
+
+
+@api.get("/search")
+def search_get():
+    return jsonify(search.search(current_ctx(), actor(), request.args.get("q", "")))
 
 
 def _limiter():

@@ -7,7 +7,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>Nom du foyer <input name="household_name" required value="{{ form.get('household_name', '') }}" {% if errors.household_name %}aria-invalid="true"{% endif %}></label>
   {% if errors.household_name %}<p class="error">{{ errors.household_name }}</p>{% endif %}
-  <label>Fuseau <input name="timezone" required value="{{ form.get('timezone', 'Europe/Berlin') }}"></label>
+  <label>Fuseau <input name="timezone" required value="{{ form.get('timezone', 'Europe/Zurich') }}"></label>
   {% if errors.timezone %}<p class="error">{{ errors.timezone }}</p>{% endif %}
   <label>Votre nom <input name="display_name" required value="{{ form.get('display_name', '') }}"></label>
   {% if errors.display_name %}<p class="error">{{ errors.display_name }}</p>{% endif %}

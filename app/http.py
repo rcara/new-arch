@@ -21,6 +21,10 @@ MESSAGES = {
     "deactivated": "La personne est retirée du foyer. Son historique est conservé.",
     "archived": "Le repère est archivé.",
     "restored": "Le repère est restauré.",
+    "task_saved": "La tâche est enregistrée.",
+    "task_done": "La tâche est marquée faite.",
+    "event_saved": "L'événement est enregistré.",
+    "link_saved": "Le lien est enregistré.",
 }
 
 

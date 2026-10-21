@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Recherche{% endblock %}
+{% block content %}
+<h1>Recherche</h1>
+<form method="get" class="toolbar">
+  <label>Rechercher <input name="q" value="{{ results.q }}" autofocus minlength="2"></label>
+  <button type="submit">Chercher</button>
+</form>
+{% if errors.q %}<p class="error">{{ errors.q }}</p>{% endif %}
+{% if results.q %}
+{% if results.items %}
+<p class="muted">{{ results.total }} résultat{% if results.total > 1 %}s{% endif %}</p>
+{% for item in results.items %}
+<div class="row">
+  <span class="badge">{{ item.type }}</span>
+  <b><a href="{{ item.href }}">{{ item.title }}</a></b>
+</div>
+{% endfor %}
+{% else %}
+<p class="muted">Aucun résultat pour « {{ results.q }} ».</p>
+{% endif %}
+{% else %}
+<p class="muted">Saisissez au moins deux caractères. Les contenus privés du coffre et des décisions inaccessibles n’apparaissent pas.</p>
+{% endif %}
+{% endblock %}

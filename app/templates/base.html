@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="dark light">
   <title>{% block title %}Accueil{% endblock %} · New Arch</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
@@ -23,14 +23,17 @@
       {% if person %}
       <nav aria-label="Écrans">
         <ul>
-          <li><a href="{{ url_for('pages.today') }}" {% if nav == 'today' %}aria-current="page"{% endif %}>Aujourd'hui</a></li>
-          <li><a href="{{ url_for('pages.milestones_get') }}" {% if nav == 'reperes' %}aria-current="page"{% endif %}>Repères</a></li>
-          <li><a href="{{ url_for('pages.decisions_get') }}" {% if nav == 'decisions' %}aria-current="page"{% endif %}>Décision</a></li>
-          <li><a href="{{ url_for('pages.vault_get') }}" {% if nav == 'coffre' %}aria-current="page"{% endif %}>Coffre</a></li>
-          {% if person.is_principal %}
-          <li><a href="{{ url_for('pages.people_get') }}" {% if nav == 'personnes' %}aria-current="page"{% endif %}>Personnes</a></li>
-          <li><a href="{{ url_for('pages.access_index') }}" {% if nav == 'acces' %}aria-current="page"{% endif %}>Accès</a></li>
+          {% if 'accueil' in nav_modules %}<li><a href="{{ url_for('pages.today') }}" {% if nav == 'today' %}aria-current="page"{% endif %}>Accueil</a></li>{% endif %}
+          {% if 'calendrier' in nav_modules %}<li><a href="{{ url_for('pages.events_get') }}" {% if nav == 'calendrier' %}aria-current="page"{% endif %}>Calendrier</a></li>{% endif %}
+          {% if 'organisation' in nav_modules %}<li><a href="{{ url_for('pages.tasks_get') }}" {% if nav == 'organisation' %}aria-current="page"{% endif %}>Organisation</a></li>{% endif %}
+          {% if 'reperes' in nav_modules %}<li><a href="{{ url_for('pages.milestones_get') }}" {% if nav == 'reperes' %}aria-current="page"{% endif %}>Repères</a></li>{% endif %}
+          {% if 'decisions' in nav_modules %}<li><a href="{{ url_for('pages.decisions_get') }}" {% if nav == 'decisions' %}aria-current="page"{% endif %}>Décisions</a></li>{% endif %}
+          {% if 'coffre' in nav_modules %}<li><a href="{{ url_for('pages.vault_get') }}" {% if nav == 'coffre' %}aria-current="page"{% endif %}>Coffre</a></li>{% endif %}
+          {% if person.is_principal and 'foyer' in nav_modules %}
+          <li><a href="{{ url_for('pages.foyer_get') }}" {% if nav == 'foyer' or nav == 'personnes' or nav == 'acces' %}aria-current="page"{% endif %}>Foyer</a></li>
           {% endif %}
+          {% if 'recherche' in nav_modules %}<li><a href="{{ url_for('pages.search_get') }}" {% if nav == 'recherche' %}aria-current="page"{% endif %}>Recherche</a></li>{% endif %}
+          {% if 'parametres' in nav_modules %}<li><a href="{{ url_for('pages.settings_get') }}" {% if nav == 'parametres' %}aria-current="page"{% endif %}>Paramètres</a></li>{% endif %}
           <li>
             <form method="post" action="{{ url_for('pages.logout') }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

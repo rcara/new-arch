@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Paramètres{% endblock %}
+{% block content %}
+<h1>Paramètres</h1>
+<p class="muted">{{ household.name }} · fuseau {{ household.timezone }}</p>
+<section class="today-panel" aria-labelledby="modules-title">
+  <h2 id="modules-title">Modules</h2>
+  <p class="muted">Les modules désactivés sont masqués dans la navigation. Finances, inventaire et médiathèque arriveront aux étapes C–E.</p>
+  {% for item in modules %}
+  <div class="row">
+    <b>{{ item.label }}</b>
+    <span class="badge">{% if item.enabled %}Activé{% else %}Masqué{% endif %}</span>
+  </div>
+  {% endfor %}
+</section>
+<p class="muted">Sauvegarde : <code>python cli.py backup</code> — voir GUIDE.md.</p>
+{% endblock %}

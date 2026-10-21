@@ -210,7 +210,7 @@ def test_statuts_archives_et_couches(world):
     assert choice not in today and choice not in fiche
     # sans_date après la boucle : pas dans « À traiter », message calme
     assert "Passeport" not in today
-    assert "Rien d'urgent" in today
+    assert "Aucune échéance urgente" in today
     assert "chip--sans_date" in fiche
     assert "Sans date" in fiche
 

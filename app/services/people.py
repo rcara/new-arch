@@ -22,6 +22,17 @@ def list_people(ctx, person):
     return [_public_person(row) for row in rows]
 
 
+def list_active_members(ctx, person):
+    """Membres actifs (noms seulement) — accessible à tout compte connecté."""
+    if person is None:
+        raise AppError(401, "unauthorized", "Connexion requise.")
+    rows = ctx.conn.execute(
+        """SELECT id, display_name, active FROM person
+           WHERE household_id=1 AND active=1 ORDER BY is_principal DESC, id"""
+    ).fetchall()
+    return [{"id": row["id"], "display_name": row["display_name"], "active": True} for row in rows]
+
+
 def _public_person(row):
     return {
         "id": row["id"],
