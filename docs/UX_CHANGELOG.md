@@ -1,5 +1,31 @@
 # UX Changelog — New Arch V2.1
 
+## Sprint 3 — Création rapide
+
+**Ajouté**
+- Panneaux d'ajout rapide sans JavaScript (`:target`) dans le shell : `#ajout-tache` (titre, échéance,
+  « M'assigner la tâche » coché par défaut) et `#ajout-evenement` (titre, date du jour, journée entière). Lien
+  « Formulaire complet » vers le formulaire détaillé. Retour sur la page d'origine après enregistrement.
+- `next` sur toutes les créations (tâche, événement, dépense, bien, repère, œuvre), validé par `safe_next`
+  (chemins du même site uniquement ; `//…`, `https://…`, `javascript:` → page par défaut). Les entrées du menu
+  « + Ajouter » portent `?next=<page courante>`.
+- Section « Tâches liées » sur la fiche événement et la fiche bien, avec « + Ajouter une tâche liée » (titre
+  « Préparer : … » / « Entretien : … », date de l'événement pré-remplie). Lien typé `task → concerns → objet` créé
+  après `links.require_object` : impossible de lier un objet invisible (404, aucune tâche créée).
+- Dépense : date du jour par défaut ; compte facultatif (« Automatique » = premier compte actif **de la devise
+  saisie** ; aucune conversion CHF/EUR, aucune règle de calcul modifiée).
+
+**Modifié**
+- Formulaires tâche, événement, dépense, bien : champs essentiels d'abord, le reste dans « Plus d'options »
+  (`<details class="more">`, ouvert automatiquement si une erreur s'y trouve) ; boutons Enregistrer / Annuler
+  (Annuler revient à `next`).
+- Dépense : les erreurs catégorie, payeur, répartition, visibilité et notes sont désormais affichées (elles
+  étaient silencieuses), plus un message récapitulatif `role="alert"`.
+- Formulaire événement complet : la case « Journée entière » décochée est respectée (marqueur
+  `all_day_present`) ; le panneau rapide crée un événement journée entière.
+- `app.css` : `.form-card`, `.form-row` (2 colonnes, 1 sur mobile), `details.more`, `.form-actions`,
+  `.quick-panel` + fond.
+
 ## Sprint 2 — Accueil « Aujourd'hui »
 
 **Ajouté**

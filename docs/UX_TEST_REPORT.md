@@ -43,3 +43,16 @@ bouton ou la navigation les ferme. Le tiroir se ferme via « Fermer » ou le fon
 
 Données de capture : foyer démo + éléments datés d'octobre 2026 ajoutés via l'API locale (le seed démo est daté
 2027). Aucun impact sur le dépôt.
+
+## Sprint 3
+
+| Vérification | Résultat |
+|---|---|
+| `pytest` complet | 106 passés |
+| `tests/test_ux_quick_create.py` (10 tests) | menu « + Ajouter » → `#ajout-tache` / `#ajout-evenement`, autres entrées avec `?next=` ; panneaux POST vers les bonnes routes avec CSRF, `next` et date du jour ; tâche rapide → 302 vers la page d'origine, assignée à moi ; sans « M'assigner » → partagée ; événement rapide = journée entière, formulaire complet case décochée = non ; dépense EUR sans compte → compte EUR, montant 1240 centimes ; dépense sans catégorie → 400 + message ; `next` malveillant (`//evil`, `https://evil`, `javascript:`) ignoré ; tâche liée depuis un événement et depuis un bien (affichée sur la fiche) ; compte secondaire + bien privé → 404 et aucune tâche ; erreur de validation : saisie et `next` conservés, `aria-invalid` |
+| Visuel avant | `s3-avant-{vide,demo}-{organisation-nouvelle,calendrier-nouveau,finances-depense,inventaire-nouveau}-{desktop,mobile}.png` |
+| Visuel après | mêmes noms en `s3-apres-…` ; `s3-apres-demo-menu-ajouter-*`, `s3-apres-demo-panneau-{tache,evenement}-{desktop,mobile}`, `s3-apres-demo-retour-confirmation-desktop`, `s3-apres-demo-tache-liee-formulaire-desktop`, `s3-apres-demo-evenement-taches-liees-{desktop,mobile}`, `s3-apres-demo-depense-options-ouvertes-{desktop,mobile}` |
+
+Limites connues : sans JS, le menu « + Ajouter » reste ouvert derrière le panneau et le focus n'est pas placé
+dans le champ Titre ; le panneau se ferme par « Fermer », le fond, ou après envoi. Sur les captures pleine page,
+l'en-tête et la barre mobile fixes apparaissent au milieu (artefact de capture).
