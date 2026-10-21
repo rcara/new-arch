@@ -35,7 +35,8 @@
   unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF;
 }
 
-:root{
+:root,
+html[data-theme=dark]{
   --ink:#0a0a0a;
   --paper:#edede8;
   --muted:#8a8a85;
@@ -50,6 +51,17 @@
   color-scheme:dark;
 }
 
+/* Clair : même langage (encre / papier / accent), contrastes renforcés */
+html[data-theme=light]{
+  --ink:#e8e9e4;
+  --paper:#121310;
+  --muted:#5c5d58;
+  --rule:rgba(18,19,16,.14);
+  --rule-strong:rgba(18,19,16,.4);
+  --accent:#c43d12;
+  color-scheme:light;
+}
+
 *{box-sizing:border-box}
 html{min-height:100%;background:var(--ink)}
 body{
@@ -60,6 +72,7 @@ body{
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
 }
+html[data-theme=light] body{-webkit-font-smoothing:auto}
 ::selection{background:var(--accent);color:var(--ink)}
 
 a{

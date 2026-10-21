@@ -1,5 +1,6 @@
-"""Sauvegarde cohérente et restauration dans un dossier neuf."""
+"""Sauvegarde cohérente et restauration dans un dossier neuf (vault + média)."""
 
+import hashlib
 import json
 import os
 import shutil
@@ -9,7 +10,33 @@ from pathlib import Path
 from ..audit import audit
 from ..clock import iso_utc
 from ..errors import AppError
+from .media import asset_path, ensure_media_layout
 from .vault import HEX, object_path
+
+ACCEPTED_SCHEMA = frozenset({2, 3, 4, 5, 6})
+
+
+def _copy_hashed_objects(home, rows, source_resolver, dest_dir):
+    """Copie et vérifie une liste de {storage_key, sha256, size_bytes}."""
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    listed = []
+    for row in rows:
+        source = source_resolver(home, row["storage_key"])
+        if not source.is_file():
+            raise AppError(500, "storage", "Sauvegarde interrompue : une pièce référencée est absente.")
+        data = source.read_bytes()
+        if len(data) != row["size_bytes"] or hashlib.sha256(data).hexdigest() != row["sha256"]:
+            raise AppError(500, "storage", "Sauvegarde interrompue : une pièce ne correspond pas à son empreinte.")
+        target = dest_dir / row["storage_key"]
+        target.write_bytes(data)
+        if os.name == "posix":
+            os.chmod(target, 0o600)
+        listed.append({
+            "storage_key": row["storage_key"],
+            "sha256": row["sha256"],
+            "size_bytes": row["size_bytes"],
+        })
+    return listed
 
 
 def create_backup(ctx):
@@ -36,37 +63,32 @@ def create_backup(ctx):
                 if integrity != "ok":
                     raise AppError(500, "storage", "Sauvegarde interrompue : base incohérente.")
                 version = check.execute("PRAGMA user_version").fetchone()[0]
-                rows = check.execute(
+                vault_rows = check.execute(
                     "SELECT storage_key, sha256, size_bytes FROM stored_file ORDER BY id"
                 ).fetchall()
+                media_rows = []
+                tables = {
+                    row[0]
+                    for row in check.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                }
+                if "media_asset" in tables:
+                    media_rows = check.execute(
+                        "SELECT storage_key, sha256, size_bytes FROM media_asset WHERE archived=0 ORDER BY id"
+                    ).fetchall()
             finally:
                 check.close()
-            objects = partial / "objects"
-            objects.mkdir()
-            files = []
-            for row in rows:
-                source = object_path(ctx.home, row["storage_key"])
-                if not source.is_file():
-                    raise AppError(500, "storage", "Sauvegarde interrompue : une pièce référencée est absente.")
-                data = source.read_bytes()
-                import hashlib
-                if len(data) != row["size_bytes"] or hashlib.sha256(data).hexdigest() != row["sha256"]:
-                    raise AppError(500, "storage", "Sauvegarde interrompue : une pièce ne correspond pas à son empreinte.")
-                target = objects / row["storage_key"]
-                target.write_bytes(data)
-                if os.name == "posix":
-                    os.chmod(target, 0o600)
-                files.append({
-                    "storage_key": row["storage_key"],
-                    "sha256": row["sha256"],
-                    "size_bytes": row["size_bytes"],
-                })
+            files = _copy_hashed_objects(ctx.home, vault_rows, object_path, partial / "objects")
+            media_files = _copy_hashed_objects(ctx.home, media_rows, asset_path, partial / "media")
             manifest = {
+                "manifest_version": 2,
                 "schema_version": version,
                 "created_at": iso_utc(ctx.clock.now()),
                 "files": files,
+                "media_files": media_files,
             }
-            (partial / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+            (partial / "manifest.json").write_text(
+                json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
             os.replace(partial, final)
         except Exception:
             shutil.rmtree(partial, ignore_errors=True)
@@ -92,6 +114,26 @@ def _reject_layout(archive):
     return archive
 
 
+def _verify_object_bundle(archive_subdir, listed, expected_rows):
+    expected = [
+        {"storage_key": row["storage_key"], "sha256": row["sha256"], "size_bytes": row["size_bytes"]}
+        for row in expected_rows
+    ]
+    sorted_listed = sorted(listed, key=lambda item: item["storage_key"])
+    if sorted_listed != expected:
+        raise AppError(400, "validation", "Le manifeste ne correspond pas aux pièces.")
+    for item in sorted_listed:
+        key = item["storage_key"]
+        if not isinstance(key, str) or len(key) != 64 or any(ch not in HEX for ch in key):
+            raise AppError(400, "validation", "Une clé de pièce est invalide.")
+        source = archive_subdir / key
+        if source.is_symlink() or not source.is_file():
+            raise AppError(400, "validation", "Une pièce de la sauvegarde est absente.")
+        data = source.read_bytes()
+        if len(data) != item["size_bytes"] or hashlib.sha256(data).hexdigest() != item["sha256"]:
+            raise AppError(400, "validation", "Une pièce de la sauvegarde ne correspond pas à son empreinte.")
+
+
 def restore_archive(archive, dest, clock):
     archive = _reject_layout(archive)
     dest = Path(dest)
@@ -111,32 +153,41 @@ def restore_archive(archive, dest, clock):
         if conn.execute("PRAGMA foreign_key_check").fetchall():
             raise AppError(400, "validation", "La base sauvegardée a des liens cassés.")
         version = conn.execute("PRAGMA user_version").fetchone()[0]
-        if version != manifest.get("schema_version") or version not in {2, 3, 4, 5, 6}:
+        if version != manifest.get("schema_version") or version not in ACCEPTED_SCHEMA:
             raise AppError(400, "validation", "La version de la sauvegarde n'est pas acceptée.")
-        rows = conn.execute("SELECT storage_key, sha256, size_bytes FROM stored_file ORDER BY storage_key").fetchall()
+        vault_rows = conn.execute(
+            "SELECT storage_key, sha256, size_bytes FROM stored_file ORDER BY storage_key"
+        ).fetchall()
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        media_rows = []
+        if "media_asset" in tables:
+            media_rows = conn.execute(
+                "SELECT storage_key, sha256, size_bytes FROM media_asset WHERE archived=0 ORDER BY storage_key"
+            ).fetchall()
     finally:
         conn.close()
-    listed = sorted(manifest.get("files", []), key=lambda item: item["storage_key"])
-    expected = [{"storage_key": row["storage_key"], "sha256": row["sha256"], "size_bytes": row["size_bytes"]} for row in rows]
-    if listed != expected:
-        raise AppError(400, "validation", "Le manifeste ne correspond pas aux pièces.")
-    import hashlib
-    for item in listed:
-        key = item["storage_key"]
-        if not isinstance(key, str) or len(key) != 64 or any(ch not in HEX for ch in key):
-            raise AppError(400, "validation", "Une clé de pièce est invalide.")
-        source = archive / "objects" / key
-        if source.is_symlink() or not source.is_file():
-            raise AppError(400, "validation", "Une pièce de la sauvegarde est absente.")
-        data = source.read_bytes()
-        if len(data) != item["size_bytes"] or hashlib.sha256(data).hexdigest() != item["sha256"]:
-            raise AppError(400, "validation", "Une pièce de la sauvegarde ne correspond pas à son empreinte.")
+
+    vault_listed = sorted(manifest.get("files", []), key=lambda item: item["storage_key"])
+    _verify_object_bundle(archive / "objects", vault_listed, vault_rows)
+
+    media_listed = sorted(manifest.get("media_files", []), key=lambda item: item["storage_key"])
+    # Anciennes sauvegardes sans media_files : OK seulement si aucune asset en base
+    if media_rows and "media_files" not in manifest:
+        raise AppError(400, "validation", "La sauvegarde omet les fichiers média référencés.")
+    if media_rows or media_listed:
+        media_dir = archive / "media"
+        if not media_dir.is_dir() and media_listed:
+            raise AppError(400, "validation", "Le dossier média de la sauvegarde est absent.")
+        _verify_object_bundle(media_dir if media_dir.is_dir() else archive / "media", media_listed, media_rows)
+
     dest.mkdir(parents=True, exist_ok=True)
-    for relative in ("data", "vault/objects", "vault/staging", "backups", "logs"):
+    for relative in ("data", "vault/objects", "vault/staging", "media/objects", "media/staging", "backups", "logs"):
         (dest / relative).mkdir(parents=True, exist_ok=True)
     shutil.copy2(database, dest / "data" / "metadata.sqlite")
-    for item in listed:
+    for item in vault_listed:
         shutil.copy2(archive / "objects" / item["storage_key"], dest / "vault" / "objects" / item["storage_key"])
+    for item in media_listed:
+        shutil.copy2(archive / "media" / item["storage_key"], dest / "media" / "objects" / item["storage_key"])
     restored = sqlite3.connect(dest / "data" / "metadata.sqlite")
     try:
         restored.execute("PRAGMA foreign_keys=ON")
@@ -148,6 +199,11 @@ def restore_archive(archive, dest, clock):
         restored.close()
     if os.name == "posix":
         os.chmod(dest / "data" / "metadata.sqlite", 0o600)
-        for directory in (dest / "data", dest / "vault", dest / "vault" / "objects", dest / "backups", dest / "logs"):
-            os.chmod(directory, 0o700)
+        for directory in (
+            dest / "data", dest / "vault", dest / "vault" / "objects",
+            dest / "media", dest / "media" / "objects", dest / "backups", dest / "logs",
+        ):
+            if directory.exists():
+                os.chmod(directory, 0o700)
+    ensure_media_layout(dest)
     return dest

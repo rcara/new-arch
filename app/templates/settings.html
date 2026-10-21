@@ -3,9 +3,25 @@
 {% block content %}
 <h1>Paramètres</h1>
 <p class="muted">{{ household.name }} · fuseau {{ household.timezone }}</p>
+
+<section class="today-panel" aria-labelledby="theme-title">
+  <h2 id="theme-title">Apparence</h2>
+  <p class="muted">Thème sombre (défaut) ou clair. Le contraste et le focus clavier restent visibles dans les deux modes.</p>
+  <form method="post" action="{{ url_for('pages.settings_theme_post') }}" class="toolbar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Thème
+      <select name="theme" aria-label="Choisir le thème">
+        <option value="dark" {% if theme == 'dark' %}selected{% endif %}>Sombre</option>
+        <option value="light" {% if theme == 'light' %}selected{% endif %}>Clair</option>
+      </select>
+    </label>
+    <button type="submit">Enregistrer</button>
+  </form>
+</section>
+
 <section class="today-panel" aria-labelledby="modules-title">
   <h2 id="modules-title">Modules</h2>
-  <p class="muted">Les modules désactivés sont masqués dans la navigation. Finances, inventaire et médiathèque arriveront aux étapes C–E.</p>
+  <p class="muted">Les modules désactivés sont masqués dans la navigation.</p>
   {% for item in modules %}
   <div class="row">
     <b>{{ item.label }}</b>
@@ -13,5 +29,11 @@
   </div>
   {% endfor %}
 </section>
-<p class="muted">Sauvegarde : <code>python cli.py backup</code> — voir GUIDE.md.</p>
+
+<section class="today-panel" aria-labelledby="ops-title">
+  <h2 id="ops-title">Exploitation</h2>
+  <p class="muted">Sauvegarde (base + coffre + média) : <code>python cli.py backup</code></p>
+  <p class="muted">Restauration dans un dossier neuf : <code>python cli.py restore &lt;archive&gt; &lt;dossier&gt;</code></p>
+  <p class="muted">Dataset démo (foyer vide uniquement) : <code>python cli.py seed-demo</code> — voir <code>WINDOWS.md</code> et <code>GUIDE.md</code>.</p>
+</section>
 {% endblock %}

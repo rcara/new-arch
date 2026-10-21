@@ -11,7 +11,7 @@ from .audit import audit
 from .clock import SystemClock
 from .db import connect, ensure_layout, household_row
 from .errors import AppError
-from .http import MESSAGES, cookie_message, guard_local
+from .http import MESSAGES, cookie_message, guard_local, resolve_theme
 from .locks import OpLock
 from .present import STATUS_LABEL, format_cents, format_date, format_timestamp
 from .security import AttemptLimiter, hash_password, new_token
@@ -166,6 +166,7 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             "message": g.get("message") or "",
             "nav": nav,
             "nav_modules": nav_modules,
+            "theme": resolve_theme(request.cookies.get("foyer_theme")),
             "categories": CATEGORIES,
             "status_label": STATUS_LABEL,
             "format_date": format_date,

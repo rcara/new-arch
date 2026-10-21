@@ -23,3 +23,9 @@
 | V2D inventaire + garanties | `services/inventory.py` | `test_item_warranty_deadline_and_links` |
 | V2D confidentialité biens | `services/inventory.py` | `test_inventory_privacy` |
 | V2D cession / historique | `services/inventory.py` | `test_transfer_and_dispose` |
+| V2E médiathèque catalogue ≠ assets | `services/media.py` | `tests/test_media.py` |
+| V2F backup vault+média | `services/backup.py` | `test_backup_includes_media_and_restore` |
+| V2F seed démo | `services/demo.py`, `cli.py` | `test_seed_demo_refuses_existing_and_fills_empty` |
+| V2F thème clair/sombre | `http.py`, `app.css`, settings | `test_theme_cookie_and_settings` |
+| V2F export inventaire CSV | `services/inventory.py` | `test_inventory_csv_export` |
+| V2F parcours e2e | routes + backup | `test_e2e_parcours_transversal` |

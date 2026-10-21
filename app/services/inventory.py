@@ -1,5 +1,7 @@
 """Inventaire : lieux, biens, garanties, maintenance, historique et liens."""
 
+import csv
+import io
 import uuid
 
 from ..audit import audit
@@ -590,3 +592,38 @@ def upcoming_warranties(ctx, person, *, within_days=90, limit=20):
             "provider": row["provider"],
         })
     return items
+
+
+def export_csv(ctx, person):
+    """Export inventaire visible (séparateur ;, montants en unités mineures)."""
+    _require(ctx)
+    rows = ctx.conn.execute(
+        f"{ITEM_SELECT} WHERE i.household_id=1 AND i.archived=0 ORDER BY i.name, i.id"
+    ).fetchall()
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=";")
+    writer.writerow([
+        "name", "category", "place", "condition", "visibility",
+        "purchase_date", "purchase_price_minor", "purchase_currency",
+        "estimated_value_minor", "estimated_currency", "serial_number", "owners",
+    ])
+    for row in rows:
+        if not _can_see_item(ctx, person, row):
+            continue
+        public = _item_public(ctx, row)
+        owners = ",".join(o["display_name"] for o in public.get("owners") or [])
+        writer.writerow([
+            public["name"],
+            public.get("category") or "",
+            public.get("place_name") or "",
+            public.get("condition") or "",
+            public.get("visibility") or "",
+            public.get("purchase_date") or "",
+            public.get("purchase_price_minor") if public.get("purchase_price_minor") is not None else "",
+            public.get("purchase_currency") or "",
+            public.get("estimated_value_minor") if public.get("estimated_value_minor") is not None else "",
+            public.get("estimated_currency") or "",
+            public.get("serial_number") or "",
+            owners,
+        ])
+    return buffer.getvalue()

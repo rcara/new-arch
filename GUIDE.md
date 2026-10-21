@@ -35,7 +35,7 @@ Retirer une personne ferme sa session. Les fiches et les pages qui la citent res
 
 ## Sauvegarde
 
-Les données sont dans trois endroits voisins : `data/metadata.sqlite`, `vault/objects/` et les journaux dans `logs/`. Copier seulement la base oublie les pièces.
+Les données sont dans quatre endroits voisins : `data/metadata.sqlite`, `vault/objects/`, `media/objects/` et les journaux dans `logs/`. Copier seulement la base oublie les pièces du coffre et de la médiathèque.
 
 Pendant que l'application tourne, dans son dossier :
 
@@ -43,7 +43,9 @@ Pendant que l'application tourne, dans son dossier :
 python cli.py backup
 ```
 
-Le programme prend un verrou, copie une base cohérente, vérifie chaque pièce, puis publie un dossier `backups/foyer-AAAAMMJJTHHMMSSZ/`. S'il échoue, ce dossier n'est pas présenté comme une sauvegarde réussie. La copie est en clair, comme le reste.
+Le programme prend un verrou, copie une base cohérente, vérifie chaque pièce (coffre **et** média), puis publie un dossier `backups/foyer-AAAAMMJJTHHMMSSZ/` avec `objects/`, `media/` et `manifest.json`. S'il échoue, ce dossier n'est pas présenté comme une sauvegarde réussie. La copie est en clair, comme le reste.
+
+Sur Windows, voir aussi [WINDOWS.md](WINDOWS.md).
 
 ## Restauration
 
@@ -53,9 +55,23 @@ Arrêtez l'application. Ne restaurez pas par-dessus un foyer en cours.
 python cli.py restore backups/foyer-... dossier-neuf
 ```
 
-Le dossier de destination doit être vide. L'outil refuse les liens, les chemins qui sortent de l'archive, une base incohérente ou des empreintes fausses. Toutes les sessions de la copie sont révoquées. Démarrez ensuite avec `FOYER_HOME` pointant vers `dossier-neuf`, connectez-vous, et vérifiez un repère, une page scellée et une pièce avant d'adopter ce dossier.
+Le dossier de destination doit être vide. L'outil refuse les liens, les chemins qui sortent de l'archive, une base incohérente ou des empreintes fausses. Toutes les sessions de la copie sont révoquées. Démarrez ensuite avec `FOYER_HOME` pointant vers `dossier-neuf`, connectez-vous, et vérifiez un repère, une page scellée, une pièce du coffre et un fichier média avant d'adopter ce dossier.
 
 Deux foyers ne se fusionnent pas.
+
+## Dataset démo
+
+Sur un **nouveau** `FOYER_HOME` vide uniquement :
+
+```sh
+FOYER_HOME=/chemin/foyer-demo python cli.py seed-demo
+```
+
+Comptes fictifs : `alex` / `DemoFoyer-2026!` et `camille` / `DemoCamille-2026!`. Refuse si un foyer existe déjà.
+
+## Thème et accessibilité
+
+Paramètres → Apparence : thème sombre (défaut) ou clair (`foyer_theme`). Lien « Aller au contenu », focus visible, `prefers-reduced-motion` respecté.
 
 ## Limites du MVP
 
