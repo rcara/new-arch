@@ -1,4 +1,4 @@
-"""Multi-foyer : migration 007, isolation, bascule et sidebar CSS-only."""
+"""Multi-foyer : migration 007, isolation, bascule et sidebar sans script (tiroir :target)."""
 
 from datetime import datetime, timezone
 
@@ -7,6 +7,7 @@ import pytest
 from app import create_app
 from app.clock import FrozenClock
 from app.db import connect, init_db
+from tests.test_first_party_js import assert_first_party_scripts
 from tests.test_flows import PASSWORD, Web
 
 
@@ -114,7 +115,7 @@ def test_sidebar_css_has_drawer_without_script(world):
     web, _app, _home, _clock = world
     page = web.get("/")
     assert page.status_code == 200
-    assert b"<script" not in page.data.lower()
+    assert_first_party_scripts(page.data)
     assert b'href="#navigation"' in page.data
     assert b"drawer-backdrop" in page.data
     css = web.c.get("/static/app.css", headers={"Host": "127.0.0.1:8765"})

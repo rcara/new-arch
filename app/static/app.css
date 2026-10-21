@@ -981,7 +981,7 @@ details.more[open]>summary{margin-bottom:12px}
 .check-label{display:flex!important;align-items:center;gap:8px;min-height:var(--touch)}
 .check-label input{width:auto;margin:0}
 
-/* Panneaux d'ajout rapide : :target, sans JavaScript */
+/* Panneaux d'ajout rapide : :target ; focus, piège et Échap ajoutés par js/app.js */
 .quick-panel{
   position:fixed;
   top:0;
@@ -1090,6 +1090,7 @@ html[data-theme=dark] .file-type{color:var(--text-primary)}
 .upload-card select{max-width:none}
 .drop-zone{display:flex!important;flex-direction:column;gap:4px;padding:20px 16px;border:2px dashed var(--border-strong);border-radius:var(--radius-md);background:var(--surface-warm-soft);text-align:center}
 .drop-zone:hover,.drop-zone:focus-within{border-color:var(--brand-petrol)}
+.drop-zone.is-dragover{border-style:solid;border-color:var(--brand-petrol);background:var(--nav-hover)}
 .drop-title{font-weight:600;color:var(--text-primary)}
 .drop-zone .muted{font-size:.8rem}
 .drop-zone input[type=file]{max-width:none;margin-top:8px}
