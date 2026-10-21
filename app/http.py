@@ -35,6 +35,7 @@ MESSAGES = {
     "photo_saved": "Photo enregistrée.",
     "photo_removed": "Photo retirée.",
     "theme_saved": "Thème enregistré.",
+    "modules_saved": "Modules mis à jour. Les données des modules masqués sont conservées.",
     "profile_saved": "Profil mis à jour.",
     "password_changed": "Mot de passe modifié.",
     "household_switched": "Foyer actif mis à jour.",

@@ -472,7 +472,12 @@ def event_create():
 def event_get(event_id):
     person = _need()
     item = events.get_event(current_ctx(), person, event_id)
-    return render_template("event.html", item=item, linked_tasks=_linked_tasks(person, "calendar_event", event_id))
+    raw = request.args.get("occurrence", "")
+    occurrence = raw if item["recurrence"] != "none" and events.is_occurrence(item, raw) else None
+    return render_template(
+        "event.html", item=item, occurrence=occurrence,
+        linked_tasks=_linked_tasks(person, "calendar_event", event_id),
+    )
 
 
 @pages.get("/calendrier/<int:event_id>/modifier")
@@ -572,7 +577,19 @@ def alias_maison():
 
 @pages.get("/bibliotheque")
 def alias_bibliotheque():
-    return redirect(url_for("pages.vault_get"))
+    _need()
+    enabled = modules.enabled_keys(current_ctx())
+    for key, endpoint in (("coffre", "pages.vault_get"), ("mediatheque", "pages.media_get"), ("decisions", "pages.decisions_get")):
+        if key in enabled:
+            return redirect(url_for(endpoint))
+    raise AppError(404, "not_found", "Module indisponible.")
+
+
+@pages.post("/parametres/modules")
+def settings_modules_post():
+    person = _need()
+    modules.set_enabled(current_ctx(), person, request.form.getlist("module"))
+    return _go("modules_saved", "pages.settings_get")
 
 
 @pages.post("/parametres/theme")

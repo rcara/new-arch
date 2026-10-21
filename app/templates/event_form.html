@@ -33,11 +33,13 @@
     <label>Récurrence
       <select name="recurrence">
         <option value="none" {% if form.get('recurrence','none')=='none' %}selected{% endif %}>Aucune</option>
+        <option value="daily" {% if form.get('recurrence')=='daily' %}selected{% endif %}>Quotidienne</option>
         <option value="weekly" {% if form.get('recurrence')=='weekly' %}selected{% endif %}>Hebdomadaire</option>
         <option value="monthly" {% if form.get('recurrence')=='monthly' %}selected{% endif %}>Mensuelle</option>
         <option value="yearly" {% if form.get('recurrence')=='yearly' %}selected{% endif %}>Annuelle</option>
       </select>
     </label>
+    <p class="muted">Les occurrences se répètent à partir de la date de début, sans date de fin.{% if editing and form.get('recurrence', 'none') != 'none' %} Modifier cet événement modifie toute la série.{% endif %}</p>
     <label>Fuseau <input name="timezone" required value="{{ form.get('timezone','Europe/Zurich') }}"></label>
     {% if errors.timezone %}<p class="error">{{ errors.timezone }}</p>{% endif %}
     <label>Notes <textarea name="notes" rows="3" maxlength="4000">{{ form.get('notes','') }}</textarea></label>

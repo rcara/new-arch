@@ -125,6 +125,11 @@ def create_app(home=None, clock=None, testing=False, port=8765):
                 return redirect(url_for("pages.bootstrap_get"))
         if g.bootstrapped and endpoint in {"pages.bootstrap_get", "pages.bootstrap_post", "api.bootstrap"}:
             raise AppError(409, "conflict", "Le foyer existe déjà.")
+        if g.person is not None and g.household is not None:
+            from .services import modules as modules_svc
+            module = modules_svc.module_for_path(request.path)
+            if module:
+                modules_svc.require_module(current_ctx(), module)
 
     @app.teardown_appcontext
     def close_db(_exc):

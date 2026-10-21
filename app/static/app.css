@@ -1198,6 +1198,8 @@ td.is-today .day-num{background:var(--nav-active-bg);color:var(--nav-active-fg)}
 .legend{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:2px}
 .legend--event{background:var(--brand-petrol)}
 .legend--milestone{background:var(--accent)}
+.recur-mark{color:var(--brand-petrol);font-weight:700}
+.series-note{padding:10px 14px;border-left:3px solid var(--brand-petrol);background:var(--surface);border-radius:var(--radius-md);max-width:640px}
 
 @media(prefers-reduced-motion:reduce){
   *{transition:none!important}

@@ -60,10 +60,12 @@
   {% else %}
   <p class="muted">Aucun lien.</p>
   {% endfor %}
+  {% if 'decisions' in nav_modules %}
   <form method="post" action="{{ url_for('pages.media_link_decision', work_id=item.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>Lier une décision (id) <input name="decision_id" required pattern="[0-9]+"></label>
     <button type="submit">Lier</button>
   </form>
+  {% endif %}
 </section>
 {% endblock %}

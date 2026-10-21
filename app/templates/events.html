@@ -8,7 +8,7 @@
 {{ url_for('pages.events_get', vue=view, date=day, membre=member or None, q=q or None) }}
 {%- endmacro %}
 {% macro entry_link(entry) -%}
-{% if entry.kind == 'event' %}{{ url_for('pages.event_get', event_id=entry.id) }}{% else %}{{ url_for('pages.milestone_get', milestone_id=entry.id) }}{% endif %}
+{% if entry.kind == 'event' %}{{ url_for('pages.event_get', event_id=entry.id, occurrence=entry.occurrence) }}{% else %}{{ url_for('pages.milestone_get', milestone_id=entry.id) }}{% endif %}
 {%- endmacro %}
 
 {% call page_header("Agenda", "Calendrier", "Événements du foyer et échéances des repères.") %}
@@ -70,7 +70,7 @@
         <ul class="day-entries">
           {% for entry in day.entries %}
           <li class="agenda-entry agenda-entry--{{ entry.kind }}">
-            <a href="{{ entry_link(entry) }}">{% if entry.kind == 'milestone' %}<span class="sr-only">Échéance : </span>{% endif %}{{ entry.title }}</a>
+            <a href="{{ entry_link(entry) }}">{% if entry.kind == 'milestone' %}<span class="sr-only">Échéance : </span>{% endif %}{% if entry.occurrence %}<span class="recur-mark" title="{{ entry.recurrence_label }}" aria-hidden="true">↻</span> {% endif %}{{ entry.title }}{% if entry.occurrence %}<span class="sr-only"> ({{ entry.recurrence_label|lower }})</span>{% endif %}</a>
           </li>
           {% endfor %}
         </ul>
@@ -94,7 +94,7 @@
           {% if entry.kind == 'milestone' %}Échéance de repère{% else %}Événement{% endif %}
           {% if entry.end != entry.start %} · jusqu'au {{ entry.end|frdate }}{% endif %}
           {% if entry.who %} · {{ entry.who }}{% endif %}
-          {% if entry.recurrence and entry.recurrence != 'none' %} · récurrent{% endif %}
+          {% if entry.occurrence %} · <span class="recur-mark" aria-hidden="true">↻</span> {{ entry.recurrence_label }}{% endif %}
         </span>
       </li>
       {% endfor %}
@@ -103,5 +103,5 @@
   {% endfor %}
 </ol>
 {% endif %}
-<p class="muted agenda-legend"><span class="legend legend--event"></span> Événement · <span class="legend legend--milestone"></span> Échéance de repère{% if not person.can_view_index %} (non accordées à votre compte){% endif %}</p>
+<p class="muted agenda-legend"><span class="legend legend--event"></span> Événement · <span class="legend legend--milestone"></span> Échéance de repère{% if not person.can_view_index %} (non accordées à votre compte){% endif %} · <span class="recur-mark" aria-hidden="true">↻</span> Occurrence d'un événement récurrent</p>
 {% endblock %}

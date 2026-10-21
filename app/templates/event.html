@@ -2,16 +2,25 @@
 {% block title %}{{ item.title }}{% endblock %}
 {% block content %}
 <h1>{{ item.title }}</h1>
+{% if item.recurrence != 'none' %}
+<p class="series-note">
+  <span class="recur-mark" aria-hidden="true">↻</span>
+  {% if occurrence %}Occurrence du {{ occurrence|frdate }} d'un événement récurrent.{% else %}Événement récurrent.{% endif %}
+  Série : {{ item.recurrence_label|lower }}, depuis le {{ item.start_date|frdate }}, sans date de fin.
+  Les modifications s'appliquent à toute la série.
+</p>
+{% endif %}
 <dl>
-  <dt>Début</dt><dd>{{ item.start_date|frdate }}</dd>
-  <dt>Fin</dt><dd>{% if item.end_date %}{{ item.end_date|frdate }}{% else %}—{% endif %}</dd>
+  <dt>{% if item.recurrence != 'none' %}Première occurrence{% else %}Début{% endif %}</dt><dd>{{ item.start_date|frdate }}</dd>
+  <dt>{% if item.recurrence != 'none' %}Fin de la première occurrence{% else %}Fin{% endif %}</dt><dd>{% if item.end_date %}{{ item.end_date|frdate }}{% else %}—{% endif %}</dd>
+  <dt>Récurrence</dt><dd>{{ item.recurrence_label or 'Aucune' }}</dd>
   <dt>Journée entière</dt><dd>{% if item.all_day %}Oui{% else %}Non{% endif %}</dd>
   <dt>Fuseau</dt><dd>{{ item.timezone }}</dd>
   <dt>Responsable</dt><dd>{{ item.responsible_name or '—' }}</dd>
   <dt>Notes</dt><dd>{{ item.notes or '—' }}</dd>
 </dl>
-<p><a href="{{ url_for('pages.event_edit', event_id=item.id) }}">Modifier</a> · <a href="{{ url_for('pages.events_get') }}">Calendrier</a></p>
-{% with task_title="Préparer : " ~ item.title, task_due=item.start_date, link_type="calendar_event", link_id=item.id %}
+<p><a href="{{ url_for('pages.event_edit', event_id=item.id) }}">{% if item.recurrence != 'none' %}Modifier la série{% else %}Modifier{% endif %}</a> · <a href="{{ url_for('pages.events_get', vue='mois', date=occurrence) if occurrence else url_for('pages.events_get') }}">Calendrier</a></p>
+{% with task_title="Préparer : " ~ item.title, task_due=occurrence or item.start_date, link_type="calendar_event", link_id=item.id %}
 {% include "_linked_tasks.html" %}
 {% endwith %}
 {% endblock %}

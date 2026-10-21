@@ -21,13 +21,31 @@
 
 <section class="today-panel" aria-labelledby="modules-title">
   <h2 id="modules-title">Modules</h2>
-  <p class="muted">Les modules désactivés sont masqués dans la navigation.</p>
+  <p class="muted">Un module désactivé disparaît pour tout le foyer {{ household.name }} : navigation, « + Ajouter », recherche et Aujourd'hui. Ses données sont conservées et réapparaissent à la réactivation.</p>
+  {% if person.is_principal %}
+  <form method="post" action="{{ url_for('pages.settings_modules_post') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>Modules du foyer</legend>
+      {% for item in modules %}
+      {% if item.locked %}
+      <label class="permission"><input type="checkbox" checked disabled> {{ item.label }} <span class="muted">&nbsp;· toujours actif : {{ item.locked_reason }}</span></label>
+      {% else %}
+      <label class="permission"><input type="checkbox" name="module" value="{{ item.key }}" {% if item.enabled %}checked{% endif %}> {{ item.label }}</label>
+      {% endif %}
+      {% endfor %}
+    </fieldset>
+    <button type="submit">Enregistrer les modules</button>
+  </form>
+  {% else %}
   {% for item in modules %}
   <div class="row">
     <b>{{ item.label }}</b>
     <span class="badge">{% if item.enabled %}Activé{% else %}Masqué{% endif %}</span>
   </div>
   {% endfor %}
+  <p class="muted">Seul le compte principal peut activer ou désactiver un module.</p>
+  {% endif %}
 </section>
 
 <section class="today-panel" aria-labelledby="onboarding-title">
