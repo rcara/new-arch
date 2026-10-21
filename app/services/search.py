@@ -4,7 +4,7 @@ from ..db import require_household
 from ..errors import AppError
 from ..validate import text_value
 from .links import can_see_object
-from .modules import require_module
+from .modules import enabled_keys, require_module
 from .milestones import require_index
 
 
@@ -17,8 +17,10 @@ def search(ctx, person, q, *, limit=40):
     escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     like = f"%{escaped}%"
     items = []
+    # Un module désactivé renvoie 404 : ses éléments ne doivent pas apparaître.
+    enabled = enabled_keys(ctx)
 
-    if person.get("can_view_index"):
+    if person.get("can_view_index") and "reperes" in enabled:
         rows = ctx.conn.execute(
             """SELECT id, name FROM milestone
                WHERE household_id=1 AND archived=0 AND name LIKE ? ESCAPE '\\'
@@ -28,7 +30,7 @@ def search(ctx, person, q, *, limit=40):
         for row in rows:
             items.append({"type": "milestone", "id": row["id"], "title": row["name"], "href": f"/reperes/{row['id']}"})
 
-    rows = ctx.conn.execute(
+    rows = [] if "organisation" not in enabled else ctx.conn.execute(
         """SELECT id, title FROM task
            WHERE household_id=1 AND archived=0 AND title LIKE ? ESCAPE '\\'
            ORDER BY id DESC LIMIT ?""",
@@ -37,7 +39,7 @@ def search(ctx, person, q, *, limit=40):
     for row in rows:
         items.append({"type": "task", "id": row["id"], "title": row["title"], "href": f"/organisation/{row['id']}"})
 
-    rows = ctx.conn.execute(
+    rows = [] if "calendrier" not in enabled else ctx.conn.execute(
         """SELECT id, title FROM calendar_event
            WHERE household_id=1 AND archived=0 AND title LIKE ? ESCAPE '\\'
            ORDER BY id DESC LIMIT ?""",
@@ -47,7 +49,7 @@ def search(ctx, person, q, *, limit=40):
         items.append({"type": "calendar_event", "id": row["id"], "title": row["title"], "href": f"/calendrier/{row['id']}"})
 
     # Décisions : titre = choix uniquement si accessible ; jamais le corps expected/reconsider
-    rows = ctx.conn.execute(
+    rows = [] if "decisions" not in enabled else ctx.conn.execute(
         """SELECT d.id, d.choice, d.author_id, d.sealed_at FROM decision d
            JOIN milestone m ON m.id=d.milestone_id
            WHERE m.household_id=1 AND d.choice LIKE ? ESCAPE '\\'
@@ -75,7 +77,7 @@ def search(ctx, person, q, *, limit=40):
         # Intentionnel : la recherche ne révèle pas les noms de fichiers.
 
     # Personnes (foyer)
-    if person.get("is_principal"):
+    if person.get("is_principal") and "foyer" in enabled:
         rows = ctx.conn.execute(
             """SELECT id, display_name FROM person
                WHERE household_id=1 AND active=1 AND display_name LIKE ? ESCAPE '\\'
@@ -85,7 +87,7 @@ def search(ctx, person, q, *, limit=40):
         for row in rows:
             items.append({"type": "person", "id": row["id"], "title": row["display_name"], "href": "/foyer"})
 
-    rows = ctx.conn.execute(
+    rows = [] if "inventaire" not in enabled else ctx.conn.execute(
         """SELECT id, name, visibility, created_by FROM inventory_item
            WHERE household_id=1 AND archived=0 AND name LIKE ? ESCAPE '\\'
            ORDER BY id DESC LIMIT ?""",
@@ -101,7 +103,7 @@ def search(ctx, person, q, *, limit=40):
             "href": f"/inventaire/{row['id']}",
         })
 
-    rows = ctx.conn.execute(
+    rows = [] if "mediatheque" not in enabled else ctx.conn.execute(
         """SELECT id, title FROM media_work
            WHERE household_id=1 AND archived=0 AND title LIKE ? ESCAPE '\\'
            ORDER BY id DESC LIMIT ?""",

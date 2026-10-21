@@ -213,25 +213,25 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             return jsonify(exc.payload()), exc.status
         if exc.status == 401:
             return redirect(url_for("pages.login_get"))
-        return render_template("error.html", title="Information", text=exc.message), exc.status
+        return render_template("error.html", status=exc.status, text=exc.message), exc.status
 
     @app.errorhandler(404)
     def on_404(_exc):
         if request.path.startswith("/api"):
             return jsonify({"error": {"code": "not_found", "message": "Introuvable.", "fields": {}}}), 404
-        return render_template("error.html", title="Introuvable", text="Introuvable."), 404
+        return render_template("error.html", status=404, text="Introuvable."), 404
 
     @app.errorhandler(405)
     def on_405(_exc):
         if request.path.startswith("/api"):
             return jsonify({"error": {"code": "validation", "message": "Méthode refusée.", "fields": {}}}), 405
-        return render_template("error.html", title="Information", text="Méthode refusée."), 405
+        return render_template("error.html", status=405, text="Méthode refusée."), 405
 
     @app.errorhandler(RequestEntityTooLarge)
     def on_large(_exc):
         if request.path.startswith("/api"):
             return jsonify({"error": {"code": "too_large", "message": "Le fichier dépasse 20 Mio.", "fields": {}}}), 413
-        return render_template("error.html", title="Information", text="Le fichier dépasse 20 Mio."), 413
+        return render_template("error.html", status=413, text="Le fichier dépasse 20 Mio."), 413
 
     @app.errorhandler(Exception)
     def on_error(exc):
@@ -242,7 +242,7 @@ def create_app(home=None, clock=None, testing=False, port=8765):
         audit(home, app.config["CLOCK"], "error", type(exc).__name__)
         if request.path.startswith("/api"):
             return jsonify({"error": {"code": "storage", "message": "Opération impossible.", "fields": {}}}), 500
-        return render_template("error.html", title="Information", text="Opération impossible."), 500
+        return render_template("error.html", status=500, text="Opération impossible."), 500
 
     return app
 

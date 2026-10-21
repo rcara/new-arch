@@ -1,25 +1,38 @@
 {% extends "base.html" %}
+{% from "_ui.html" import page_header, empty_state %}
 {% block title %}Recherche{% endblock %}
+{% set TYPES = [
+  ('task', 'Tâches'), ('calendar_event', 'Événements'), ('milestone', 'Repères'), ('decision', 'Décisions'),
+  ('inventory_item', 'Biens'), ('media_work', 'Œuvres'), ('person', 'Personnes'),
+] %}
 {% block content %}
-<h1>Recherche</h1>
-<form method="get" class="toolbar">
-  <label>Rechercher <input name="q" value="{{ results.q }}" autofocus minlength="2"></label>
-  <button type="submit">Chercher</button>
+{{ page_header("Recherche", "Rechercher dans le foyer", "Seuls les éléments auxquels vous avez accès apparaissent. Les noms des fichiers du coffre ne sont jamais indexés.") }}
+<form method="get" class="search-inline search-page" role="search">
+  <label><span class="sr-only">Rechercher</span><input type="search" name="q" value="{{ results.q }}" minlength="2" placeholder="Tâche, événement, bien, œuvre…" {% if errors.q %}aria-invalid="true" aria-describedby="err-q"{% endif %}></label>
+  <button type="submit">Rechercher</button>
 </form>
-{% if errors.q %}<p class="error">{{ errors.q }}</p>{% endif %}
-{% if results.q %}
+{% if errors.q %}<p class="error" id="err-q">{{ errors.q }}</p>{% endif %}
+
+{% if results.q and not errors.q %}
 {% if results['items'] %}
-<p class="muted">{{ results.total }} résultat{% if results.total > 1 %}s{% endif %}</p>
-{% for item in results['items'] %}
-<div class="row">
-  <span class="badge">{{ item.type }}</span>
-  <b><a href="{{ item.href }}">{{ item.title }}</a></b>
+<p class="muted" role="status">{{ results.total }} résultat{% if results.total > 1 %}s{% endif %} pour « {{ results.q }} ».</p>
+<div class="search-results">
+  {% for key, label in TYPES %}
+  {% set group = results['items']|selectattr('type', 'equalto', key)|list %}
+  {% if group %}
+  <section class="task-group" aria-labelledby="res-{{ key }}">
+    <h2 id="res-{{ key }}">{{ label }} <span class="muted">{{ group|length }}</span></h2>
+    <ul class="plain-list">
+      {% for item in group %}<li><a href="{{ item.href }}">{{ item.title }}</a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  {% endfor %}
 </div>
-{% endfor %}
 {% else %}
-<p class="muted">Aucun résultat pour « {{ results.q }} ».</p>
+{{ empty_state("Aucun résultat pour « " ~ results.q ~ " »", "Vérifiez l'orthographe ou essayez un mot plus court. Les éléments privés d'autres membres et les modules désactivés ne sont pas recherchés.", kind="search") }}
 {% endif %}
-{% else %}
-<p class="muted">Saisissez au moins deux caractères. Les contenus privés du coffre et des décisions inaccessibles n’apparaissent pas.</p>
+{% elif not errors.q %}
+{{ empty_state("Que cherchez-vous ?", "Saisissez au moins deux caractères : la recherche couvre les tâches, événements, biens, œuvres, et selon vos accès les repères et décisions.", kind="search") }}
 {% endif %}
 {% endblock %}

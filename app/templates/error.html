@@ -1,6 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Information{% endblock %}
+{% set code = status|default(500) %}
+{% if code == 403 %}
+  {% set heading, lead, kind = "Accès non accordé", "Cette page existe, mais votre compte n'y a pas accès. Le compte principal du foyer peut vous l'ouvrir depuis Paramètres › Permissions.", "denied" %}
+{% elif code == 404 %}
+  {% set heading, lead, kind = "Page introuvable", "Le lien est peut-être ancien, ou l'élément a été retiré ou ne vous est pas accessible.", "search" %}
+{% elif code in (400, 409, 413, 415) %}
+  {% set heading, lead, kind = "Action non enregistrée", "Rien n'a été modifié. Corrigez la demande puis réessayez.", "search" %}
+{% elif code == 405 %}
+  {% set heading, lead, kind = "Action non disponible", "Cette adresse ne s'utilise pas de cette façon.", "search" %}
+{% elif code in (423, 429, 503) %}
+  {% set heading, lead, kind = "Service momentanément indisponible", "New Arch est occupé ou verrouillé (sauvegarde, restauration, trop de tentatives). Patientez quelques instants puis réessayez.", "denied" %}
+{% else %}
+  {% set heading, lead, kind = "Une erreur est survenue", "L'opération n'a pas pu aboutir et rien n'a été modifié. L'incident est consigné dans le journal local.", "denied" %}
+{% endif %}
+{% block title %}{{ heading }}{% endblock %}
 {% block content %}
-<h1>{{ title }}</h1>
-<p>{{ text }}</p>
+<section class="error-state empty-state empty-state--{{ kind }}" role="alert" aria-labelledby="erreur-titre">
+  <p class="eyebrow">Erreur {{ code }}</p>
+  <h1 id="erreur-titre">{{ heading }}</h1>
+  <p class="error-detail"><b>{{ text }}</b></p>
+  <p>{{ lead }}</p>
+  <p class="form-actions">
+    {% if person %}
+    <a class="btn btn--primary" href="{{ url_for('pages.today') }}">Revenir à Aujourd'hui</a>
+    {% if request.method == 'GET' and code in (423, 429, 500, 503) %}<a class="btn" href="{{ request.full_path.rstrip('?') }}">Réessayer</a>{% endif %}
+    {% else %}
+    <a class="btn btn--primary" href="{{ url_for('pages.login_get') }}">Aller à la connexion</a>
+    {% endif %}
+  </p>
+</section>
 {% endblock %}
