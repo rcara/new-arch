@@ -46,7 +46,7 @@
           <a href="{{ url_for('pages.file_open', file_id=item.id) }}"><b>{{ item.original_name }}</b><span class="sr-only"> — ouvrir</span></a>
           <span class="muted">
             {{ item.kind }} · déposé le {{ item.created_at|frtime }}{% if item.version and item.version > 1 %} · version {{ item.version }}{% endif %}
-            {% if item.milestone_name is defined %} · <a href="{{ url_for('pages.milestone_get', milestone_id=item.milestone_id) }}">{{ item.milestone_name }}</a>{% endif %}
+            {% if item.milestone_name is defined %} · {% if 'reperes' in nav_modules %}<a href="{{ url_for('pages.milestone_get', milestone_id=item.milestone_id) }}">{{ item.milestone_name }}</a>{% else %}{{ item.milestone_name }}{% endif %}{% endif %}
           </span>
         </div>
         <div class="file-actions">
@@ -99,7 +99,7 @@
       <button type="submit" name="confirm" value="oui">Déposer dans le coffre</button>
       {% else %}
       <p class="muted">Un document se rattache à un repère (contrat, pièce d'identité, assurance…).</p>
-      <p><a class="btn" href="{{ url_for('pages.milestone_new', next=request.path) }}">Créer d'abord un repère</a></p>
+      {% if 'reperes' in nav_modules %}<p><a class="btn" href="{{ url_for('pages.milestone_new', next=request.path) }}">Créer d'abord un repère</a></p>{% endif %}
       {% endif %}
     </form>
   </aside>

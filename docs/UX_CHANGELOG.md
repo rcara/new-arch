@@ -1,32 +1,25 @@
 # UX Changelog — New Arch V2.1
 
-## V2.2 — Occurrences des événements récurrents (D6, résolu)
+## V2.2 — Modules activables (décision D3)
 
 **Ajouté**
-- `services/events.py` : `occurrence_dates` et `occurrences` développent les séries (quotidienne, hebdomadaire,
-  mensuelle, annuelle) **à la lecture**, sur la seule période demandée, pour le foyer actif (`hh(ctx)`), hors
-  événements archivés et seulement si le module Calendrier est actif. Aucune donnée réécrite, aucune migration.
-  Règles : calcul depuis la date d'origine (un 31 mensuel donne 28/29 février puis 31 mars, sans dérive) ;
-  29 février annuel → 28 février les années non bissextiles ; chaque occurrence garde la durée de l'événement
-  d'origine ; une occurrence commencée avant la période mais qui la chevauche est conservée ; les séries n'ont
-  pas de date de fin en base, elles se répètent donc indéfiniment (calcul borné à la période).
-- Agenda (mois, semaine, liste) et carte « Agenda » d'Aujourd'hui : une entrée par occurrence, marquée « ↻ »
-  et du libellé de récurrence (« Chaque semaine »…), légende mise à jour. Filtres membre et titre inchangés.
-- Fiche événement : un lien d'occurrence (`/calendrier/<id>?occurrence=AAAA-MM-JJ`) ouvre la série avec
-  « Occurrence du … d'un événement récurrent », le rythme et « Les modifications s'appliquent à toute la série » ;
-  le lien devient « Modifier la série ». Une date qui n'est pas une occurrence est ignorée.
-- `tests/test_recurrence.py` (12 tests) : chaque règle, fins de mois, 29 février, bornes de période,
-  occurrences multi-jours, vues mois / semaine / liste, Aujourd'hui, filtres, isolation entre foyers,
-  série archivée et module désactivé.
+- Paramètres → « Modules du foyer » : cases à cocher + « Enregistrer les modules » (POST `/parametres/modules`,
+  CSRF, sans JS). Réservé au compte principal du foyer actif ; un membre secondaire voit l'état en lecture seule
+  et reçoit 403 s'il poste. Chaque bascule est journalisée (`module_enable` / `module_disable`, sans contenu).
+- `services/modules.py` : `LOCKED` (Accueil, Foyer, Paramètres — toujours actifs : page d'arrivée, gestion des
+  membres et des accès, et formulaire de réactivation), `set_enabled`, `ROUTE_PREFIXES` / `module_for_path`.
+- Garde serveur unique (`before_request`) : toute route HTML ou API d'un module désactivé renvoie 404
+  (organisation, calendrier, finances, inventaire, médiathèque, repères, décisions, coffre, recherche, alias inclus).
+- `tests/test_modules_settings.py` (17 tests) : bascule, modules verrouillés, 403 secondaire, CSRF et clé inconnue,
+  masquage + 404 page/API pour chaque module, cartes d'Aujourd'hui, données intactes après off/on, isolation par foyer.
 
 **Modifié**
-- `events.upcoming` (Aujourd'hui) renvoie les prochaines occurrences au lieu de la seule date de départ.
-- Formulaire d'événement : option « Quotidienne » ajoutée (la règle existait côté API ; sans l'option, modifier
-  une série quotidienne dans l'interface l'aurait silencieusement remise à « Aucune »), et note sur l'édition
-  de série.
+- Aujourd'hui : la carte et les échéances Repères suivent le module `reperes` (elles l'ignoraient).
+- Liens croisés masqués quand la cible est désactivée : repère → décision, coffre → repère, marque « Pièce au
+  coffre », médiathèque → lier une décision ; `/bibliotheque` ouvre le premier module actif de la Bibliothèque.
 
-**Inchangé** : schéma, `GET /api/events` (liste des séries, non développées), permissions, édition (toujours
-au niveau de la série ; pas d'exception par occurrence).
+**Inchangé** : schéma (aucune migration, table `module_setting` existante), données des modules masqués
+(jamais supprimées ni modifiées ; réactiver restaure tout), permissions par objet, CSP.
 
 ## Mise en production — intégration avec le multi-foyer (PR #18)
 

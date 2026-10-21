@@ -4,8 +4,10 @@
 {%- endmacro %}
 
 {% macro vault_mark(has_file) -%}
-{% if has_file %}
+{% if has_file and 'coffre' in nav_modules %}
 <a class="vault-mark vault-mark--yes" href="{{ url_for('pages.vault_get') }}">Pièce au coffre</a>
+{% elif has_file %}
+<span class="vault-mark vault-mark--yes">Pièce au coffre</span>
 {% else %}
 <span class="vault-mark vault-mark--no">Pas de pièce au coffre</span>
 {% endif %}
