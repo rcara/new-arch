@@ -9,7 +9,7 @@ Périmètre : refonte visuelle uniquement (pas de refactor fonctionnel).
 |---|---|
 | Framework | Flask 3 + Jinja2 (SSR), pas de React/Vue |
 | CSS | Fichier unique `app/static/app.css` (~393 lignes) |
-| JS | Aucun (`script-src 'none'` CSP) |
+| JS | Un script local d'amélioration progressive (`script-src 'self'`, aucun inline) depuis D1 |
 | Composants partagés | `base.html`, `_status.html` (chips / vault mark) |
 | Thème | Cookie `foyer_theme` (`dark` \| `light`) ; **défaut actuel = dark** |
 | Fonts | Roboto + Roboto Mono self-hostés (`app/static/fonts/`) — héritage Ars Codicis |

@@ -49,10 +49,19 @@
     var panel = openPanel();
     if (panel) {
       closeMenus(null);
-      var first = panel.querySelector("form " + FOCUSABLE) || focusables(panel)[0];
-      if (first) {
+      var first = panel.querySelector("form input:not([type=hidden]), form select, form textarea") || focusables(panel)[0];
+      var frames = 0;
+      /* La transition de visibilité garde le panneau « hidden » à sa première frame : focus impossible avant. */
+      var tryFocus = function () {
+        if (!first || openPanel() !== panel) {
+          return;
+        }
         first.focus({ preventScroll: true });
-      }
+        if (document.activeElement !== first && frames++ < 60) {
+          window.requestAnimationFrame(tryFocus);
+        }
+      };
+      tryFocus();
       return;
     }
     if (scroll) {

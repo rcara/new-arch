@@ -1,7 +1,8 @@
 # UX Implementation Plan — New Arch V2.1
 
 Règles : pas de réécriture, pas de migration destructive, aucune modification des règles de calcul financier,
-zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, jamais de merge sur `main`
+zéro JS jusqu'au Sprint 5 ; depuis D1, un seul script local d'amélioration progressive (CSP `script-src 'self'`,
+aucun inline), tout fonctionne sans JS ; une PR **brouillon** par sprint, jamais de merge sur `main`
 (le push sur `main` déploie en production).
 
 ## Sprint 0 — Audit et stabilité ✅
@@ -35,8 +36,8 @@ zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, 
   d'origine (`next` validé par `safe_next`, même site), messages de retour existants.
 - Création contextuelle depuis un événement ou un bien (« Tâches liées », lien `concerns` après contrôle de
   visibilité).
-- Reste hors périmètre sans JS : fermeture du menu « + Ajouter » au clic extérieur, focus automatique dans le
-  panneau (voir D1).
+- Fermeture du menu « + Ajouter » au clic extérieur et focus automatique dans le panneau : livrés avec D1
+  (`app/static/js/app.js`).
 
 ## Sprint 4 — Modules ✅
 
@@ -70,14 +71,15 @@ zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, 
 - Recherche : sources filtrées par module actif (un module désactivé ne remonte plus rien), résultats groupés
   par type, états « Que cherchez-vous ? », trop court (message complet, `aria-invalid`), aucun résultat.
   Permissions inchangées (`can_see_object`, index, principal seul pour les personnes).
-- Garde-fous testés : aucune page sans CSP `script-src 'none'`, aucun `<script>`, `style=` ni `on*=` ;
+- Garde-fous testés : aucune page sans CSP stricte (`script-src 'self'` depuis D1, `'none'` avant), seuls des
+  scripts locaux `/static/js/` sans contenu inline, aucun `style=` ni `on*=` ;
   un seul `h1`, `main#contenu` et `lang="fr"` par page.
 
 ## Décisions à prendre (Roger)
 
 | # | Sujet | Proposition | Statut |
 |---|---|---|---|
-| D1 | **JS / CSP** — glisser-déposer (Coffre) et panneau latéral (création rapide) nécessitent du JavaScript. | Livré sans JS : dépôt par `<input type=file>` (le navigateur accepte déjà le glisser-déposer *sur* le champ), panneaux d'ajout rapide via `:target` (livrés au Sprint 3 : `#ajout-tache`, `#ajout-evenement`, fermeture par « Fermer » ou le fond ; le menu `<details>` reste ouvert derrière le panneau et le focus n'y est pas déplacé automatiquement). Coffre (Sprint 4) : zone de dépôt agrandie autour du champ fichier natif, qui accepte le glisser-déposer sans script. Pour un vrai glisser-déposer sur zone ou un panneau dynamique : autoriser un script **local** (`script-src 'self'`) limité à l'amélioration progressive. CSP **non modifiée** tant que non validé. | Bloquant pour l'amélioration, pas pour la livraison |
+| D1 | **JS / CSP** — glisser-déposer (Coffre) et panneau latéral (création rapide) nécessitent du JavaScript. | **Validé par Roger, livré.** CSP `script-src 'self'` (aucun inline, externe ni `eval`). Un fichier `app/static/js/app.js` (vanilla, sans dépendance, `defer`, sans état ni appel réseau) : menus `<details>` (+ Ajouter, utilisateur, sélecteur de foyer) fermés au clic extérieur et à Échap, un seul ouvert à la fois ; panneaux `#ajout-tache` / `#ajout-evenement` : focus sur le premier champ, focus piégé, Échap ferme, focus rendu au menu d'origine, + Ajouter fermé à l'ouverture ; Coffre : vrai glisser-déposer sur la zone, envoi par le formulaire existant (CSRF, foyer actif et permissions côté serveur inchangés). Sans JS : comportement Sprint 3/4 identique (`:target`, champ fichier natif). | ✅ Résolu |
 | D2 | **Connexion locale HTTP** : Chrome envoie `Origin: null` (`Referrer-Policy: no-referrer`) → « Origine refusée » sur `127.0.0.1`. | Option A : `Referrer-Policy: same-origin` (le navigateur envoie alors l'Origin exacte). Option B : accepter `null` quand l'hôte est exactement `127.0.0.1:port` (CSRF reste requis). Non modifié (sécurité). | À décider |
 | D3 | Modules activables affichés mais non basculables dans l'UI. | Non livré en V2.1 (touche aux permissions de navigation) : ajouter un interrupteur principal seul, POST + CSRF, journalisé. La navigation, la création rapide et la recherche respectent déjà l'état des modules. | À décider |
 | D4 | Notifications : aucun moteur existant. | Ne pas inventer ; rappels réels sur Aujourd'hui. | Proposé |

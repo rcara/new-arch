@@ -1,5 +1,35 @@
 # UX Changelog — New Arch V2.1
 
+## D1 — Script local d'amélioration progressive
+
+**Ajouté**
+- `app/static/js/app.js` (vanilla, sans dépendance, chargé en `defer` depuis `base.html`, aucun état local ni
+  appel réseau) :
+  - menus `<details>` (+ Ajouter, menu utilisateur, sélecteur de foyer et « Nouveau foyer ») : fermeture au clic
+    extérieur et à Échap (le plus interne d'abord, focus rendu au `summary`), un seul menu ouvert à la fois ;
+  - panneaux d'ajout rapide `#ajout-tache` / `#ajout-evenement` : focus sur le premier champ, Tab / Maj+Tab
+    piégés dans le panneau, Échap / « Fermer » / fond ferment sans saut de défilement et rendent le focus au
+    bouton « + Ajouter », le menu « + Ajouter » se ferme à l'ouverture du panneau ;
+  - Coffre : glisser-déposer sur toute la zone (surbrillance `.drop-zone.is-dragover`), nom du fichier affiché,
+    envoi par le formulaire existant (`POST /coffre`, multipart, CSRF, `confirm=oui`) si un repère est choisi,
+    sinon validation native ; un dépôt hors zone n'ouvre plus le fichier dans l'onglet.
+- `tests/test_first_party_js.py` (9 tests) : directives CSP exactes (`script-src 'self'`, ni `unsafe-*`, nonce,
+  hash, schéma ou joker) sur pages, erreurs, invités et le script lui-même ; un seul `<script src defer>` local ;
+  script servi en `text/javascript` + `nosniff` ; hygiène du script (pas d'`eval`, `innerHTML`, `fetch`,
+  stockage, URL externe) ; replis sans JS présents ; dépôt rattaché au foyer actif ; CSRF toujours exigé ;
+  fichiers du coffre invisibles depuis un autre foyer.
+
+**Modifié**
+- CSP : `script-src 'none'` → `script-src 'self'` (autres directives inchangées).
+- Tests : les assertions « aucun `<script>` » deviennent « uniquement des scripts locaux `/static/js/`, aucun
+  inline » (`test_ux_quality`, `test_ux_navigation`, `test_ux_quick_create`, `test_multi_household`).
+- Cloisonnement multi-foyer du coffre : liste, dépôt, remplacement, retrait, ouverture, droits d'accès aux
+  fichiers et écran d'accès filtrés sur le foyer actif (`milestone.household_id = hh(ctx)`). Avant, un compte
+  principal voyait et ouvrait les fichiers des autres foyers.
+
+**Inchangé** : schéma, routes, permissions (principal seul pour déposer), CSRF, `style-src 'self'`. Sans JS,
+tout fonctionne comme avant (`:target`, champ fichier natif). Connexion HTTP locale sous Chrome : voir D2.
+
 ## Mise en production — intégration avec le multi-foyer (PR #18)
 
 - Fusion de la pile Sprint 1 → 5 avec `main` (qui contenait déjà Sprint 0 et le multi-foyer de PR #18).
