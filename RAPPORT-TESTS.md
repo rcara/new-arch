@@ -8,10 +8,10 @@ Machine : Linux, Python 3.12.3, Flask 3.1.3.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-Résultat : **57 tests, tous réussis**.
+Résultat : **60 tests, tous réussis**.
 
-- V1 + B + C + D + E inchangés (`user_version` jusqu’à 6).
-- Solidification F : backup vault+média, seed démo, thème clair/sombre, export inventaire CSV, parcours e2e transversal (`tests/test_solidification.py`).
+- V1 + B + C + D + E + F inchangés (`user_version` jusqu’à 6).
+- Profil / mot de passe / tableau de bord : `tests/test_profile.py`.
 
 ## Limitations
 

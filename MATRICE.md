@@ -29,3 +29,5 @@
 | V2F thème clair/sombre | `http.py`, `app.css`, settings | `test_theme_cookie_and_settings` |
 | V2F export inventaire CSV | `services/inventory.py` | `test_inventory_csv_export` |
 | V2F parcours e2e | routes + backup | `test_e2e_parcours_transversal` |
+| Profil + mot de passe | `services/auth.py`, `/profil` | `test_profile_page_and_display_name`, `test_change_password_ui_and_api` |
+| Tableau de bord personnel | `services/home.py`, `today.html` | `test_dashboard_includes_mine_tasks` |

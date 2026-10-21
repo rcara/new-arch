@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0] — 2026-10-21
+
+### Ajouté
+- Écran **Profil** (`/profil`) : nom affiché, identité, changement de mot de passe
+- API `GET|PATCH /api/me`, `POST /api/me/password`
+- Tableau de bord Accueil enrichi : section « Pour vous », mes tâches, mon solde
+- Lien navigation Profil ; tests `tests/test_profile.py`
+
 ## [0.6.0-v2f] — 2026-10-21
 
 ### Ajouté

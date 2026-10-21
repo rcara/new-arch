@@ -30,6 +30,8 @@ MESSAGES = {
     "inventory_saved": "Inventaire mis à jour.",
     "media_saved": "Médiathèque mise à jour.",
     "theme_saved": "Thème enregistré.",
+    "profile_saved": "Profil mis à jour.",
+    "password_changed": "Mot de passe modifié.",
 }
 
 THEMES = frozenset({"dark", "light"})

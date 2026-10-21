@@ -261,20 +261,30 @@ def update_task(ctx, person, task_id, data):
     return get_task(ctx, person, task_id)
 
 
-def open_due_soon(ctx, person, *, within_days=30, limit=20):
+def open_due_soon(ctx, person, *, within_days=30, limit=20, assignee_id=None):
     """Tâches ouvertes pour l'accueil (module organisation requis côté appelant)."""
     require_household(ctx.conn)
     from ..clock import civil_today
 
     household = require_household(ctx.conn)
     today = civil_today(ctx.clock, household["timezone"]).isoformat()
+    where = [
+        "t.household_id=1",
+        "t.archived=0",
+        "t.status='open'",
+        "(t.due_date IS NULL OR t.due_date <= date(?, '+' || ? || ' days'))",
+    ]
+    params = [today, int(within_days)]
+    if assignee_id is not None:
+        where.append("t.assignee_id=?")
+        params.append(int(assignee_id))
+    params.append(int(limit))
     rows = ctx.conn.execute(
         f"""{SELECT}
-            WHERE t.household_id=1 AND t.archived=0 AND t.status='open'
-              AND (t.due_date IS NULL OR t.due_date <= date(?, '+' || ? || ' days'))
+            WHERE {' AND '.join(where)}
             ORDER BY t.due_date IS NULL, t.due_date,
                      CASE t.priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END
             LIMIT ?""",
-        (today, int(within_days), int(limit)),
+        params,
     ).fetchall()
     return [_public(row) for row in rows]

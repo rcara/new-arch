@@ -1,9 +1,53 @@
 {% extends "base.html" %}
 {% from "_status.html" import status_chip, vault_mark with context %}
-{% block title %}Accueil{% endblock %}
+{% block title %}Tableau de bord{% endblock %}
 {% block content %}
-<h1>Accueil</h1>
-<p class="muted">{{ summary.household_name }} · {{ summary.today|frdate }}</p>
+<h1>Tableau de bord</h1>
+<p class="muted">
+  Bonjour {{ summary.person.display_name }} · {{ summary.household_name }} · {{ summary.today|frdate }}
+  · <a href="{{ url_for('pages.profile_get') }}">Gérer mon profil</a>
+</p>
+
+<section class="today-panel" aria-labelledby="dash-mine">
+  <h2 id="dash-mine">Pour vous</h2>
+  <div class="row row--today">
+    <b>Mes tâches ouvertes</b>
+    <span class="row-date">{{ summary.mine.task_count }}</span>
+  </div>
+  {% if summary.mine.balance %}
+  <div class="row row--today">
+    <b>Mon solde (CHF)</b>
+    <span class="row-date">{{ summary.mine.balance.net_label }}</span>
+    <span class="muted">{{ summary.mine.balance.meaning }}</span>
+  </div>
+  {% endif %}
+  {% if summary.person.can_view_index %}
+  <div class="row row--today">
+    <b>Échéances urgentes</b>
+    <span class="row-date">{{ summary.mine.urgent_milestones }}</span>
+  </div>
+  {% endif %}
+  {% if summary.mine.media_in_progress %}
+  <div class="row row--today">
+    <b>Médias en cours</b>
+    <span class="row-date">{{ summary.mine.media_in_progress|length }}</span>
+  </div>
+  {% endif %}
+</section>
+
+{% if summary.mine.tasks %}
+<section class="today-panel" aria-labelledby="dash-my-tasks">
+  <h2 id="dash-my-tasks">Mes tâches</h2>
+  {% for item in summary.mine.tasks %}
+  <div class="row row--today">
+    <b><a href="{{ url_for('pages.task_get', task_id=item.id) }}">{{ item.title }}</a></b>
+    <span class="row-date">{% if item.due_date %}{{ item.due_date|frdate }}{% else %}Sans date{% endif %}</span>
+    <span class="badge">{{ item.priority_label }}</span>
+  </div>
+  {% endfor %}
+  <p class="today-more"><a href="{{ url_for('pages.tasks_get') }}">Toutes les tâches</a></p>
+</section>
+{% endif %}
 
 {% set ms = summary.milestones %}
 {% if ms and not ms.denied %}
@@ -37,13 +81,14 @@
 {% endif %}
 
 <section class="today-panel" aria-labelledby="home-tasks">
-  <h2 id="home-tasks">Tâches ouvertes</h2>
+  <h2 id="home-tasks">Tâches du foyer</h2>
   {% if summary.tasks %}
   {% for item in summary.tasks %}
   <div class="row row--today">
     <b><a href="{{ url_for('pages.task_get', task_id=item.id) }}">{{ item.title }}</a></b>
     <span class="row-date">{% if item.due_date %}{{ item.due_date|frdate }}{% else %}Sans date{% endif %}</span>
     <span class="badge">{{ item.priority_label }}</span>
+    {% if item.assignee_name %}<span class="muted">{{ item.assignee_name }}</span>{% endif %}
   </div>
   {% endfor %}
   {% else %}
