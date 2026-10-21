@@ -9,7 +9,7 @@ from ..errors import AppError
 from ..money import format_minor
 from ..http import THEMES, cookie_message, cookie_onboarding, cookie_session, cookie_setup, cookie_theme, safe_next
 from ..security import new_token
-from ..services import agenda, auth, decisions, events, finance, home, households, inventory, links, media, milestones, modules, people, search, tasks, vault
+from ..services import agenda, auth, decisions, events, finance, home, households, inventory, links, media, milestones, modules, people, photos, search, tasks, vault
 from ..validate import text_value
 
 pages = Blueprint("pages", __name__)
@@ -860,15 +860,50 @@ def inventory_item_create():
     return _done("inventory_saved", "pages.inventory_item_get", item_id=item_id)
 
 
-@pages.get("/inventaire/<int:item_id>")
-def inventory_item_get(item_id):
-    person = _need()
+def _inventory_item_page(person, item_id, photo_error=""):
     item = inventory.get_item(current_ctx(), person, item_id)
     related = links.list_links(current_ctx(), person, source_type="inventory_item", source_id=item_id)
     return render_template(
         "inventory_item.html", item=item, links=related["items"],
         linked_tasks=_linked_tasks(person, "inventory_item", item_id),
+        photo_error=photo_error,
     )
+
+
+@pages.get("/inventaire/<int:item_id>")
+def inventory_item_get(item_id):
+    return _inventory_item_page(_need(), item_id)
+
+
+def _photo_response(object_type, object_id):
+    from flask import Response
+    data, mime = photos.read_photo(current_ctx(), _need(), object_type, object_id)
+    response = Response(data, mimetype=mime)
+    response.headers["Content-Disposition"] = "inline"
+    return response
+
+
+@pages.get("/inventaire/<int:item_id>/photo")
+def inventory_photo_get(item_id):
+    return _photo_response("inventory_item", item_id)
+
+
+@pages.post("/inventaire/<int:item_id>/photo")
+def inventory_photo_post(item_id):
+    person = _need()
+    try:
+        photos.store_photo(current_ctx(), person, "inventory_item", item_id, request.files.get("photo"))
+    except AppError as exc:
+        if exc.status in {400, 413, 415}:
+            return _inventory_item_page(person, item_id, exc.message), exc.status
+        raise
+    return _go("photo_saved", "pages.inventory_item_get", item_id=item_id)
+
+
+@pages.post("/inventaire/<int:item_id>/photo/retirer")
+def inventory_photo_remove(item_id):
+    photos.remove_photo(current_ctx(), _need(), "inventory_item", item_id)
+    return _go("photo_removed", "pages.inventory_item_get", item_id=item_id)
 
 
 @pages.get("/inventaire/<int:item_id>/modifier")
@@ -1004,9 +1039,7 @@ def media_work_create():
     return _done("media_saved", "pages.media_work_get", work_id=work_id)
 
 
-@pages.get("/mediatheque/oeuvres/<int:work_id>")
-def media_work_get(work_id):
-    person = _need()
+def _media_work_page(person, work_id, photo_error=""):
     item = media.get_work(current_ctx(), person, work_id)
     related = links.list_links(current_ctx(), person, source_type="media_work", source_id=work_id)
     return render_template(
@@ -1014,7 +1047,36 @@ def media_work_get(work_id):
         item=item,
         links=related["items"],
         statuses=media.PROGRESS_LABEL,
+        photo_error=photo_error,
     )
+
+
+@pages.get("/mediatheque/oeuvres/<int:work_id>")
+def media_work_get(work_id):
+    return _media_work_page(_need(), work_id)
+
+
+@pages.get("/mediatheque/oeuvres/<int:work_id>/affiche")
+def media_work_photo_get(work_id):
+    return _photo_response("media_work", work_id)
+
+
+@pages.post("/mediatheque/oeuvres/<int:work_id>/affiche")
+def media_work_photo_post(work_id):
+    person = _need()
+    try:
+        photos.store_photo(current_ctx(), person, "media_work", work_id, request.files.get("photo"))
+    except AppError as exc:
+        if exc.status in {400, 413, 415}:
+            return _media_work_page(person, work_id, exc.message), exc.status
+        raise
+    return _go("photo_saved", "pages.media_work_get", work_id=work_id)
+
+
+@pages.post("/mediatheque/oeuvres/<int:work_id>/affiche/retirer")
+def media_work_photo_remove(work_id):
+    photos.remove_photo(current_ctx(), _need(), "media_work", work_id)
+    return _go("photo_removed", "pages.media_work_get", work_id=work_id)
 
 
 @pages.post("/mediatheque/oeuvres/<int:work_id>/progression")

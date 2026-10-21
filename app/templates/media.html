@@ -11,7 +11,11 @@
     <a href="{{ url_for('pages.media_work_get', work_id=item.id) }}">
       {% set words = item.title.replace("'", " ").replace("’", " ").split() %}
       {% set word = words[1] if words|length > 1 and words[0]|lower in ('le', 'la', 'les', 'l', 'un', 'une', 'des', 'the', 'a') else words[0] %}
+      {% if item.photo_id %}
+      <span class="poster-art poster-art--photo"><img src="{{ url_for('pages.media_work_photo_get', work_id=item.id, v=item.photo_id) }}" alt="" width="160" height="240" loading="lazy"></span>
+      {% else %}
       <span class="poster-art" aria-hidden="true"><span>{{ item.kind_label }}</span><b>{{ word[:1]|upper }}</b></span>
+      {% endif %}
       <span class="poster-title">{{ item.title }}</span>
       <span class="poster-meta">{{ item.creator or item.kind_label }}{% if item.year %} · {{ item.year }}{% endif %}</span>
       {% if item.my_status_label %}<span class="chip">{{ item.my_status_label }}{% if item.my_percent %} · {{ item.my_percent }} %{% endif %}</span>{% endif %}

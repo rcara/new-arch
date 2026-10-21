@@ -29,7 +29,7 @@ def test_migration_reaches_version_7(tmp_path):
     db_path.parent.mkdir(parents=True)
     init_db(db_path)
     conn = connect(db_path)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert conn.execute("PRAGMA user_version").fetchone()[0] >= 7
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert "household_membership" in tables
     cols = {row["name"] for row in conn.execute("PRAGMA table_info(session)")}

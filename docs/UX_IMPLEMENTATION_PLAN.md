@@ -83,4 +83,4 @@ zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, 
 | D4 | Notifications : aucun moteur existant. | Ne pas inventer ; rappels réels sur Aujourd'hui. | Proposé |
 | D5 | Wordmark : le logo validé dit « New Arch » (pas « NEW ARCH. »). | Conserver le logo validé de PR #16. | Proposé |
 | D6 | Événements récurrents : la récurrence est stockée mais aucune occurrence n'est générée dans les listes. | Badge « récurrent » seulement ; générer les occurrences demande une évolution du service `events` (hors UX). | À décider |
-| D7 | Photos de biens / affiches d'œuvres : aucun champ image en base. | Vignettes typées (initiale, couleur par type). Ajouter une image = migration additive + stockage, à valider. | À décider |
+| D7 | Photos de biens / affiches d'œuvres : aucun champ image en base. | Validé par Roger et livré : migration additive `008_object_photo.sql` (nouvelle table, aucune donnée réécrite), dépôt par formulaire multipart sans JS (JPEG / PNG / WebP, 10 Mio, métadonnées retirées), service par route authentifiée avec la visibilité de la fiche et le foyer actif. Vignettes typées conservées en repli. Voir `UX_CHANGELOG.md`. | Résolu |

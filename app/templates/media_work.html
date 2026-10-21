@@ -4,6 +4,34 @@
 <h1>{{ item.title }}</h1>
 <p class="muted">{{ item.kind_label }}{% if item.creator %} · {{ item.creator }}{% endif %}{% if item.year %} · {{ item.year }}{% endif %}</p>
 <p><a href="{{ url_for('pages.media_get') }}">Médiathèque</a></p>
+
+<section class="today-panel photo-panel" aria-labelledby="work-photo">
+  <h2 id="work-photo">Affiche</h2>
+  <div class="photo-figure">
+    {% if item.photo_id %}
+    <img class="photo-preview photo-preview--work" src="{{ url_for('pages.media_work_photo_get', work_id=item.id, v=item.photo_id) }}" alt="Affiche de l'œuvre : {{ item.title }}" width="240" height="360">
+    {% else %}
+    <span class="photo-placeholder photo-placeholder--poster poster--{{ item.kind }}" aria-hidden="true"><span>{{ item.kind_label }}</span><b>{{ item.title[:1]|upper }}</b></span>
+    {% endif %}
+  </div>
+  <div class="photo-actions">
+    {% if photo_error %}<p class="error" role="alert" id="work-photo-error">{{ photo_error }}</p>{% endif %}
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('pages.media_work_photo_post', work_id=item.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>{% if item.photo_id %}Remplacer l'image{% else %}Ajouter une image{% endif %}
+        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required aria-describedby="work-photo-hint{% if photo_error %} work-photo-error{% endif %}"{% if photo_error %} aria-invalid="true"{% endif %}>
+      </label>
+      <p class="muted" id="work-photo-hint">JPEG, PNG ou WebP, 10 Mio au plus. Les métadonnées (position GPS, appareil, date) sont retirées. Visible par les mêmes personnes que la fiche.</p>
+      <button type="submit">Enregistrer l'image</button>
+    </form>
+    {% if item.photo_id %}
+    <form method="post" action="{{ url_for('pages.media_work_photo_remove', work_id=item.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary">Retirer l'image</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
 {% if item.notes %}<p>{{ item.notes }}</p>{% endif %}
 
 <section class="today-panel" aria-labelledby="prog">
