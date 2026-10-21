@@ -23,16 +23,19 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Ctx:
-    def __init__(self, conn, clock, home, lock, dummy_hash, actor_id=None):
+    def __init__(self, conn, clock, home, lock, dummy_hash, actor_id=None, crypto=None):
         self.conn = conn
         self.clock = clock
         self.home = home
         self.lock = lock
         self.dummy_hash = dummy_hash
         self.actor_id = actor_id
+        self.crypto = crypto
 
 
 def create_app(home=None, clock=None, testing=False, port=8765):
+    from .crypto import load_state
+
     home = Path(home or os.environ.get("FOYER_HOME") or ROOT)
     ensure_layout(home)
     app = Flask(__name__, static_folder="static", static_url_path="/static")
@@ -44,6 +47,7 @@ def create_app(home=None, clock=None, testing=False, port=8765):
     app.config["LOCK"] = OpLock(home / "data" / "op.lock")
     app.config["LIMITER"] = AttemptLimiter()
     app.config["DUMMY_HASH"] = hash_password(new_token())
+    app.config["CRYPTO"] = load_state(home)
     # Derrière Cloudflare Tunnel : Host/Origin publics (REMOTE_ADDR reste 127.0.0.1).
     public_host = (os.environ.get("FOYER_PUBLIC_HOST") or "").strip()
     public_origin = (os.environ.get("FOYER_PUBLIC_ORIGIN") or "").strip()
@@ -238,4 +242,5 @@ def current_ctx():
         current_app.config["LOCK"],
         current_app.config["DUMMY_HASH"],
         person.get("id"),
+        current_app.config.get("CRYPTO"),
     )

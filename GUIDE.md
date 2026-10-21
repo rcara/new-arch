@@ -73,16 +73,27 @@ Comptes fictifs : `alex` / `DemoFoyer-2026!` et `camille` / `DemoCamille-2026!`.
 
 Paramètres → Apparence : thème clair (référence produit) ou sombre (`foyer_theme`). Lien « Aller au contenu », focus visible, `prefers-reduced-motion` respecté. Charte : `docs/NEW_ARCH_DESIGN_SYSTEM.md`.
 
+## Chiffrement au repos (optionnel)
+
+```sh
+python cli.py crypto enable    # phrase secrète ≥ 12 caractères
+export FOYER_PASSPHRASE='…'    # requis au démarrage ensuite
+python cli.py crypto status
+```
+
+Chiffre `vault/objects` et `media/objects` (AES-256-GCM). La base SQLite reste lisible volontairement.
+
 ## Profil et mot de passe
 
 Dans **Profil** (navigation) : modifier le nom affiché et changer le mot de passe (mot de passe actuel + confirmation). L’identifiant de connexion n’est pas modifiable. Les autres sessions sont fermées après un changement de mot de passe. L’Accueil affiche un **tableau de bord** personnel (mes tâches, mon solde, échéances).
 
 ## Limites du MVP
 
-- La base et les fichiers sont en clair. Quelqu'un qui peut lire le disque ou modifier SQLite contourne les droits et le scellement.
+- La base SQLite et les journaux sont en clair. Quelqu'un qui peut lire ou modifier SQLite contourne les droits et le scellement sur les métadonnées.
+- Les fichiers du coffre et de la médiathèque peuvent être chiffrés au repos (`python cli.py crypto enable`, puis `FOYER_PASSPHRASE`) — voir `docs/v2/10_ENCRYPTION.md`.
 - Le scellement est une immutabilité de l'application. Ce n'est pas une signature ni une preuve juridique.
 - Un fichier déjà téléchargé ne peut pas être repris.
-- Il n'y a pas de chiffrement, pas d'écoute sur le réseau local, pas de synchronisation.
+- Il n'y a pas d'écoute sur le réseau local ni de synchronisation.
 - Le mot de passe est haché avec Argon2id (mémoire 19 Mio, 2 itérations, parallélisme 1). Mesure du 20 octobre 2026 sur la machine de développement : environ 0,03 s par empreinte.
 - Le cookie de session n'a pas l'attribut Secure : le serveur n'écoute qu'en HTTP sur 127.0.0.1, sans TLS.
 - Remplacer une pièce efface les accords de l'ancienne. Le nouveau fichier n'est partagé que par un nouvel accord.

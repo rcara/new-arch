@@ -9,8 +9,9 @@
 | D05 | Défaut TZ nouveaux foyers Europe/Zurich | Confirmé | Spec V2 ; foyers existants intacts |
 | D06 | Modules finances/inventaire/média off par défaut | Confirmé | Masquer UI non livrée |
 | D07 | Repères conservés comme capacité | Confirmé | Ne pas supprimer V1 |
-| D08 | Pas de chiffrement cosmétique | Confirmé | Risque documenté clairement |
-| D09 | Design system Ars Codicis conservé | Confirmé | Exception « système existant » |
+| D08 | Pas de chiffrement cosmétique | Confirmé | Blobs AES-GCM OK ; SQLite volontairement clair |
+| D09 | Charte New Arch officielle | Confirmé | Remplace Ars Codicis (PR branding) |
+| D10 | Chiffrement blobs optionnel | Confirmé | `crypto.json` + FOYER_PASSPHRASE ; doc 10_ENCRYPTION |
 | H1 | Multi-foyer runtime plus tard | Hypothèse | `household_id` prêt, UI mono-foyer |
 | H2 | SPA éventuelle via `/api` | Hypothèse | Pas dans B |
 
@@ -33,5 +34,5 @@
 ### Déjà fait (V1)
 Foyer, auth, repères, décisions scellées, coffre ACL, backup, tests R01–R24 (hors R02 partiel).
 
-### Non fait (hors périmètre F)
-Chiffrement au repos, multi-foyer runtime, SPA.
+### Non fait (suite)
+SQLCipher (base entière), multi-foyer runtime, SPA, sidebar compacte.

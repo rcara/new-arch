@@ -116,6 +116,6 @@ Fermez la fenêtre du lanceur, ou interrompez le processus. Le fichier `data\foy
 
 ## Limites à rappeler
 
-- Données en clair sur le disque (pas de chiffrement au repos).
+- SQLite en clair ; blobs coffre/média chiffrables via `python cli.py crypto enable` + `FOYER_PASSPHRASE`.
 - Accès prévu uniquement depuis `127.0.0.1`.
-- Voir `GUIDE.md` pour le détail des limites MVP.
+- Voir `GUIDE.md` et `docs/v2/10_ENCRYPTION.md`.
