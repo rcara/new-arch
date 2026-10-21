@@ -1,5 +1,28 @@
 # UX Changelog — New Arch V2.1
 
+## Sprint 5 — Qualité
+
+**Ajouté**
+- `tests/test_ux_quality.py` (8 tests) : pages d'erreur distinctes (403, 404, 500, invité), états et groupes
+  de la recherche, bien privé masqué au compte secondaire, module désactivé exclu de la recherche, absence de
+  script / style inline / gestionnaire `on*` et CSP stricte sur 21 pages, repères de structure (un `h1`,
+  `main#contenu`, `lang`).
+- Jeton CSS `--text-sage` (clair #4E6A61, sombre #A8C0B6) pour le texte sauge.
+
+**Modifié**
+- `error.html` : titre, explication et actions selon le statut (403 / 404 / 4xx de validation / 405 /
+  423-429-503 / 500), `role="alert"`, « Réessayer » en GET pour les erreurs transitoires, connexion pour un invité.
+  Les gestionnaires d'erreurs transmettent le statut (`app/__init__.py`).
+- `services/search.py` : chaque source n'est interrogée que si son module est actif (repères, organisation,
+  calendrier, décisions, foyer, inventaire, médiathèque). Règles d'accès inchangées.
+- `search.html` : en-tête de page, résultats groupés par type, états vide / trop court / aucun résultat ;
+  le message de validation complet est affiché (« Saisissez au moins 2 caractères. »).
+- Contraste : liens et sur-titres en `--text-sage` (AA) ; règle sombre des liens en `:where()` pour ne plus
+  écraser boutons primaires, navigation et barre mobile ; `--danger` sombre #FB8A80 ; bouton « Fermer » des
+  panneaux en couleur de texte ; jours hors mois sans opacité.
+
+**Inchangé** : schéma, données, sessions, permissions, scellement des décisions, règles financières, CSP.
+
 ## Sprint 4 — Modules
 
 **Ajouté**
