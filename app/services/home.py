@@ -195,7 +195,7 @@ def _onboarding(ctx, person, enabled):
             "key": "bien", "label": "Ajouter un bien ou un document",
             "endpoint": "pages.inventory_item_new" if "inventaire" in enabled else "pages.vault_get",
             "done": _count(ctx, f"SELECT COUNT(*) FROM inventory_item WHERE household_id={hh(ctx)}")
-            + _count(ctx, "SELECT COUNT(*) FROM stored_file") > 0,
+            + _count(ctx, f"SELECT COUNT(*) FROM stored_file f JOIN milestone m ON m.id=f.milestone_id WHERE m.household_id={hh(ctx)}") > 0,
         })
     done = sum(1 for step in steps if step["done"])
     if done == len(steps):

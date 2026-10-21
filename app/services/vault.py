@@ -11,9 +11,14 @@ from .auth import require_principal
 from ..audit import audit
 from ..clock import iso_utc
 from ..errors import AppError
+from ..tenancy import hh
 from ..validate import MAX_FILE_BYTES, validate_file
 
 HEX = set("0123456789abcdef")
+_SCOPED = (
+    "SELECT {0} FROM stored_file f JOIN milestone m ON m.id=f.milestone_id "
+    "WHERE f.id=? AND m.household_id={1}"
+)
 
 
 def object_path(home, key):
@@ -111,7 +116,7 @@ def store_file(ctx, person, milestone_id, upload, confirm, failpoint=None):
         raise AppError(400, "validation", "Échéance requise.", {"milestone_id": "Choisissez un repère."})
     if upload is None or not getattr(upload, "filename", None):
         raise AppError(400, "validation", "Choisissez un fichier.", {"file": "Choisissez un fichier."})
-    exists = ctx.conn.execute("SELECT id FROM milestone WHERE id=?", (milestone_id,)).fetchone()
+    exists = ctx.conn.execute(f"SELECT id FROM milestone WHERE id=? AND household_id={hh(ctx)}", (milestone_id,)).fetchone()
     if exists is None:
         raise AppError(404, "not_found", "Introuvable.")
     data = _read_upload(upload)
@@ -154,7 +159,7 @@ def replace_file(ctx, person, file_id, upload, expected_version, confirm, failpo
         raise AppError(409, "conflict", "Rechargez la pièce avant de la remplacer.")
     if upload is None or not getattr(upload, "filename", None):
         raise AppError(400, "validation", "Choisissez un fichier.", {"file": "Choisissez un fichier."})
-    current = ctx.conn.execute("SELECT id, version FROM stored_file WHERE id=?", (file_id,)).fetchone()
+    current = ctx.conn.execute(_SCOPED.format("f.id, f.version", hh(ctx)), (file_id,)).fetchone()
     if current is None:
         raise AppError(404, "not_found", "Introuvable.")
     data = _read_upload(upload)
@@ -168,7 +173,7 @@ def replace_file(ctx, person, file_id, upload, expected_version, confirm, failpo
         try:
             with _immediate(ctx):
                 row = ctx.conn.execute(
-                    "SELECT id, version, storage_key, milestone_id FROM stored_file WHERE id=?",
+                    _SCOPED.format("f.id, f.version, f.storage_key, f.milestone_id", hh(ctx)),
                     (file_id,),
                 ).fetchone()
                 if row is None:
@@ -200,7 +205,7 @@ def delete_file(ctx, person, file_id, confirm):
         raise AppError(400, "validation", "Le retrait doit être confirmé.", {"confirm": "Confirmation requise."})
     with ctx.lock.acquire():
         with _immediate(ctx):
-            row = ctx.conn.execute("SELECT storage_key FROM stored_file WHERE id=?", (file_id,)).fetchone()
+            row = ctx.conn.execute(_SCOPED.format("f.storage_key", hh(ctx)), (file_id,)).fetchone()
             if row is None:
                 raise AppError(404, "not_found", "Introuvable.")
             key = row["storage_key"]
@@ -228,15 +233,17 @@ class _immediate:
 def list_files(ctx, person):
     if person["is_principal"]:
         rows = ctx.conn.execute(
-            """SELECT f.id, f.original_name, f.created_at, f.version, f.milestone_id, m.name AS milestone_name
+            f"""SELECT f.id, f.original_name, f.created_at, f.version, f.milestone_id, m.name AS milestone_name
                FROM stored_file f JOIN milestone m ON m.id=f.milestone_id
+               WHERE m.household_id={hh(ctx)}
                ORDER BY f.created_at, f.id"""
         ).fetchall()
     else:
         rows = ctx.conn.execute(
-            """SELECT f.id, f.original_name, f.created_at, f.version
-               FROM stored_file f
+            f"""SELECT f.id, f.original_name, f.created_at, f.version
+               FROM stored_file f JOIN milestone m ON m.id=f.milestone_id
                JOIN file_access a ON a.file_id=f.id AND a.person_id=?
+               WHERE m.household_id={hh(ctx)}
                ORDER BY f.created_at, f.id""",
             (person["id"],),
         ).fetchall()
@@ -261,10 +268,10 @@ def list_files(ctx, person):
 
 def read_file(ctx, person, file_id):
     row = ctx.conn.execute(
-        """SELECT f.id, f.original_name, f.storage_key, f.mime_type, f.size_bytes, f.sha256
-           FROM stored_file f
+        f"""SELECT f.id, f.original_name, f.storage_key, f.mime_type, f.size_bytes, f.sha256
+           FROM stored_file f JOIN milestone m ON m.id=f.milestone_id
            JOIN person p ON p.id=?
-           WHERE f.id=? AND p.active=1 AND (
+           WHERE f.id=? AND m.household_id={hh(ctx)} AND p.active=1 AND (
              p.is_principal=1 OR EXISTS(SELECT 1 FROM file_access a WHERE a.file_id=f.id AND a.person_id=p.id)
            )""",
         (person["id"], file_id),

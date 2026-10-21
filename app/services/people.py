@@ -217,7 +217,11 @@ def _change_file(ctx, person, person_id, file_id, grant):
     moment = iso_utc(ctx.clock.now())
     with write_tx(ctx):
         _target_account(ctx.conn, person_id)
-        found = ctx.conn.execute("SELECT id FROM stored_file WHERE id=?", (file_id,)).fetchone()
+        found = ctx.conn.execute(
+            f"""SELECT f.id FROM stored_file f JOIN milestone m ON m.id=f.milestone_id
+               WHERE f.id=? AND m.household_id={hh(ctx)}""",
+            (file_id,),
+        ).fetchone()
         if found is None:
             raise AppError(404, "not_found", "Introuvable.")
         if grant:
@@ -238,16 +242,19 @@ def access_state(ctx, person, person_id):
     require_principal(person)
     target = _target_account(ctx.conn, person_id)
     decisions = ctx.conn.execute(
-        """SELECT d.id, d.created_at, m.name AS milestone_name,
+        f"""SELECT d.id, d.created_at, m.name AS milestone_name,
                   EXISTS(SELECT 1 FROM decision_access a WHERE a.decision_id=d.id AND a.person_id=?) AS granted
            FROM decision d JOIN milestone m ON m.id=d.milestone_id
+           WHERE m.household_id={hh(ctx)}
            ORDER BY d.created_at, d.id""",
         (person_id,),
     ).fetchall()
     files = ctx.conn.execute(
-        """SELECT f.id, f.original_name,
+        f"""SELECT f.id, f.original_name,
                   EXISTS(SELECT 1 FROM file_access a WHERE a.file_id=f.id AND a.person_id=?) AS granted
-           FROM stored_file f ORDER BY f.created_at, f.id""",
+           FROM stored_file f JOIN milestone m ON m.id=f.milestone_id
+           WHERE m.household_id={hh(ctx)}
+           ORDER BY f.created_at, f.id""",
         (person_id,),
     ).fetchall()
     return {
