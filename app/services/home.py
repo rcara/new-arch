@@ -38,4 +38,9 @@ def dashboard(ctx, person):
     if "calendrier" in enabled:
         payload["events"] = events.upcoming(ctx, person, within_days=30, limit=15)
 
+    if "finances" in enabled:
+        from . import finance
+        finance.seed_defaults(ctx, person)
+        payload["finance_balances"] = finance.person_balances(ctx, person, currency="CHF")
+
     return payload

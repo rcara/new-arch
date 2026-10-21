@@ -36,7 +36,10 @@ def init_db(path):
         if version == 2:
             conn.executescript((MIGRATIONS / "003_v2_foundation.sql").read_text(encoding="utf-8"))
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-        if version != 3:
+        if version == 3:
+            conn.executescript((MIGRATIONS / "004_finances.sql").read_text(encoding="utf-8"))
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version != 4:
             raise RuntimeError("schema incompatible")
     finally:
         conn.close()

@@ -5,7 +5,7 @@ from flask import Blueprint, g, jsonify, request
 from .. import current_ctx
 from ..errors import AppError
 from ..http import json_body
-from ..services import auth, decisions, events, home, links, milestones, modules, people, search, tasks, vault
+from ..services import auth, decisions, events, finance, home, links, milestones, modules, people, search, tasks, vault
 
 api = Blueprint("api", __name__)
 
@@ -385,6 +385,108 @@ def link_delete(link_id):
 @api.get("/search")
 def search_get():
     return jsonify(search.search(current_ctx(), actor(), request.args.get("q", "")))
+
+
+@api.get("/finance/accounts")
+def finance_accounts():
+    return jsonify(finance.list_ledger_accounts(current_ctx(), actor()))
+
+
+@api.post("/finance/accounts")
+def finance_account_create():
+    data = json_body({"name", "currency", "account_kind", "owner_id"})
+    new_id = finance.create_ledger_account(current_ctx(), actor(), data)
+    items = finance.list_ledger_accounts(current_ctx(), actor())["items"]
+    item = next(row for row in items if row["id"] == new_id)
+    return jsonify(item), 201
+
+
+@api.get("/finance/categories")
+def finance_categories():
+    return jsonify(finance.list_categories(current_ctx(), actor(), kind=request.args.get("kind", "")))
+
+
+@api.get("/finance/transactions")
+def finance_transactions():
+    page = request.args.get("page", "1")
+    page = int(page) if page.isdigit() else 1
+    return jsonify(finance.list_transactions(
+        current_ctx(), actor(),
+        kind=request.args.get("kind", ""),
+        currency=request.args.get("currency", ""),
+        page=page,
+    ))
+
+
+@api.post("/finance/transactions")
+def finance_transaction_create():
+    data = json_body({
+        "kind", "amount", "amount_minor", "currency", "txn_date", "label", "notes",
+        "category_id", "ledger_account_id", "counterparty_account_id", "payer_id",
+        "beneficiary_id", "visibility", "settles_transaction_id", "split_method",
+        "split_person_ids", "person_ids", "splits",
+    })
+    new_id = finance.create_transaction(current_ctx(), actor(), data)
+    return jsonify(finance.get_transaction(current_ctx(), actor(), new_id)), 201
+
+
+@api.get("/finance/transactions/<int:txn_id>")
+def finance_transaction_get(txn_id):
+    return jsonify(finance.get_transaction(current_ctx(), actor(), txn_id))
+
+
+@api.get("/finance/balances")
+def finance_balances():
+    return jsonify(finance.person_balances(current_ctx(), actor(), currency=request.args.get("currency", "CHF")))
+
+
+@api.get("/finance/budgets")
+def finance_budgets():
+    year = request.args.get("year")
+    month = request.args.get("month")
+    return jsonify(finance.list_budgets(
+        current_ctx(), actor(),
+        year=int(year) if year and year.isdigit() else None,
+        month=int(month) if month and month.isdigit() else None,
+        currency=request.args.get("currency", "CHF"),
+    ))
+
+
+@api.post("/finance/budgets")
+def finance_budget_create():
+    data = json_body({"category_id", "period", "year", "month", "amount", "amount_minor", "currency"})
+    new_id = finance.create_budget(current_ctx(), actor(), data)
+    return jsonify({"id": new_id}), 201
+
+
+@api.get("/finance/income-shares")
+def finance_income_shares():
+    return jsonify(finance.list_income_shares(current_ctx(), actor()))
+
+
+@api.put("/finance/income-shares/<int:person_id>")
+def finance_income_share_put(person_id):
+    data = json_body({"income", "income_minor", "currency"})
+    raw = data.get("income_minor", data.get("income"))
+    return jsonify(finance.set_income_share(current_ctx(), actor(), person_id, raw, data.get("currency") or "CHF"))
+
+
+@api.get("/finance/export.csv")
+def finance_export():
+    from flask import Response
+    body = finance.export_csv(current_ctx(), actor(), currency=request.args.get("currency", ""))
+    return Response(body, mimetype="text/csv; charset=utf-8", headers={
+        "Content-Disposition": 'attachment; filename="finances.csv"',
+    })
+
+
+@api.post("/finance/import.csv")
+def finance_import():
+    upload = request.files.get("file")
+    if upload is None:
+        raise AppError(400, "validation", "Fichier CSV requis.")
+    result = finance.import_csv(current_ctx(), actor(), upload.read())
+    return jsonify(result)
 
 
 def _limiter():

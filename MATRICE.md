@@ -16,3 +16,7 @@
 | V2B tâches + récurrence | `services/tasks.py` | `test_task_recurrence_and_home`, `test_next_due_date_recurrence` |
 | V2B événements + recherche | `services/events.py`, `services/search.py` | `test_event_and_search` |
 | V2B liens ACL | `services/links.py` | `test_links_acl_and_search_privacy` |
+| V2C montants / splits | `money.py` | `test_parse_amount_rejects_float`, `test_split_equal_and_percent_exact_sum` |
+| V2C dépenses + remboursements | `services/finance.py` | `test_expense_split_reimbursement_no_double_count` |
+| V2C confidentialité finances | `services/finance.py` | `test_finance_privacy_private_transaction` |
+| V2C CSV / UI | `routes` + templates | `test_finance_csv_roundtrip` |

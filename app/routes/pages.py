@@ -6,7 +6,7 @@ from .. import current_ctx
 from ..errors import AppError
 from ..http import cookie_message, cookie_session, cookie_setup, safe_next
 from ..security import new_token
-from ..services import auth, decisions, events, home, links, milestones, modules, people, search, tasks, vault
+from ..services import auth, decisions, events, finance, home, links, milestones, modules, people, search, tasks, vault
 from ..validate import text_value
 
 pages = Blueprint("pages", __name__)
@@ -318,6 +318,158 @@ def settings_get():
     person = _need()
     modules.require_module(current_ctx(), "parametres")
     return render_template("settings.html", modules=modules.list_modules(current_ctx()), household=g.household)
+
+
+@pages.get("/finances")
+def finance_get():
+    person = _need()
+    currency = request.args.get("currency", "CHF")
+    finance.seed_defaults(current_ctx(), person)
+    return render_template(
+        "finance.html",
+        accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
+        transactions=finance.list_transactions(current_ctx(), person, currency=currency)["items"],
+        balances=finance.person_balances(current_ctx(), person, currency=currency),
+        budgets=finance.list_budgets(current_ctx(), person, currency=currency)["items"],
+        currency=currency,
+        currencies=("CHF", "EUR"),
+    )
+
+
+@pages.get("/finances/depense")
+def finance_expense_new():
+    person = _need()
+    finance.seed_defaults(current_ctx(), person)
+    return render_template(
+        "finance_expense_form.html",
+        form={
+            "currency": "CHF",
+            "visibility": "household",
+            "split_method": "equal",
+            "txn_date": "",
+        },
+        errors={},
+        accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
+        categories=finance.list_categories(current_ctx(), person, kind="expense")["items"],
+        people=_members(),
+    )
+
+
+@pages.post("/finances/depense")
+def finance_expense_create():
+    person = _need()
+    form = request.form.to_dict()
+    form["kind"] = "expense"
+    form["split_person_ids"] = request.form.getlist("split_person_ids")
+    try:
+        finance.create_transaction(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status == 400:
+            finance.seed_defaults(current_ctx(), person)
+            return render_template(
+                "finance_expense_form.html",
+                form=form,
+                errors=exc.fields or {"form": exc.message},
+                accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
+                categories=finance.list_categories(current_ctx(), person, kind="expense")["items"],
+                people=_members(),
+            ), 400
+        raise
+    return _go("finance_saved", "pages.finance_get")
+
+
+@pages.get("/finances/remboursement")
+def finance_reimburse_new():
+    person = _need()
+    finance.seed_defaults(current_ctx(), person)
+    return render_template(
+        "finance_reimburse_form.html",
+        form={"currency": "CHF", "txn_date": "", "visibility": "household"},
+        errors={},
+        accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
+        people=_members(),
+        expenses=[
+            item for item in finance.list_transactions(current_ctx(), person, kind="expense")["items"]
+        ],
+    )
+
+
+@pages.post("/finances/remboursement")
+def finance_reimburse_create():
+    person = _need()
+    form = request.form.to_dict()
+    form["kind"] = "reimbursement"
+    try:
+        finance.create_transaction(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status == 400:
+            finance.seed_defaults(current_ctx(), person)
+            return render_template(
+                "finance_reimburse_form.html",
+                form=form,
+                errors=exc.fields or {"form": exc.message},
+                accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
+                people=_members(),
+                expenses=finance.list_transactions(current_ctx(), person, kind="expense")["items"],
+            ), 400
+        raise
+    return _go("finance_saved", "pages.finance_get")
+
+
+@pages.get("/finances/budget")
+def finance_budget_new():
+    person = _need()
+    finance.seed_defaults(current_ctx(), person)
+    return render_template(
+        "finance_budget_form.html",
+        form={"currency": "CHF", "period": "month"},
+        errors={},
+        categories=finance.list_categories(current_ctx(), person, kind="expense")["items"],
+    )
+
+
+@pages.post("/finances/budget")
+def finance_budget_create():
+    person = _need()
+    form = request.form.to_dict()
+    try:
+        finance.create_budget(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status in {400, 409}:
+            return render_template(
+                "finance_budget_form.html",
+                form=form,
+                errors=exc.fields or {"form": exc.message},
+                categories=finance.list_categories(current_ctx(), person, kind="expense")["items"],
+            ), exc.status
+        raise
+    return _go("finance_saved", "pages.finance_get")
+
+
+@pages.get("/finances/export.csv")
+def finance_export_page():
+    from flask import Response
+    person = _need()
+    body = finance.export_csv(current_ctx(), person, currency=request.args.get("currency", ""))
+    return Response(body, mimetype="text/csv; charset=utf-8", headers={
+        "Content-Disposition": 'attachment; filename="finances.csv"',
+    })
+
+
+@pages.get("/finances/import")
+def finance_import_get():
+    _need()
+    return render_template("finance_import.html", errors={}, result=None)
+
+
+@pages.post("/finances/import")
+def finance_import_post():
+    person = _need()
+    upload = request.files.get("file")
+    if upload is None or not upload.filename:
+        return render_template("finance_import.html", errors={"file": "Fichier requis."}, result=None), 400
+    result = finance.import_csv(current_ctx(), person, upload.read())
+    return render_template("finance_import.html", errors={}, result=result)
 
 
 @pages.get("/reperes")

@@ -24,6 +24,7 @@
       <nav aria-label="Écrans">
         <ul>
           {% if 'accueil' in nav_modules %}<li><a href="{{ url_for('pages.today') }}" {% if nav == 'today' %}aria-current="page"{% endif %}>Accueil</a></li>{% endif %}
+          {% if 'finances' in nav_modules %}<li><a href="{{ url_for('pages.finance_get') }}" {% if nav == 'finances' %}aria-current="page"{% endif %}>Finances</a></li>{% endif %}
           {% if 'calendrier' in nav_modules %}<li><a href="{{ url_for('pages.events_get') }}" {% if nav == 'calendrier' %}aria-current="page"{% endif %}>Calendrier</a></li>{% endif %}
           {% if 'organisation' in nav_modules %}<li><a href="{{ url_for('pages.tasks_get') }}" {% if nav == 'organisation' %}aria-current="page"{% endif %}>Organisation</a></li>{% endif %}
           {% if 'reperes' in nav_modules %}<li><a href="{{ url_for('pages.milestones_get') }}" {% if nav == 'reperes' %}aria-current="page"{% endif %}>Repères</a></li>{% endif %}
