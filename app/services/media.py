@@ -433,9 +433,18 @@ def store_asset(ctx, person, data, upload):
     staging = Path(ctx.home) / "media" / "staging" / key
     final = asset_path(ctx.home, key)
     staging.parent.mkdir(parents=True, exist_ok=True)
+    from flask import current_app, has_app_context
+    from ..crypto import CryptoState, seal
+
+    crypto = getattr(ctx, "crypto", None)
+    if crypto is None and has_app_context():
+        crypto = current_app.config.get("CRYPTO") or CryptoState(enabled=False)
+    if crypto is None:
+        crypto = CryptoState(enabled=False)
+    payload = seal(crypto, raw)
     fd = os.open(staging, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        os.write(fd, raw)
+        os.write(fd, payload)
         os.fsync(fd)
     finally:
         os.close(fd)
@@ -483,7 +492,15 @@ def read_asset(ctx, person, asset_id):
     path = asset_path(ctx.home, row["storage_key"])
     if not path.is_file():
         raise AppError(500, "storage", "Fichier absent.")
-    data = path.read_bytes()
+    from flask import current_app, has_app_context
+    from ..crypto import CryptoState, open_blob
+
+    crypto = getattr(ctx, "crypto", None)
+    if crypto is None and has_app_context():
+        crypto = current_app.config.get("CRYPTO") or CryptoState(enabled=False)
+    if crypto is None:
+        crypto = CryptoState(enabled=False)
+    data = open_blob(crypto, path.read_bytes())
     if hashlib.sha256(data).hexdigest() != row["sha256"]:
         raise AppError(500, "storage", "Empreinte incohérente.")
     return data, row["original_name"], row["mime_type"]

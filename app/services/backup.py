@@ -16,25 +16,35 @@ from .vault import HEX, object_path
 ACCEPTED_SCHEMA = frozenset({2, 3, 4, 5, 6})
 
 
-def _copy_hashed_objects(home, rows, source_resolver, dest_dir):
-    """Copie et vérifie une liste de {storage_key, sha256, size_bytes}."""
+def _copy_hashed_objects(home, rows, source_resolver, dest_dir, crypto=None):
+    """Copie les blobs ; vérifie l'empreinte du clair (déchiffre si NAE1)."""
+    from ..crypto import CryptoState, is_ciphertext, open_blob, require_unlocked
+
+    state = crypto or CryptoState(enabled=False)
     dest_dir.mkdir(parents=True, exist_ok=True)
     listed = []
     for row in rows:
         source = source_resolver(home, row["storage_key"])
         if not source.is_file():
             raise AppError(500, "storage", "Sauvegarde interrompue : une pièce référencée est absente.")
-        data = source.read_bytes()
-        if len(data) != row["size_bytes"] or hashlib.sha256(data).hexdigest() != row["sha256"]:
+        on_disk = source.read_bytes()
+        if is_ciphertext(on_disk):
+            require_unlocked(state)
+            plain = open_blob(state, on_disk)
+        else:
+            plain = on_disk
+        if len(plain) != row["size_bytes"] or hashlib.sha256(plain).hexdigest() != row["sha256"]:
             raise AppError(500, "storage", "Sauvegarde interrompue : une pièce ne correspond pas à son empreinte.")
+        # Conserve le format disque (chiffré si activé) dans l'archive.
         target = dest_dir / row["storage_key"]
-        target.write_bytes(data)
+        target.write_bytes(on_disk)
         if os.name == "posix":
             os.chmod(target, 0o600)
         listed.append({
             "storage_key": row["storage_key"],
             "sha256": row["sha256"],
             "size_bytes": row["size_bytes"],
+            "sealed": is_ciphertext(on_disk),
         })
     return listed
 
@@ -77,14 +87,20 @@ def create_backup(ctx):
                     ).fetchall()
             finally:
                 check.close()
-            files = _copy_hashed_objects(ctx.home, vault_rows, object_path, partial / "objects")
-            media_files = _copy_hashed_objects(ctx.home, media_rows, asset_path, partial / "media")
+            crypto = getattr(ctx, "crypto", None)
+            files = _copy_hashed_objects(ctx.home, vault_rows, object_path, partial / "objects", crypto=crypto)
+            media_files = _copy_hashed_objects(ctx.home, media_rows, asset_path, partial / "media", crypto=crypto)
+            crypto_meta = Path(ctx.home) / "data" / "crypto.json"
+            blobs_sealed = any(item.get("sealed") for item in files + media_files)
+            if blobs_sealed and crypto_meta.is_file():
+                shutil.copy2(crypto_meta, partial / "crypto.json")
             manifest = {
                 "manifest_version": 2,
                 "schema_version": version,
                 "created_at": iso_utc(ctx.clock.now()),
                 "files": files,
                 "media_files": media_files,
+                "at_rest_encryption": bool(blobs_sealed),
             }
             (partial / "manifest.json").write_text(
                 json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -115,23 +131,33 @@ def _reject_layout(archive):
 
 
 def _verify_object_bundle(archive_subdir, listed, expected_rows):
-    expected = [
-        {"storage_key": row["storage_key"], "sha256": row["sha256"], "size_bytes": row["size_bytes"]}
+    from ..crypto import is_ciphertext
+
+    expected_by_key = {
+        row["storage_key"]: {"sha256": row["sha256"], "size_bytes": row["size_bytes"]}
         for row in expected_rows
-    ]
+    }
     sorted_listed = sorted(listed, key=lambda item: item["storage_key"])
-    if sorted_listed != expected:
+    if [item["storage_key"] for item in sorted_listed] != sorted(expected_by_key.keys()):
         raise AppError(400, "validation", "Le manifeste ne correspond pas aux pièces.")
     for item in sorted_listed:
         key = item["storage_key"]
         if not isinstance(key, str) or len(key) != 64 or any(ch not in HEX for ch in key):
             raise AppError(400, "validation", "Une clé de pièce est invalide.")
+        exp = expected_by_key[key]
+        if item.get("sha256") != exp["sha256"] or item.get("size_bytes") != exp["size_bytes"]:
+            raise AppError(400, "validation", "Le manifeste ne correspond pas aux pièces.")
         source = archive_subdir / key
         if source.is_symlink() or not source.is_file():
             raise AppError(400, "validation", "Une pièce de la sauvegarde est absente.")
         data = source.read_bytes()
-        if len(data) != item["size_bytes"] or hashlib.sha256(data).hexdigest() != item["sha256"]:
-            raise AppError(400, "validation", "Une pièce de la sauvegarde ne correspond pas à son empreinte.")
+        sealed = bool(item.get("sealed")) or is_ciphertext(data)
+        if sealed:
+            if not is_ciphertext(data):
+                raise AppError(400, "validation", "Une pièce chiffrée de la sauvegarde est invalide.")
+        else:
+            if len(data) != item["size_bytes"] or hashlib.sha256(data).hexdigest() != item["sha256"]:
+                raise AppError(400, "validation", "Une pièce de la sauvegarde ne correspond pas à son empreinte.")
 
 
 def restore_archive(archive, dest, clock):
@@ -184,6 +210,11 @@ def restore_archive(archive, dest, clock):
     for relative in ("data", "vault/objects", "vault/staging", "media/objects", "media/staging", "backups", "logs"):
         (dest / relative).mkdir(parents=True, exist_ok=True)
     shutil.copy2(database, dest / "data" / "metadata.sqlite")
+    crypto_src = archive / "crypto.json"
+    if crypto_src.is_file():
+        shutil.copy2(crypto_src, dest / "data" / "crypto.json")
+        if os.name == "posix":
+            os.chmod(dest / "data" / "crypto.json", 0o600)
     for item in vault_listed:
         shutil.copy2(archive / "objects" / item["storage_key"], dest / "vault" / "objects" / item["storage_key"])
     for item in media_listed:

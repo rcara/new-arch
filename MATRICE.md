@@ -31,3 +31,4 @@
 | V2F parcours e2e | routes + backup | `test_e2e_parcours_transversal` |
 | Profil + mot de passe | `services/auth.py`, `/profil` | `test_profile_page_and_display_name`, `test_change_password_ui_and_api` |
 | Tableau de bord personnel | `services/home.py`, `today.html` | `test_dashboard_includes_mine_tasks` |
+| Chiffrement blobs vault/média | `crypto.py`, vault, media, backup | `tests/test_crypto.py` |

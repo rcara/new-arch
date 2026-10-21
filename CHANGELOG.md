@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.0] — 2026-10-21
+
+### Ajouté
+- Chiffrement au repos optionnel des blobs coffre/média (AES-256-GCM, Argon2id)
+- `cli.py crypto status|enable|migrate` ; déverrouillage `FOYER_PASSPHRASE`
+- Doc `docs/v2/10_ENCRYPTION.md` ; tests `tests/test_crypto.py`
+- Dépendance `cryptography`
+
+### Conservé
+- SQLite en clair (D08) — métadonnées non prétendues chiffrées
+
 ## [0.8.0] — 2026-10-21
 
 ### Ajouté

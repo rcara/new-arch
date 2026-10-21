@@ -46,4 +46,5 @@ Livré : foyer V1, socle B, finances C, inventaire D, médiathèque E, solidific
 
 **ZIP spécification V1** (`Foyer_Local_V1_Complet`) : non présent dans ce dépôt au moment de l'audit ; l'audit s'appuie sur le code et la doc livrée.
 
-Hors périmètre actuel : chiffrement au repos, multi-foyer runtime.
+Chiffrement optionnel des fichiers coffre/média : `python cli.py crypto enable` (voir `docs/v2/10_ENCRYPTION.md`).  
+Hors périmètre actuel : SQLCipher (base entière), multi-foyer runtime.

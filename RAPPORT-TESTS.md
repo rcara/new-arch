@@ -8,12 +8,12 @@ Machine : Linux, Python 3.12.3, Flask 3.1.3.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-Résultat : **60 tests, tous réussis**.
+Résultat : **68 tests, tous réussis** (branche chiffrement).
 
-- V1 + B + C + D + E + F inchangés (`user_version` jusqu’à 6).
-- Profil / mot de passe / tableau de bord : `tests/test_profile.py`.
+- V1 + B→F + profil + branding + crypto blobs (`user_version` jusqu’à 6).
+- Crypto : `tests/test_crypto.py` (enable, migrate, backup scellé).
 
 ## Limitations
 
-- Pas de chiffrement au repos.
+- SQLite non chiffré (volontaire).
 - ZIP V1 toujours absent du workspace.

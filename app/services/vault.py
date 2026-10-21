@@ -42,13 +42,28 @@ def _fsync_dir(directory):
         os.close(fd)
 
 
-def _write_object(home, key, data):
+def _crypto_state(ctx=None):
+    from flask import current_app, has_app_context
+    from ..crypto import CryptoState
+
+    if ctx is not None and getattr(ctx, "crypto", None) is not None:
+        return ctx.crypto
+    if has_app_context():
+        return current_app.config.get("CRYPTO") or CryptoState(enabled=False)
+    return CryptoState(enabled=False)
+
+
+def _write_object(home, key, data, *, crypto=None):
+    from ..crypto import seal
+
     staging = Path(home) / "vault" / "staging" / key
     final = object_path(home, key)
     staging.parent.mkdir(parents=True, exist_ok=True)
+    state = crypto if crypto is not None else _crypto_state()
+    payload = seal(state, data)
     fd = os.open(staging, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        os.write(fd, data)
+        os.write(fd, payload)
         os.fsync(fd)
     finally:
         os.close(fd)
@@ -103,8 +118,9 @@ def store_file(ctx, person, milestone_id, upload, confirm, failpoint=None):
     original_name, mime = validate_file(data, upload.filename)
     digest = hashlib.sha256(data).hexdigest()
     key = secrets.token_hex(32)
+    crypto = _crypto_state(ctx)
     with ctx.lock.acquire():
-        _write_object(ctx.home, key, data)
+        _write_object(ctx.home, key, data, crypto=crypto)
         if failpoint == "after_rename":
             object_path(ctx.home, key).unlink(missing_ok=True)
             raise RuntimeError("storage")
@@ -145,8 +161,9 @@ def replace_file(ctx, person, file_id, upload, expected_version, confirm, failpo
     original_name, mime = validate_file(data, upload.filename)
     digest = hashlib.sha256(data).hexdigest()
     key = secrets.token_hex(32)
+    crypto = _crypto_state(ctx)
     with ctx.lock.acquire():
-        _write_object(ctx.home, key, data)
+        _write_object(ctx.home, key, data, crypto=crypto)
         old_key = None
         try:
             with _immediate(ctx):
@@ -260,7 +277,10 @@ def read_file(ctx, person, file_id):
         if person["is_principal"]:
             raise AppError(500, "storage", "La pièce est introuvable dans le stockage. La référence est conservée.")
         raise AppError(500, "storage", "Ouverture impossible.")
-    data = path.read_bytes()
+    from ..crypto import open_blob
+
+    sealed = path.read_bytes()
+    data = open_blob(_crypto_state(ctx), sealed)
     digest = hashlib.sha256(data).hexdigest()
     if digest != row["sha256"] or len(data) != row["size_bytes"]:
         audit(ctx.home, ctx.clock, "file_open", "mismatch", person["id"], "file", file_id)

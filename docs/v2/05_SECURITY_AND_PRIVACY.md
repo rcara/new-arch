@@ -12,7 +12,9 @@
 
 ## Risque assumé (ne pas mentir)
 
-**Données au repos en clair** (SQLite + objets vault + sauvegardes). Un accès disque contourne ACL et scellement applicatif. Stratégie future : chiffrement fichier + backup protégé — **non implémenté** en V2B.
+**SQLite et journaux restent en clair** (montants, ACL, noms). Un accès disque contourne encore les ACL applicatives sur ces métadonnées.
+
+**Blobs coffre / média** : chiffrement AES-256-GCM optionnel (`cli.py crypto enable`, `FOYER_PASSPHRASE`) — voir `10_ENCRYPTION.md`. Ce n’est pas un chiffrement « cosmétique » : sans la phrase, le contenu des fichiers n’est pas lisible sur le disque.
 
 ## Person vs UserAccount
 
