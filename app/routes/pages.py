@@ -1,6 +1,6 @@
 """Six écrans et les états d'entrée."""
 
-from flask import Blueprint, g, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, g, redirect, render_template, request, url_for
 
 from .. import current_ctx
 from ..errors import AppError
@@ -396,6 +396,36 @@ def settings_get():
         household=g.household,
         theme=resolve_theme(request.cookies.get("foyer_theme")),
     )
+
+
+@pages.get("/parametres/avance")
+def settings_advanced_get():
+    person = _need()
+    modules.require_module(current_ctx(), "parametres")
+    if not person["is_principal"]:
+        raise AppError(403, "forbidden", "Réservé au compte principal.")
+    from ..crypto import status as crypto_status
+    return render_template("settings_advanced.html", crypto=crypto_status(current_app.config["HOME"]))
+
+
+@pages.get("/agenda")
+def alias_agenda():
+    return redirect(url_for("pages.events_get"))
+
+
+@pages.get("/a-faire")
+def alias_afaire():
+    return redirect(url_for("pages.tasks_get"))
+
+
+@pages.get("/maison")
+def alias_maison():
+    return redirect(url_for("pages.inventory_get"))
+
+
+@pages.get("/bibliotheque")
+def alias_bibliotheque():
+    return redirect(url_for("pages.vault_get"))
 
 
 @pages.post("/parametres/theme")

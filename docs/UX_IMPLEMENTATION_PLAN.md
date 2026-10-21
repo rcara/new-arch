@@ -10,7 +10,7 @@ zéro JS (CSP `script-src 'none'` inchangée), une PR **brouillon** par sprint, 
 - Calendrier + Organisation + Recherche : cause racine `listed.items` (méthode `dict.items`) → lecture par clé.
 - Tests : lint gabarits, crawl foyer vide + démo, allers-retours HTML.
 
-## Sprint 1 — Navigation (App Shell)
+## Sprint 1 — Navigation (App Shell) ✅
 
 - `app/navigation.py` : construit les groupes à partir de `nav_modules` + droits de la personne.
 - `base.html` : sidebar groupée, header (recherche, + Ajouter, menu utilisateur), tiroir `:target`, barre mobile.
