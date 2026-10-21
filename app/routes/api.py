@@ -5,7 +5,7 @@ from flask import Blueprint, g, jsonify, request
 from .. import current_ctx
 from ..errors import AppError
 from ..http import json_body
-from ..services import auth, decisions, events, finance, home, inventory, links, milestones, modules, people, search, tasks, vault
+from ..services import auth, decisions, events, finance, home, inventory, links, media, milestones, modules, people, search, tasks, vault
 
 api = Blueprint("api", __name__)
 
@@ -571,6 +571,115 @@ def inventory_purchase_link(item_id):
 @api.get("/inventory/warranties/upcoming")
 def inventory_warranties_upcoming():
     return jsonify({"items": inventory.upcoming_warranties(current_ctx(), actor())})
+
+
+@api.get("/media/works")
+def media_works():
+    page = request.args.get("page", "1")
+    page = int(page) if page.isdigit() else 1
+    return jsonify(media.list_works(
+        current_ctx(), actor(),
+        kind=request.args.get("kind", ""),
+        q=request.args.get("q", ""),
+        status=request.args.get("status", ""),
+        page=page,
+    ))
+
+
+@api.post("/media/works")
+def media_work_create():
+    data = json_body({"kind", "title", "creator", "year", "notes", "visibility", "status"})
+    new_id = media.create_work(current_ctx(), actor(), data)
+    return jsonify(media.get_work(current_ctx(), actor(), new_id)), 201
+
+
+@api.get("/media/works/<int:work_id>")
+def media_work_get(work_id):
+    return jsonify(media.get_work(current_ctx(), actor(), work_id))
+
+
+@api.put("/media/works/<int:work_id>/progress")
+def media_work_progress(work_id):
+    data = json_body({"status", "progress_label", "progress_percent", "rating", "notes"})
+    return jsonify(media.set_progress(current_ctx(), actor(), work_id, data))
+
+
+@api.get("/media/lists")
+def media_lists():
+    return jsonify(media.list_lists(current_ctx(), actor()))
+
+
+@api.post("/media/lists")
+def media_list_create():
+    data = json_body({"name", "list_kind", "visibility"})
+    new_id = media.create_list(current_ctx(), actor(), data)
+    return jsonify({"id": new_id}), 201
+
+
+@api.post("/media/lists/<int:list_id>/entries")
+def media_list_entry(list_id):
+    data = json_body({"work_id"})
+    return jsonify(media.add_to_list(current_ctx(), actor(), list_id, int(data.get("work_id")))), 201
+
+
+@api.get("/media/assets")
+def media_assets():
+    page = request.args.get("page", "1")
+    page = int(page) if page.isdigit() else 1
+    return jsonify(media.list_assets(
+        current_ctx(), actor(),
+        asset_kind=request.args.get("kind", ""),
+        collection=request.args.get("collection", ""),
+        page=page,
+    ))
+
+
+def _asset_public(row):
+    return {
+        "id": row["id"],
+        "public_id": row["public_id"],
+        "title": row["title"],
+        "asset_kind": row["asset_kind"],
+        "collection": row["collection"],
+        "mime_type": row["mime_type"],
+        "size_bytes": row["size_bytes"],
+        "visibility": row["visibility"],
+        "uploaded_by": row["uploaded_by"],
+        "work_id": row["work_id"],
+        "created_at": row["created_at"],
+    }
+
+
+@api.post("/media/assets")
+def media_asset_create():
+    form = {
+        "title": request.form.get("title"),
+        "collection": request.form.get("collection"),
+        "visibility": request.form.get("visibility") or "private",
+        "work_id": request.form.get("work_id"),
+    }
+    new_id = media.store_asset(current_ctx(), actor(), form, request.files.get("file"))
+    return jsonify(_asset_public(media.get_asset(current_ctx(), actor(), new_id))), 201
+
+
+@api.get("/media/assets/<int:asset_id>")
+def media_asset_get(asset_id):
+    return jsonify(_asset_public(media.get_asset(current_ctx(), actor(), asset_id)))
+
+
+@api.get("/media/assets/<int:asset_id>/content")
+def media_asset_content(asset_id):
+    from flask import Response
+    from ..http import content_disposition
+    data, name, mime = media.read_asset(current_ctx(), actor(), asset_id)
+    response = Response(data, mimetype=mime)
+    response.headers["Content-Disposition"] = content_disposition(name)
+    return response
+
+
+@api.get("/media/dashboard")
+def media_dashboard():
+    return jsonify(media.dashboard(current_ctx(), actor()))
 
 
 def _limiter():

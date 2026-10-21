@@ -11,7 +11,7 @@ DEFAULT_MODULES = (
     ("organisation", 1),
     ("coffre", 1),
     ("decisions", 1),
-    ("mediatheque", 0),
+    ("mediatheque", 1),
     ("reperes", 1),
     ("recherche", 1),
     ("parametres", 1),

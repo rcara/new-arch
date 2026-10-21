@@ -11,6 +11,7 @@ from .milestones import require_index
 ALLOWED_TYPES = frozenset({
     "milestone", "decision", "stored_file", "person", "task", "calendar_event",
     "inventory_item", "inventory_place", "finance_transaction",
+    "media_work", "media_asset",
 })
 ALLOWED_RELATIONS = frozenset({
     "relates_to",
@@ -21,6 +22,7 @@ ALLOWED_RELATIONS = frozenset({
     "supports",
     "purchased_via",
     "warranty_deadline",
+    "about_work",
 })
 
 
@@ -127,6 +129,36 @@ def can_see_object(ctx, person, object_type, object_id):
             (object_id, person["id"]),
         ).fetchone()
         return split is not None
+    if object_type == "media_work":
+        row = ctx.conn.execute(
+            """SELECT id, visibility, created_by FROM media_work
+               WHERE id=? AND household_id=1 AND archived=0""",
+            (object_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        if person.get("is_principal") or row["visibility"] == "household" or row["created_by"] == person["id"]:
+            return True
+        progress = ctx.conn.execute(
+            "SELECT 1 FROM media_progress WHERE work_id=? AND person_id=?",
+            (object_id, person["id"]),
+        ).fetchone()
+        return progress is not None
+    if object_type == "media_asset":
+        row = ctx.conn.execute(
+            """SELECT id, visibility, uploaded_by FROM media_asset
+               WHERE id=? AND household_id=1 AND archived=0""",
+            (object_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        if person.get("is_principal") or row["uploaded_by"] == person["id"] or row["visibility"] == "household":
+            return True
+        granted = ctx.conn.execute(
+            "SELECT 1 FROM media_asset_access WHERE asset_id=? AND person_id=?",
+            (object_id, person["id"]),
+        ).fetchone()
+        return granted is not None
     return False
 
 

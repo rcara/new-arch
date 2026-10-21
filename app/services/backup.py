@@ -111,7 +111,7 @@ def restore_archive(archive, dest, clock):
         if conn.execute("PRAGMA foreign_key_check").fetchall():
             raise AppError(400, "validation", "La base sauvegardée a des liens cassés.")
         version = conn.execute("PRAGMA user_version").fetchone()[0]
-        if version != manifest.get("schema_version") or version not in {2, 3, 4, 5}:
+        if version != manifest.get("schema_version") or version not in {2, 3, 4, 5, 6}:
             raise AppError(400, "validation", "La version de la sauvegarde n'est pas acceptée.")
         rows = conn.execute("SELECT storage_key, sha256, size_bytes FROM stored_file ORDER BY storage_key").fetchall()
     finally:

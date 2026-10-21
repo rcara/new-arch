@@ -28,6 +28,7 @@ MESSAGES = {
     "finance_saved": "Enregistrement financier effectué.",
     "finance_imported": "Import CSV terminé.",
     "inventory_saved": "Inventaire mis à jour.",
+    "media_saved": "Médiathèque mise à jour.",
 }
 
 

@@ -28,7 +28,7 @@ def test_migration_includes_inventory(tmp_path):
     db_path = tmp_path / "metadata.sqlite"
     init_db(db_path)
     conn = connect(db_path)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 5
+    assert conn.execute("PRAGMA user_version").fetchone()[0] >= 5
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"inventory_item", "inventory_place", "inventory_warranty", "inventory_maintenance"} <= tables
     conn.close()

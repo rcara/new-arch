@@ -30,6 +30,7 @@
           {% if 'organisation' in nav_modules %}<li><a href="{{ url_for('pages.tasks_get') }}" {% if nav == 'organisation' %}aria-current="page"{% endif %}>Organisation</a></li>{% endif %}
           {% if 'reperes' in nav_modules %}<li><a href="{{ url_for('pages.milestones_get') }}" {% if nav == 'reperes' %}aria-current="page"{% endif %}>Repères</a></li>{% endif %}
           {% if 'decisions' in nav_modules %}<li><a href="{{ url_for('pages.decisions_get') }}" {% if nav == 'decisions' %}aria-current="page"{% endif %}>Décisions</a></li>{% endif %}
+          {% if 'mediatheque' in nav_modules %}<li><a href="{{ url_for('pages.media_get') }}" {% if nav == 'mediatheque' %}aria-current="page"{% endif %}>Médiathèque</a></li>{% endif %}
           {% if 'coffre' in nav_modules %}<li><a href="{{ url_for('pages.vault_get') }}" {% if nav == 'coffre' %}aria-current="page"{% endif %}>Coffre</a></li>{% endif %}
           {% if person.is_principal and 'foyer' in nav_modules %}
           <li><a href="{{ url_for('pages.foyer_get') }}" {% if nav == 'foyer' or nav == 'personnes' or nav == 'acces' %}aria-current="page"{% endif %}>Foyer</a></li>

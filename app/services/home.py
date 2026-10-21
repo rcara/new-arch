@@ -47,4 +47,8 @@ def dashboard(ctx, person):
         from . import inventory
         payload["warranties"] = inventory.upcoming_warranties(ctx, person, within_days=90, limit=10)
 
+    if "mediatheque" in enabled:
+        from . import media
+        payload["media"] = media.dashboard(ctx, person)
+
     return payload

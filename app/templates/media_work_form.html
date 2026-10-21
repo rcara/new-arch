@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle œuvre{% endblock %}
+{% block content %}
+<h1>Nouvelle œuvre</h1>
+<p class="muted">Métadonnées culturelles uniquement — pas un fichier hébergé.</p>
+{% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+<form method="post" action="{{ url_for('pages.media_work_create') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Type
+    <select name="kind">
+      {% for key, label in kinds.items() %}
+      <option value="{{ key }}" {% if form.get('kind')==key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Titre <input name="title" required maxlength="200" value="{{ form.get('title','') }}"></label>
+  {% if errors.title %}<p class="error">{{ errors.title }}</p>{% endif %}
+  <label>Auteur / réalisateur / artiste <input name="creator" value="{{ form.get('creator','') }}"></label>
+  <label>Année <input name="year" value="{{ form.get('year','') }}"></label>
+  <label>Statut initial
+    <select name="status">
+      <option value="wishlist" selected>Envie</option>
+      <option value="in_progress">En cours</option>
+      <option value="done">Terminé</option>
+      <option value="favorite">Favori</option>
+    </select>
+  </label>
+  <label>Visibilité
+    <select name="visibility">
+      <option value="household" selected>Foyer</option>
+      <option value="private">Privée</option>
+    </select>
+  </label>
+  <label>Notes <textarea name="notes" rows="3">{{ form.get('notes','') }}</textarea></label>
+  <button type="submit">Enregistrer</button>
+</form>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Déposer un fichier{% endblock %}
+{% block content %}
+<h1>Bibliothèque personnelle</h1>
+<p class="muted">JPEG, PNG, WebP, MP3, OGG, MP4, PDF — max 20 Mio. Pas de transcodage ni de streaming.</p>
+{% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+{% if errors.file %}<p class="error">{{ errors.file }}</p>{% endif %}
+<form method="post" action="{{ url_for('pages.media_asset_create') }}" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Titre <input name="title" value="{{ form.get('title','') }}"></label>
+  <label>Collection <input name="collection" value="{{ form.get('collection','') }}" placeholder="Vacances 2026"></label>
+  <label>Œuvre liée (optionnel)
+    <select name="work_id">
+      <option value="">—</option>
+      {% for w in works %}
+      <option value="{{ w.id }}">{{ w.title }} ({{ w.kind_label }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Visibilité
+    <select name="visibility">
+      <option value="private" selected>Privée</option>
+      <option value="household">Foyer</option>
+    </select>
+  </label>
+  <label>Fichier <input type="file" name="file" required></label>
+  <button type="submit">Déposer</button>
+</form>
+{% endblock %}

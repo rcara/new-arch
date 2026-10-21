@@ -6,7 +6,7 @@ from .. import current_ctx
 from ..errors import AppError
 from ..http import cookie_message, cookie_session, cookie_setup, safe_next
 from ..security import new_token
-from ..services import auth, decisions, events, finance, home, inventory, links, milestones, modules, people, search, tasks, vault
+from ..services import auth, decisions, events, finance, home, inventory, links, media, milestones, modules, people, search, tasks, vault
 from ..validate import text_value
 
 pages = Blueprint("pages", __name__)
@@ -630,6 +630,160 @@ def inventory_link_purchase(item_id):
     person = _need()
     inventory.link_purchase(current_ctx(), person, item_id, request.form.get("purchase_transaction_id"))
     return _go("inventory_saved", "pages.inventory_item_get", item_id=item_id)
+
+
+@pages.get("/mediatheque")
+def media_get():
+    person = _need()
+    dash = media.dashboard(current_ctx(), person)
+    works = media.list_works(
+        current_ctx(), person,
+        kind=request.args.get("kind", ""),
+        q=request.args.get("q", ""),
+        status=request.args.get("status", ""),
+    )
+    return render_template(
+        "media.html",
+        dash=dash,
+        works=works,
+        assets=media.list_assets(current_ctx(), person)["items"],
+        lists=media.list_lists(current_ctx(), person)["items"],
+        args=request.args,
+        kinds=media.WORK_KIND_LABEL,
+        statuses=media.PROGRESS_LABEL,
+    )
+
+
+@pages.get("/mediatheque/oeuvre/nouvelle")
+def media_work_new():
+    _need()
+    return render_template(
+        "media_work_form.html",
+        form={"kind": "book", "status": "wishlist", "visibility": "household"},
+        errors={},
+        kinds=media.WORK_KIND_LABEL,
+    )
+
+
+@pages.post("/mediatheque/oeuvres")
+def media_work_create():
+    person = _need()
+    form = request.form.to_dict()
+    try:
+        work_id = media.create_work(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template(
+                "media_work_form.html", form=form, errors=exc.fields or {"form": exc.message}, kinds=media.WORK_KIND_LABEL,
+            ), 400
+        raise
+    return _go("media_saved", "pages.media_work_get", work_id=work_id)
+
+
+@pages.get("/mediatheque/oeuvres/<int:work_id>")
+def media_work_get(work_id):
+    person = _need()
+    item = media.get_work(current_ctx(), person, work_id)
+    related = links.list_links(current_ctx(), person, source_type="media_work", source_id=work_id)
+    return render_template(
+        "media_work.html",
+        item=item,
+        links=related["items"],
+        statuses=media.PROGRESS_LABEL,
+    )
+
+
+@pages.post("/mediatheque/oeuvres/<int:work_id>/progression")
+def media_progress_post(work_id):
+    person = _need()
+    media.set_progress(current_ctx(), person, work_id, request.form.to_dict())
+    return _go("media_saved", "pages.media_work_get", work_id=work_id)
+
+
+@pages.post("/mediatheque/oeuvres/<int:work_id>/lien-decision")
+def media_link_decision(work_id):
+    person = _need()
+    links.create_link(current_ctx(), person, {
+        "source_type": "media_work",
+        "source_id": work_id,
+        "target_type": "decision",
+        "target_id": request.form.get("decision_id"),
+        "relation_type": "about_work",
+    })
+    return _go("media_saved", "pages.media_work_get", work_id=work_id)
+
+
+@pages.get("/mediatheque/listes/nouvelle")
+def media_list_new():
+    _need()
+    return render_template("media_list_form.html", form={"list_kind": "wishlist", "visibility": "private"}, errors={})
+
+
+@pages.post("/mediatheque/listes")
+def media_list_create():
+    person = _need()
+    form = request.form.to_dict()
+    try:
+        media.create_list(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template("media_list_form.html", form=form, errors=exc.fields), 400
+        raise
+    return _go("media_saved", "pages.media_get")
+
+
+@pages.post("/mediatheque/listes/<int:list_id>/ajouter")
+def media_list_add(list_id):
+    person = _need()
+    media.add_to_list(current_ctx(), person, list_id, int(request.form.get("work_id")))
+    return _go("media_saved", "pages.media_get")
+
+
+@pages.get("/mediatheque/bibliotheque/depot")
+def media_asset_new():
+    person = _need()
+    return render_template(
+        "media_asset_form.html",
+        form={"visibility": "private"},
+        errors={},
+        works=media.list_works(current_ctx(), person)["items"],
+    )
+
+
+@pages.post("/mediatheque/bibliotheque")
+def media_asset_create():
+    person = _need()
+    form = request.form.to_dict()
+    try:
+        asset_id = media.store_asset(current_ctx(), person, form, request.files.get("file"))
+    except AppError as exc:
+        if exc.status in {400, 413, 415}:
+            return render_template(
+                "media_asset_form.html",
+                form=form,
+                errors=exc.fields or {"form": exc.message},
+                works=media.list_works(current_ctx(), person)["items"],
+            ), exc.status
+        raise
+    return _go("media_saved", "pages.media_asset_get", asset_id=asset_id)
+
+
+@pages.get("/mediatheque/bibliotheque/<int:asset_id>")
+def media_asset_get(asset_id):
+    person = _need()
+    item = media.get_asset(current_ctx(), person, asset_id)
+    return render_template("media_asset.html", item=item)
+
+
+@pages.get("/mediatheque/bibliotheque/<int:asset_id>/ouvrir")
+def media_asset_open(asset_id):
+    from flask import Response
+    from ..http import content_disposition
+    person = _need()
+    data, name, mime = media.read_asset(current_ctx(), person, asset_id)
+    response = Response(data, mimetype=mime)
+    response.headers["Content-Disposition"] = content_disposition(name)
+    return response
 
 
 @pages.get("/reperes")
