@@ -71,7 +71,7 @@
             <div class="menu-panel" role="group" aria-label="Ajouter">
               <ul>
                 {% for item in shell.create %}
-                <li><a href="{{ item.href }}">{{ item.label }}</a></li>
+                <li><a href="{% if item.panel %}#{{ item.panel }}{% else %}{{ item.href }}{% endif %}">{{ item.label }}</a></li>
                 {% endfor %}
               </ul>
             </div>
@@ -102,6 +102,50 @@
       </main>
     </div>
   </div>
+
+  {% set create_keys = shell.create|map(attribute='key')|list %}
+  {% if 'tache' in create_keys %}
+  <aside class="quick-panel" id="ajout-tache" aria-labelledby="ajout-tache-titre">
+    <div class="quick-head">
+      <h2 id="ajout-tache-titre">Nouvelle tâche</h2>
+      <a class="quick-close" href="#contenu">Fermer<span class="sr-only"> le panneau</span></a>
+    </div>
+    <form method="post" action="{{ url_for('pages.task_create') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <input type="hidden" name="priority" value="normal">
+      <input type="hidden" name="recurrence" value="none">
+      <label>Titre <input name="title" required maxlength="200" placeholder="Appeler la régie"></label>
+      <label>Échéance <input type="date" name="due_date"></label>
+      <label class="check-label"><input type="checkbox" name="for_me" value="1" checked> M'assigner la tâche</label>
+      <div class="form-actions">
+        <button type="submit">Ajouter</button>
+        <a class="btn" href="{{ url_for('pages.task_new', next=request.path) }}">Formulaire complet</a>
+      </div>
+    </form>
+  </aside>
+  {% endif %}
+  {% if 'evenement' in create_keys %}
+  <aside class="quick-panel" id="ajout-evenement" aria-labelledby="ajout-evenement-titre">
+    <div class="quick-head">
+      <h2 id="ajout-evenement-titre">Nouvel événement</h2>
+      <a class="quick-close" href="#contenu">Fermer<span class="sr-only"> le panneau</span></a>
+    </div>
+    <form method="post" action="{{ url_for('pages.event_create') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <input type="hidden" name="recurrence" value="none">
+      <label>Titre <input name="title" required maxlength="200" placeholder="Anniversaire de Lou"></label>
+      <label>Date <input type="date" name="start_date" required value="{{ today_iso }}"></label>
+      <p class="muted">Ajouté pour la journée entière. Horaires, récurrence et notes dans le formulaire complet.</p>
+      <div class="form-actions">
+        <button type="submit">Ajouter</button>
+        <a class="btn" href="{{ url_for('pages.event_new', next=request.path) }}">Formulaire complet</a>
+      </div>
+    </form>
+  </aside>
+  {% endif %}
+  <a class="quick-backdrop" href="#contenu" tabindex="-1" aria-hidden="true"></a>
 
   <nav class="tabbar" aria-label="Accès rapide">
     <ul>

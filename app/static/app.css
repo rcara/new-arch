@@ -921,6 +921,48 @@ code{
   color:var(--text-primary);
 }
 
+/* Formulaires simplifiés : l'essentiel visible, le reste dans « Plus d'options » */
+.form-card{
+  max-width:720px;
+  padding:24px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.form-card>label,.form-row>label,.quick-panel form>label{display:block;margin:0 0 16px}
+.form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+details.more{margin:4px 0 16px;padding:12px 16px;border:1px dashed var(--border-strong);border-radius:var(--radius-md)}
+details.more>summary{cursor:pointer;font-weight:600;color:var(--text-secondary);min-height:var(--touch);display:flex;align-items:center}
+details.more[open]>summary{margin-bottom:12px}
+.form-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:8px}
+.check-label{display:flex!important;align-items:center;gap:8px;min-height:var(--touch)}
+.check-label input{width:auto;margin:0}
+
+/* Panneaux d'ajout rapide : :target, sans JavaScript */
+.quick-panel{
+  position:fixed;
+  top:0;
+  right:0;
+  bottom:0;
+  z-index:60;
+  width:min(420px,100vw);
+  padding:24px;
+  overflow-y:auto;
+  background:var(--surface-elevated);
+  border-left:1px solid var(--border);
+  box-shadow:-8px 0 32px rgba(36,54,74,.18);
+  transform:translateX(105%);
+  visibility:hidden;
+  transition:transform var(--ease),visibility var(--ease);
+}
+.quick-panel:target{transform:none;visibility:visible}
+.quick-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.quick-head h2{margin:0}
+.quick-close{display:inline-flex;align-items:center;min-height:var(--touch)}
+.quick-backdrop{display:none}
+.quick-panel:target~.quick-backdrop{display:block;position:fixed;inset:0;z-index:55;background:rgba(26,36,48,.45)}
+
 @media(prefers-reduced-motion:reduce){
   *{transition:none!important}
 }
@@ -1016,6 +1058,9 @@ code{
   }
   .tabbar a[aria-current=page]{color:var(--nav-active-fg);background:var(--nav-active-bg)}
   .today-panel{padding:16px}
+  .form-card{padding:16px}
+  .form-row{grid-template-columns:minmax(0,1fr)}
+  .quick-panel{padding:16px 16px calc(16px + var(--touch))}
   dl{grid-template-columns:1fr;gap:2px 0}
   dd{margin-bottom:12px}
   .row--today .row-date{min-width:0}

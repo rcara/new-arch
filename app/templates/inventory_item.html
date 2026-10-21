@@ -65,6 +65,10 @@
   </form>
 </section>
 
+{% with task_title="Entretien : " ~ item.name, task_due="", link_type="inventory_item", link_id=item.id %}
+{% include "_linked_tasks.html" %}
+{% endwith %}
+
 <section class="today-panel" aria-labelledby="item-links">
   <h2 id="item-links">Liens</h2>
   {% for link in links %}

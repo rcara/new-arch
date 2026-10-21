@@ -1,48 +1,70 @@
 {% extends "base.html" %}
 {% block title %}{% if editing %}Modifier la tâche{% else %}Nouvelle tâche{% endif %}{% endblock %}
 {% block content %}
-<h1>{% if editing %}Modifier la tâche{% else %}Nouvelle tâche{% endif %}</h1>
-<form method="post" action="{% if editing %}{{ url_for('pages.task_update', task_id=task_id) }}{% else %}{{ url_for('pages.task_create') }}{% endif %}">
+<header class="page-header">
+  <div>
+    <p class="eyebrow">À faire</p>
+    <h1>{% if editing %}Modifier la tâche{% else %}Nouvelle tâche{% endif %}</h1>
+    {% if context %}<p class="muted">Liée à <a href="{{ context.href }}">{{ context.title }}</a></p>{% endif %}
+  </div>
+</header>
+<form class="form-card" method="post" action="{% if editing %}{{ url_for('pages.task_update', task_id=task_id) }}{% else %}{{ url_for('pages.task_create') }}{% endif %}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Titre <input name="title" required maxlength="200" value="{{ form.get('title','') }}" {% if errors.title %}aria-invalid="true"{% endif %}></label>
-  {% if errors.title %}<p class="error">{{ errors.title }}</p>{% endif %}
-  <label>Notes <textarea name="notes" rows="4" maxlength="4000">{{ form.get('notes','') }}</textarea></label>
-  {% if errors.notes %}<p class="error">{{ errors.notes }}</p>{% endif %}
-  <label>Priorité
-    <select name="priority">
-      <option value="low" {% if form.get('priority')=='low' %}selected{% endif %}>Basse</option>
-      <option value="normal" {% if form.get('priority','normal')=='normal' %}selected{% endif %}>Normale</option>
-      <option value="high" {% if form.get('priority')=='high' %}selected{% endif %}>Haute</option>
-    </select>
-  </label>
-  <label>Échéance <input type="date" name="due_date" value="{{ form.get('due_date','') }}"></label>
-  {% if errors.due_date %}<p class="error">{{ errors.due_date }}</p>{% endif %}
-  <label>Récurrence
-    <select name="recurrence">
-      <option value="none" {% if form.get('recurrence','none')=='none' %}selected{% endif %}>Aucune</option>
-      <option value="daily" {% if form.get('recurrence')=='daily' %}selected{% endif %}>Quotidienne</option>
-      <option value="weekly" {% if form.get('recurrence')=='weekly' %}selected{% endif %}>Hebdomadaire</option>
-      <option value="monthly" {% if form.get('recurrence')=='monthly' %}selected{% endif %}>Mensuelle</option>
-      <option value="yearly" {% if form.get('recurrence')=='yearly' %}selected{% endif %}>Annuelle</option>
-    </select>
-  </label>
-  <label>Assigné
-    <select name="assignee_id">
-      <option value="">—</option>
-      {% for p in people if p.active %}
-      <option value="{{ p.id }}" {% if form.get('assignee_id')==p.id|string %}selected{% endif %}>{{ p.display_name }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  {% if editing %}
-  <label>Statut
-    <select name="status">
-      <option value="open" {% if form.get('status','open')=='open' %}selected{% endif %}>Ouverte</option>
-      <option value="done" {% if form.get('status')=='done' %}selected{% endif %}>Faite</option>
-      <option value="cancelled" {% if form.get('status')=='cancelled' %}selected{% endif %}>Annulée</option>
-    </select>
-  </label>
+  {% include "_next.html" %}
+  {% if context %}
+  <input type="hidden" name="link_type" value="{{ context.type }}">
+  <input type="hidden" name="link_id" value="{{ context.id }}">
   {% endif %}
-  <button type="submit">Enregistrer</button>
+  <label>Titre <input name="title" required maxlength="200" value="{{ form.get('title','') }}" {% if errors.title %}aria-invalid="true" aria-describedby="err-title"{% endif %} autofocus></label>
+  {% if errors.title %}<p class="error" id="err-title">{{ errors.title }}</p>{% endif %}
+  <div class="form-row">
+    <label>Échéance <input type="date" name="due_date" value="{{ form.get('due_date','') }}"></label>
+    <label>Assignée à
+      <select name="assignee_id">
+        <option value="">Tout le foyer</option>
+        {% for p in people if p.active %}
+        <option value="{{ p.id }}" {% if form.get('assignee_id')==p.id|string %}selected{% endif %}>{{ p.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  {% if errors.due_date %}<p class="error">{{ errors.due_date }}</p>{% endif %}
+  {% if errors.assignee_id %}<p class="error">{{ errors.assignee_id }}</p>{% endif %}
+  <details class="more" {% if editing or errors.notes or errors.priority or errors.recurrence %}open{% endif %}>
+    <summary>Plus d'options</summary>
+    <div class="form-row">
+      <label>Priorité
+        <select name="priority">
+          <option value="low" {% if form.get('priority')=='low' %}selected{% endif %}>Basse</option>
+          <option value="normal" {% if form.get('priority','normal')=='normal' %}selected{% endif %}>Normale</option>
+          <option value="high" {% if form.get('priority')=='high' %}selected{% endif %}>Haute</option>
+        </select>
+      </label>
+      <label>Récurrence
+        <select name="recurrence">
+          <option value="none" {% if form.get('recurrence','none')=='none' %}selected{% endif %}>Aucune</option>
+          <option value="daily" {% if form.get('recurrence')=='daily' %}selected{% endif %}>Quotidienne</option>
+          <option value="weekly" {% if form.get('recurrence')=='weekly' %}selected{% endif %}>Hebdomadaire</option>
+          <option value="monthly" {% if form.get('recurrence')=='monthly' %}selected{% endif %}>Mensuelle</option>
+          <option value="yearly" {% if form.get('recurrence')=='yearly' %}selected{% endif %}>Annuelle</option>
+        </select>
+      </label>
+    </div>
+    <label>Notes <textarea name="notes" rows="4" maxlength="4000">{{ form.get('notes','') }}</textarea></label>
+    {% if errors.notes %}<p class="error">{{ errors.notes }}</p>{% endif %}
+    {% if editing %}
+    <label>Statut
+      <select name="status">
+        <option value="open" {% if form.get('status','open')=='open' %}selected{% endif %}>Ouverte</option>
+        <option value="done" {% if form.get('status')=='done' %}selected{% endif %}>Faite</option>
+        <option value="cancelled" {% if form.get('status')=='cancelled' %}selected{% endif %}>Annulée</option>
+      </select>
+    </label>
+    {% endif %}
+  </details>
+  <div class="form-actions">
+    <button type="submit">Enregistrer</button>
+    <a class="btn" href="{{ next_url or url_for('pages.tasks_get') }}">Annuler</a>
+  </div>
 </form>
 {% endblock %}
