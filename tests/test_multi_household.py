@@ -45,8 +45,8 @@ def test_migration_reaches_version_7(tmp_path):
 def test_create_switch_and_isolate_tasks(world):
     web, app, home, _clock = world
     # Tâche dans foyer 1
-    web.get("/organisation/nouveau")
-    created = web.submit("/organisation/nouveau", {
+    web.get("/organisation/nouvelle")
+    created = web.submit("/organisation", {
         "title": "Secret foyer 1",
         "due_date": "2027-02-25",
         "priority": "normal",
@@ -83,8 +83,8 @@ def test_create_switch_and_isolate_tasks(world):
     assert active[0]["household_name"] == "Chalet"
 
     # Tâche dans foyer 2
-    web.get("/organisation/nouveau")
-    web.submit("/organisation/nouveau", {
+    web.get("/organisation/nouvelle")
+    web.submit("/organisation", {
         "title": "Secret foyer 2",
         "due_date": "2027-02-26",
         "priority": "normal",
