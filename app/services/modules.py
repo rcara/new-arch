@@ -5,7 +5,7 @@ from ..db import require_household
 DEFAULT_MODULES = (
     ("accueil", 1),
     ("foyer", 1),
-    ("finances", 0),
+    ("finances", 1),
     ("inventaire", 0),
     ("calendrier", 1),
     ("organisation", 1),

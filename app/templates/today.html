@@ -66,4 +66,23 @@
   <p><a href="{{ url_for('pages.event_new') }}">Créer un événement</a></p>
   {% endif %}
 </section>
+
+{% if summary.finance_balances %}
+<section class="today-panel" aria-labelledby="home-finance">
+  <h2 id="home-finance">Soldes (CHF)</h2>
+  {% set open_balances = summary.finance_balances.entries|selectattr('net_minor')|list %}
+  {% if open_balances %}
+  {% for item in open_balances %}
+  <div class="row row--today">
+    <b>{{ item.display_name }}</b>
+    <span class="row-date">{{ item.net_label }}</span>
+    <span class="muted">{{ item.meaning }}</span>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Aucun solde à régler.</p>
+  {% endif %}
+  <p class="today-more"><a href="{{ url_for('pages.finance_get') }}">Ouvrir Finances</a></p>
+</section>
+{% endif %}
 {% endblock %}

@@ -33,5 +33,19 @@ Organisation : titre, notes, statut (`open`/`done`/`cancelled`), priorité, assi
 - `household_id` sur toute ressource foyer.
 - Horodatages stockés UTC ISO `…Z`.
 - Affichage local via fuseau foyer.
-- Pas de float monétaire (prévu étape C : INTEGER cents + `currency` ISO 4217).
+- Pas de float monétaire : INTEGER `amount_minor` + `currency` ISO 4217 (CHF/EUR).
 - Suppression douce / archivage quand pertinent (pas de DELETE physique sur décisions V1).
+
+## Ajouts migration 004 (`user_version=4`)
+
+### `finance_ledger_account`
+Comptes de suivi (checking/cash/savings/credit/other), devise CHF|EUR, propriétaire optionnel.
+
+### `finance_category` / `finance_income_share`
+Catégories expense|income ; revenus déclarés pour prorata.
+
+### `finance_transaction` / `finance_split`
+Kinds : `expense`, `income`, `transfer`, `reimbursement`. Montants en unités mineures. Splits `equal|percent|fixed|income_prorata` avec somme exacte. Les remboursements ne comptent pas dans les budgets.
+
+### `finance_budget`
+Budgets mensuels/annuels par catégorie et devise.

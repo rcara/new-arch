@@ -6,7 +6,7 @@ Docs `00`–`09`, backlog, audit sans ZIP V1.
 ## Étape B — Socle fonctionnel ✅ (tranche verticale)
 Migration 003, modules, liens, tâches, événements, recherche, nav V2, accueil réel, tests.
 
-## Étape C — Finances (backlog)
+## Étape C — Finances ✅ (cette livraison)
 Comptes, transactions, catégories, budgets, splits (50/50, %, fixe, prorata), remboursements sans double comptage, CHF/EUR, CSV, UI + tests arrondis.
 
 ## Étape D — Inventaire & coffre enrichi

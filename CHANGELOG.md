@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0-v2c] — 2026-10-21
+
+### Ajouté
+- Migration `004_finances.sql` (`user_version=4`)
+- Module Finances activé : comptes, catégories, dépenses partagées, remboursements, budgets, soldes, CSV
+- `app/money.py` : parsing sans float, splits à somme exacte
+- API `/api/finance/*` et écrans `/finances`
+- Tests `tests/test_finances.py` (arrondis, soldes, double comptage, devises, confidentialité)
+
+### Conservé
+- Socle V2B et capacités V1 ; aucune conversion de devise implicite
+
 ## [0.2.0-v2b] — 2026-10-21
 
 ### Ajouté

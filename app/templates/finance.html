@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Finances{% endblock %}
+{% block content %}
+<h1>Finances</h1>
+<p class="muted">Montants en unités exactes · CHF et EUR · pas de conversion implicite.</p>
+
+<div class="toolbar">
+  <a href="{{ url_for('pages.finance_expense_new') }}">Ajouter une dépense</a>
+  <a href="{{ url_for('pages.finance_reimburse_new') }}">Enregistrer un remboursement</a>
+  <a href="{{ url_for('pages.finance_budget_new') }}">Budget</a>
+  <a href="{{ url_for('pages.finance_export_page', currency=currency) }}">Export CSV</a>
+  <a href="{{ url_for('pages.finance_import_get') }}">Import CSV</a>
+  <form method="get" class="toolbar">
+    <label>Devise
+      <select name="currency">
+        {% for c in currencies %}
+        <option value="{{ c }}" {% if currency==c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Filtrer</button>
+  </form>
+</div>
+
+<section class="today-panel" aria-labelledby="fin-balances">
+  <h2 id="fin-balances">Soldes entre personnes ({{ currency }})</h2>
+  {% for item in balances.entries %}
+  <div class="row">
+    <b>{{ item.display_name }}</b>
+    <span class="muted">{{ item.net_label }} · {{ item.meaning }}</span>
+  </div>
+  {% else %}
+  <p class="muted">Aucun membre actif.</p>
+  {% endfor %}
+</section>
+
+<section class="today-panel" aria-labelledby="fin-accounts">
+  <h2 id="fin-accounts">Comptes de suivi</h2>
+  {% for item in accounts %}
+  <div class="row">
+    <b>{{ item.name }}</b>
+    <span class="badge">{{ item.currency }}</span>
+    <span class="muted">{{ item.account_kind }}{% if item.owner_name %} · {{ item.owner_name }}{% else %} · foyer{% endif %}</span>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="today-panel" aria-labelledby="fin-budgets">
+  <h2 id="fin-budgets">Budgets</h2>
+  {% if budgets %}
+  {% for item in budgets %}
+  <div class="row">
+    <b>{{ item.category_name }}</b>
+    <span class="muted">{{ item.period }} {{ item.month or '' }}/{{ item.year }}</span>
+    <span>{{ item.spent_label }} / {{ item.amount_label }}</span>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Aucun budget. <a href="{{ url_for('pages.finance_budget_new') }}">Créer un budget</a></p>
+  {% endif %}
+</section>
+
+<section class="today-panel" aria-labelledby="fin-txns">
+  <h2 id="fin-txns">Transactions</h2>
+  {% if transactions %}
+  {% for item in transactions %}
+  <div class="row">
+    <span class="row-date">{{ item.txn_date|frdate }}</span>
+    <b>{{ item.label }}</b>
+    <span class="badge">{{ item.kind }}</span>
+    <span>{{ item.amount_label }}</span>
+    <span class="muted">{{ item.payer_name }}{% if item.category_name %} · {{ item.category_name }}{% endif %}</span>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Aucune transaction en {{ currency }}.</p>
+  <p><a href="{{ url_for('pages.finance_expense_new') }}">Ajouter une dépense</a></p>
+  {% endif %}
+</section>
+{% endblock %}

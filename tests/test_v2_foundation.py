@@ -57,9 +57,9 @@ def test_migration_002_to_003_on_copied_v1(tmp_path):
 
     init_db(db_path)
     conn = connect(db_path)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"task", "calendar_event", "object_link", "module_setting"} <= tables
+    assert {"task", "calendar_event", "object_link", "module_setting", "finance_transaction"} <= tables
     assert conn.execute("SELECT name FROM household WHERE id=1").fetchone()[0] == "Démo"
     assert conn.execute("SELECT COUNT(*) FROM milestone").fetchone()[0] == 1
     enabled = {
@@ -67,7 +67,7 @@ def test_migration_002_to_003_on_copied_v1(tmp_path):
         for row in conn.execute("SELECT module_key, enabled FROM module_setting")
     }
     assert enabled["organisation"] == 1
-    assert enabled["finances"] == 0
+    assert enabled["finances"] == 1
     assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     conn.close()
 
@@ -192,5 +192,5 @@ def test_links_acl_and_search_privacy(world):
 
     modules = web.api("GET", "/api/modules").get_json()
     keys = {item["key"]: item["enabled"] for item in modules["items"]}
-    assert keys["finances"] is False
+    assert keys["finances"] is True
     assert keys["organisation"] is True

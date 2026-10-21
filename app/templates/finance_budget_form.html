@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Budget{% endblock %}
+{% block content %}
+<h1>Nouveau budget</h1>
+{% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Catégorie
+    <select name="category_id" required>
+      {% for c in categories %}
+      <option value="{{ c.id }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Période
+    <select name="period">
+      <option value="month" selected>Mensuel</option>
+      <option value="year">Annuel</option>
+    </select>
+  </label>
+  <label>Année <input name="year" required value="{{ form.get('year','2027') }}"></label>
+  <label>Mois (si mensuel) <input name="month" value="{{ form.get('month','2') }}"></label>
+  <label>Montant <input name="amount" required placeholder="500,00" value="{{ form.get('amount','') }}"></label>
+  {% if errors.amount %}<p class="error">{{ errors.amount }}</p>{% endif %}
+  <label>Devise
+    <select name="currency">
+      <option value="CHF" selected>CHF</option>
+      <option value="EUR">EUR</option>
+    </select>
+  </label>
+  <button type="submit">Enregistrer</button>
+</form>
+{% endblock %}

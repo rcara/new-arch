@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Import finances{% endblock %}
+{% block content %}
+<h1>Import CSV</h1>
+<p class="muted">Format export New Arch (séparateur « ; »). Les remboursements ne sont pas réimportés comme dépenses.</p>
+{% if errors.file %}<p class="error">{{ errors.file }}</p>{% endif %}
+{% if result %}
+<p class="status" role="status">{{ result.created }} ligne(s) importée(s).</p>
+{% if result.errors %}
+<ul>
+  {% for err in result.errors %}
+  <li class="error">{{ err }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+<p><a href="{{ url_for('pages.finance_get') }}">Voir les finances</a></p>
+{% endif %}
+<form method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Fichier CSV <input type="file" name="file" accept=".csv,text/csv" required></label>
+  <button type="submit">Importer</button>
+</form>
+{% endblock %}

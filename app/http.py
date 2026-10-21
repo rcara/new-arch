@@ -25,6 +25,8 @@ MESSAGES = {
     "task_done": "La tâche est marquée faite.",
     "event_saved": "L'événement est enregistré.",
     "link_saved": "Le lien est enregistré.",
+    "finance_saved": "Enregistrement financier effectué.",
+    "finance_imported": "Import CSV terminé.",
 }
 
 
