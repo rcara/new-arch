@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, g, redirect, render_template, request,
 
 from .. import current_ctx
 from ..errors import AppError
-from ..http import THEMES, cookie_message, cookie_session, cookie_setup, cookie_theme, safe_next
+from ..http import THEMES, cookie_message, cookie_onboarding, cookie_session, cookie_setup, cookie_theme, safe_next
 from ..security import new_token
 from ..services import auth, decisions, events, finance, home, inventory, links, media, milestones, modules, people, search, tasks, vault
 from ..validate import text_value
@@ -120,7 +120,18 @@ def logout():
 def today():
     person = _need()
     summary = home.dashboard(current_ctx(), person)
-    return render_template("today.html", summary=summary)
+    hidden = request.cookies.get("foyer_onboarding") == "hidden"
+    return render_template("today.html", summary=summary, onboarding_hidden=hidden)
+
+
+@pages.post("/accueil/demarrage")
+def onboarding_post():
+    _need()
+    hidden = request.form.get("action") == "masquer"
+    target = "pages.settings_get" if request.form.get("from") == "parametres" else "pages.today"
+    response = redirect(url_for(target))
+    cookie_onboarding(response, hidden)
+    return cookie_message(response, "onboarding_hidden" if hidden else "onboarding_shown")
 
 
 @pages.get("/profil")
@@ -268,6 +279,14 @@ def task_update(task_id):
     return _go(code, "pages.task_get", task_id=task_id)
 
 
+@pages.post("/organisation/<int:task_id>/terminer")
+def task_complete(task_id):
+    person = _need()
+    tasks.update_task(current_ctx(), person, task_id, {"status": "done"})
+    response = redirect(safe_next(request.form.get("next") or url_for("pages.tasks_get")))
+    return cookie_message(response, "task_done")
+
+
 @pages.post("/organisation/<int:task_id>/lien")
 def task_link(task_id):
     person = _need()
@@ -395,6 +414,7 @@ def settings_get():
         modules=modules.list_modules(current_ctx()),
         household=g.household,
         theme=resolve_theme(request.cookies.get("foyer_theme")),
+        onboarding_hidden=request.cookies.get("foyer_onboarding") == "hidden",
     )
 
 

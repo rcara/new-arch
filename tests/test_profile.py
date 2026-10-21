@@ -49,8 +49,8 @@ def test_profile_page_and_display_name(world):
 
     dash = web.get("/")
     assert dash.status_code == 200
-    assert b"Tableau de bord" in dash.data
-    assert b"Pour vous" in dash.data
+    assert b"Bonjour Roger" in dash.data
+    assert "À faire".encode() in dash.data
     assert b"Roger API" in dash.data
 
 

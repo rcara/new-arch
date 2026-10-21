@@ -1,5 +1,28 @@
 # UX Changelog — New Arch V2.1
 
+## Sprint 2 — Accueil « Aujourd'hui »
+
+**Ajouté**
+- Page Aujourd'hui en grille (12 colonnes desktop, 2 tablette, 1 mobile) : bienvenue contextuelle (date, foyer,
+  résumé réel « N rendez-vous · N tâches dont N en retard »), **Agenda** 14 jours (événements + échéances de
+  repères, chronologique), **À faire** (mes tâches + tâches sans responsable, retard, priorité, récurrence,
+  **Terminer en un clic**), **Finances du mois** (dépenses par devise CHF / EUR séparées, budgets du mois avec
+  jauge et reste, soldes entre membres par devise), **Raccourcis** (mêmes droits que « + Ajouter »),
+  garanties, médias en cours, **Ajouté récemment** (tâches, événements, transactions et biens visibles ; coffre et
+  décisions exclus).
+- Onboarding facultatif « Bien démarrer » (5 étapes calculées sur l'état réel, disparaît quand tout est fait),
+  masquable, réaffichable depuis Paramètres (cookie `foyer_onboarding`, aucune donnée en base).
+- `POST /organisation/<id>/terminer` (CSRF, `next` limité au même site) ; `POST /accueil/demarrage`.
+- `finance.month_spending` (lecture seule) : somme des dépenses visibles du mois par devise — mêmes règles de
+  visibilité que `_spent_in_period`, aucune règle de calcul existante modifiée.
+- `home.dashboard` : clés `agenda`, `todo`, `finance_month`, `recent`, `onboarding` ajoutées ; clés existantes
+  inchangées (`/api/home` compatible).
+
+**Modifié** : `today.html` (réécrit), `settings.html` (guide de démarrage), `app.css` (grille, timeline, tâches,
+stats, budgets, étapes), `app/http.py` (cookie + messages), `app/routes/pages.py`.
+`tests/test_profile.py` : « Tableau de bord » / « Pour vous » → « Bonjour Roger » / « À faire » (titres
+administratifs retirés par le brief).
+
 ## Sprint 1 — Navigation (App Shell)
 
 **Ajouté**

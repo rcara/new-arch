@@ -30,6 +30,22 @@
   {% endfor %}
 </section>
 
+<section class="today-panel" aria-labelledby="onboarding-title">
+  <h2 id="onboarding-title">Guide de démarrage</h2>
+  <p class="muted">Les premières étapes proposées sur Aujourd'hui (membres, dépense, événement, bien). Elles disparaissent d'elles-mêmes une fois faites.</p>
+  <form method="post" action="{{ url_for('pages.onboarding_post') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="from" value="parametres">
+    {% if onboarding_hidden %}
+    <input type="hidden" name="action" value="afficher">
+    <button type="submit" class="secondary">Réafficher le guide</button>
+    {% else %}
+    <input type="hidden" name="action" value="masquer">
+    <button type="submit" class="secondary">Masquer le guide</button>
+    {% endif %}
+  </form>
+</section>
+
 {% if person.is_principal %}
 <section class="today-panel" aria-labelledby="ops-title">
   <h2 id="ops-title">Administration avancée</h2>

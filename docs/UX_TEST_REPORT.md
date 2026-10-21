@@ -32,3 +32,14 @@ Anomalies restantes : voir `UX_AUDIT_V2.md` §5 (A1–A4) et décisions D1–D5 
 
 Limites connues : les menus `<details>` ne se ferment pas au clic extérieur (pas de JS) — un second clic sur le
 bouton ou la navigation les ferme. Le tiroir se ferme via « Fermer » ou le fond.
+
+## Sprint 2
+
+| Vérification | Résultat |
+|---|---|
+| `pytest` complet | 96 passés |
+| `tests/test_ux_today.py` (7 tests) | foyer vide guidé (onboarding 1/5, liens d'action, états vides) ; foyer rempli : événement à J+3 affiché / à J+40 exclu, tâche en retard + prioritaire, tâche d'un autre membre exclue de « Mes tâches », dépenses CHF 120,50 et EUR 30,00 séparées, dépense du mois précédent exclue, budget « Reste 79,50 » ; Terminer en 1 clic (POST → 302 `/`, statut `done`) ; refus sans CSRF ; `next=//evil…` → `/` ; onboarding masqué puis réaffiché ; compte secondaire : dépense privée du principal invisible |
+| Visuel | `s2-apres-{vide,demo}-accueil-{desktop,tablet,mobile}.png`, `s2-apres-demo-accueil-sombre-desktop.png` |
+
+Données de capture : foyer démo + éléments datés d'octobre 2026 ajoutés via l'API locale (le seed démo est daté
+2027). Aucun impact sur le dépôt.
