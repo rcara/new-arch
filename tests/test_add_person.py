@@ -7,6 +7,7 @@ import pytest
 
 from app import create_app
 from app.clock import FrozenClock
+from app.db import connect
 from tests.test_flows import PASSWORD, Web
 
 
@@ -25,7 +26,7 @@ def world(tmp_path, clock):
 
 
 def _person_form_action(html: str) -> str:
-    """Action du formulaire qui contient relationship (pas le shell « Nouveau foyer »)."""
+    """Action du formulaire d'ajout, celui qui contient relationship."""
     rel = html.find('name="relationship"')
     assert rel != -1, "formulaire d'ajout de personne introuvable"
     start = html.rfind("<form", 0, rel)
@@ -133,26 +134,32 @@ def test_secondary_cannot_add_person(world):
     assert "Intrus" not in names
 
 
-def test_add_person_scoped_to_active_household(world):
-    web, _app, _home = world
-    web.submit("/foyers/creer", {
+def test_ajout_membre_dans_le_foyer_unique(world):
+    """Un membre ajouté reste dans l'unique foyer. Créer ou basculer un foyer n'est plus possible."""
+    web, _app, home = world
+    refused = web.submit("/foyers/creer", {
         "household_name": "Foyer Cairo",
         "timezone": "Europe/Zurich",
         "display_name": "Roger Cairo",
-    })
-    households = web.api("GET", "/api/households").get_json()["items"]
-    cairo = next(h for h in households if h["household_name"] == "Foyer Cairo")
-    assert cairo["active"] is True
+    }, follow=False)
+    assert refused.status_code == 404
+    assert web.api("GET", "/api/households").status_code == 404
 
     form = web.get("/personnes/ajouter")
     assert form.status_code == 200
     action = _person_form_action(form.data.decode())
-    web.submit(action, {"display_name": "Caroline", "relationship": "Epouse"})
+    created = web.submit(action, {"display_name": "Caroline", "relationship": "Epouse"}, follow=False)
+    assert created.status_code in (302, 303)
 
-    in_cairo = {p["display_name"] for p in web.api("GET", "/api/people").get_json()["items"]}
-    assert "Caroline" in in_cairo
+    names = {p["display_name"] for p in web.api("GET", "/api/people").get_json()["items"]}
+    assert "Caroline" in names
 
-    original = next(h for h in households if h["household_name"] == "Foyer")
-    web.submit("/foyers/basculer", {"household_id": str(original["household_id"]), "next": "/foyer"})
-    in_original = {p["display_name"] for p in web.api("GET", "/api/people").get_json()["items"]}
-    assert "Caroline" not in in_original
+    conn = connect(home / "data" / "metadata.sqlite")
+    row = conn.execute(
+        "SELECT household_id FROM person WHERE display_name=?",
+        ("Caroline",),
+    ).fetchone()
+    households = conn.execute("SELECT COUNT(*) FROM household").fetchone()[0]
+    conn.close()
+    assert row["household_id"] == 1
+    assert households == 1
