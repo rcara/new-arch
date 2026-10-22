@@ -176,27 +176,3 @@ def test_every_page_has_landmarks_and_single_h1(alex):
         assert '<main' in body and 'id="contenu"' in body, path
         assert 'lang="fr"' in body, path
 
-
-# Multi-foyer : les vues V2.1 restent cloisonnées au foyer actif
-
-def _month_totals(web):
-    return re.findall(r'<span class="sr-only">([^<]*CHF)</span>', _text(web.get("/finances")))
-
-
-def test_v21_views_isolated_between_households(alex):
-    from tests.test_ux_modules import _expense, _people
-
-    me = _people(alex)["Alex Martin"]["id"]
-    alex.api("POST", "/api/tasks", {"title": "Zeppelin tâche", "due_date": "2027-02-21"})
-    alex.api("POST", "/api/events", {"title": "Zeppelin événement", "start_date": "2027-02-21", "all_day": True})
-    _expense(alex, "Zeppelin dépense", "4321,00", "CHF", me, date="2027-02-10")
-    assert "Zeppelin événement" in _text(alex.get("/calendrier"))
-    assert _month_totals(alex)[-1] != "0,00 CHF"
-
-    created = alex.submit("/foyers/creer", {"household_name": "Chalet", "timezone": "Europe/Zurich", "display_name": "Alex chalet"})
-    assert created.status_code == 200
-    assert _month_totals(alex) == ["0,00 CHF"] * 6
-    for path in ("/", "/calendrier", "/calendrier?vue=liste", "/organisation", "/finances", "/recherche?q=Zeppelin"):
-        page = _text(alex.get(path))
-        for title in ("Zeppelin tâche", "Zeppelin événement", "Zeppelin dépense"):
-            assert title not in page, (path, title)

@@ -1,4 +1,4 @@
-"""Multi-foyer : migration 007, isolation, bascule et sidebar sans script (tiroir :target)."""
+"""Foyer unique : migration 007 conservée, création et bascule retirées, sidebar sans script."""
 
 from datetime import datetime, timezone
 
@@ -43,71 +43,29 @@ def test_migration_reaches_version_7(tmp_path):
     conn.close()
 
 
-def test_create_switch_and_isolate_tasks(world):
-    web, app, home, _clock = world
-    # Tâche dans foyer 1
-    web.get("/organisation/nouvelle")
-    created = web.submit("/organisation", {
-        "title": "Secret foyer 1",
-        "due_date": "2027-02-25",
-        "priority": "normal",
-        "notes": "",
-    })
-    assert created.status_code == 200
+def test_pas_de_creation_ni_de_bascule_de_foyer(world):
+    web, _app, home, _clock = world
+    page = web.get("/").data.decode()
+    assert "Nouveau foyer" not in page
+    assert "Créer et ouvrir" not in page
+    assert "Changer de foyer" not in page
+    assert 'class="foyer-name"><span class="sr-only">Foyer actif : </span>Foyer</p>' in page
 
-    # Créer foyer 2
-    resp = web.submit("/foyers/creer", {
+    refused = web.submit("/foyers/creer", {
         "household_name": "Chalet",
         "timezone": "Europe/Zurich",
         "display_name": "Roger chalet",
-    })
-    assert resp.status_code == 200
-    assert b"Chalet" in resp.data or b"Nouveau foyer" in resp.data or b"foyer" in resp.data.lower()
+    }, follow=False)
+    assert refused.status_code == 404
+    assert web.submit("/foyers/basculer", {"household_id": "1"}, follow=False).status_code == 404
+    assert web.api("GET", "/api/households").status_code == 404
+    assert web.api("POST", "/api/households", {
+        "household_name": "Chalet", "timezone": "Europe/Zurich", "display_name": "Roger",
+    }).status_code == 404
+    assert web.api("POST", "/api/households/switch", {"household_id": 1}).status_code == 404
 
-    # Accueil du foyer 2 : pas la tâche du foyer 1
-    today = web.get("/")
-    assert today.status_code == 200
-    assert b"Secret foyer 1" not in today.data
-    assert b"sidebar" in today.data or b'class="sidebar"' in today.data
-    assert b'id="navigation"' in today.data
-    assert b"Nouveau foyer" in today.data
-    assert b'class="foyer-item foyer-item--active" aria-current="true">Chalet<' in today.data
-
-    # Liste API memberships
-    listed = web.api("GET", "/api/households")
-    assert listed.status_code == 200
-    items = listed.get_json()["items"]
-    assert len(items) == 2
-    names = {item["household_name"] for item in items}
-    assert names == {"Foyer", "Chalet"}
-    active = [item for item in items if item["active"]]
-    assert len(active) == 1
-    assert active[0]["household_name"] == "Chalet"
-
-    # Tâche dans foyer 2
-    web.get("/organisation/nouvelle")
-    web.submit("/organisation", {
-        "title": "Secret foyer 2",
-        "due_date": "2027-02-26",
-        "priority": "normal",
-        "notes": "",
-    })
-
-    # Revenir au foyer 1
-    foyer_id = next(item["household_id"] for item in items if item["household_name"] == "Foyer")
-    switched = web.submit("/foyers/basculer", {"household_id": str(foyer_id), "next": "/organisation"})
-    assert switched.status_code == 200
-    tasks = web.get("/organisation")
-    assert b"Secret foyer 1" in tasks.data
-    assert b"Secret foyer 2" not in tasks.data
-
-    # Isolation SQL directe
     conn = connect(home / "data" / "metadata.sqlite")
-    counts = dict(conn.execute(
-        "SELECT household_id, COUNT(*) FROM task WHERE archived=0 GROUP BY household_id"
-    ).fetchall())
-    assert counts.get(1) == 1
-    assert counts.get(2) == 1
+    assert conn.execute("SELECT COUNT(*) FROM household").fetchone()[0] == 1
     conn.close()
 
 

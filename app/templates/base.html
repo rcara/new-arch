@@ -48,45 +48,7 @@
         {% endif %}
         {% endfor %}
       </nav>
-      <details class="foyer-switcher">
-        <summary><span class="sr-only">Foyer actif : </span>{{ household.name }}</summary>
-        <div class="foyer-panel">
-          {% if memberships|length > 1 %}
-          <ul class="foyer-list" aria-label="Changer de foyer">
-            {% for item in memberships %}
-            <li>
-              {% if item.active %}
-              <span class="foyer-item foyer-item--active" aria-current="true">{{ item.household_name }}</span>
-              {% else %}
-              <form method="post" action="{{ url_for('pages.household_switch_post') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="household_id" value="{{ item.household_id }}">
-                <input type="hidden" name="next" value="{{ request.path }}">
-                <button type="submit" class="foyer-item">{{ item.household_name }}</button>
-              </form>
-              {% endif %}
-            </li>
-            {% endfor %}
-          </ul>
-          {% endif %}
-          <details class="foyer-create">
-            <summary>Nouveau foyer</summary>
-            <form method="post" action="{{ url_for('pages.household_create_post') }}" class="foyer-create-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <label>Nom du foyer
-                <input name="household_name" maxlength="120" required autocomplete="organization">
-              </label>
-              <label>Votre nom dans ce foyer
-                <input name="display_name" maxlength="120" required value="{{ person.display_name }}" autocomplete="name">
-              </label>
-              <label>Fuseau
-                <input name="timezone" maxlength="64" value="{{ household.timezone or 'Europe/Zurich' }}" autocomplete="off">
-              </label>
-              <button type="submit">Créer et ouvrir</button>
-            </form>
-          </details>
-        </div>
-      </details>
+      <p class="foyer-name"><span class="sr-only">Foyer actif : </span>{{ household.name }}</p>
     </aside>
     <a class="drawer-backdrop" href="#contenu" tabindex="-1" aria-hidden="true"></a>
 
