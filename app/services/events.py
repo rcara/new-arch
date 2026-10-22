@@ -143,8 +143,9 @@ def _parse(data, household_tz, *, partial=False):
     return fields
 
 
-def create_event(ctx, person, data):
-    require_module(ctx, "calendrier")
+def create_event(ctx, person, data, *, check_module=True):
+    if check_module:
+        require_module(ctx, "calendrier")
     household = require_household(ctx.conn, hh(ctx))
     fields = _parse(data, household["timezone"], partial=False)
     if fields.get("end_date") and fields["end_date"] < fields["start_date"]:

@@ -1,6 +1,6 @@
 """Contrats JSON sous /api."""
 
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 
 from .. import current_ctx
 from ..errors import AppError
@@ -35,6 +35,9 @@ def bootstrap():
         data.get("household_name"), data.get("timezone"), data.get("display_name"),
         data.get("username"), data.get("password"),
     )
+    if not current_app.testing:
+        from ..services.birthdays import ensure_family_birthdays
+        ensure_family_birthdays(current_ctx(), {"id": profile["person_id"]})
     from ..http import cookie_session
     response = jsonify(profile)
     response.status_code = 201

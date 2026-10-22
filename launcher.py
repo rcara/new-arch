@@ -38,6 +38,8 @@ def main():
         return 1
     home = Path(os.environ.get("FOYER_HOME", ROOT))
     app = create_app(home=home, port=port)
+    from app.services.birthdays import seed_if_household
+    seed_if_household(app)
     pid = home / "data" / "foyer.pid"
     pid.write_text(str(os.getpid()), encoding="utf-8")
     url = f"http://127.0.0.1:{port}/"
