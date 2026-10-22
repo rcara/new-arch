@@ -1515,12 +1515,16 @@ def people_get():
 
 @pages.get("/personnes/ajouter")
 def person_new():
-    _need()
+    person = _need()
+    from ..services.auth import require_principal
+    require_principal(person)
     return render_template("person_form.html", form={}, errors={})
 
 
+@pages.post("/personnes/ajouter")
 @pages.post("/personnes")
 def person_create():
+    """POST on /personnes (canonical, url_for) and /personnes/ajouter (same-URL submit / old clients)."""
     person = _need()
     form = request.form.to_dict()
     username = password = None
@@ -1541,7 +1545,7 @@ def person_create():
             fields = exc.fields or {"form": exc.message}
             return render_template("person_form.html", form=form, errors=fields), exc.status
         raise
-    return _go("person", "pages.people_get")
+    return _go("person", "pages.foyer_get")
 
 
 @pages.get("/personnes/<int:person_id>/compte")
