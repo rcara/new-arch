@@ -123,7 +123,7 @@ def bootstrap_post():
         g.setup_token = request.cookies.get("foyer_setup", "")
         return render_template("bootstrap.html", form=form, errors={"password_confirm": "Les deux saisies diffèrent."}), 400
     try:
-        token, csrf, _profile = auth.bootstrap(
+        token, csrf, profile = auth.bootstrap(
             current_ctx(), _limiter(), form.get("household_name"), form.get("timezone") or "Europe/Zurich",
             form.get("display_name"), form.get("username"), form.get("password"),
         )
@@ -132,6 +132,9 @@ def bootstrap_post():
             g.setup_token = request.cookies.get("foyer_setup", "")
             return render_template("bootstrap.html", form=form, errors=exc.fields), 400
         raise
+    if not current_app.testing:
+        from ..services.birthdays import ensure_family_birthdays
+        ensure_family_birthdays(current_ctx(), {"id": profile["person_id"]})
     g.csrf_token = csrf
     response = redirect(url_for("pages.today"))
     cookie_session(response, token)
