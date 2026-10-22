@@ -1,6 +1,7 @@
 """Parcours HTTP du foyer : droits, scellement, coffre, sauvegarde."""
 
 import io
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -248,6 +249,63 @@ def test_scellement_resultat_et_nouvelle_page(world):
         conn.execute("DELETE FROM decision WHERE id=?", (decision_id,))
         conn.commit()
     conn.close()
+
+
+def test_ajout_membre_depuis_le_formulaire(world):
+    """Le formulaire « Ajouter quelqu'un » poste sur la route qui accepte POST."""
+    web, app, _home, _clock = world
+    page = web.get("/personnes/ajouter")
+    assert page.status_code == 200
+    html = page.data.decode()
+    assert "Ajouter quelqu'un" in html
+    main = html.split('id="contenu"', 1)[1]
+    action = re.search(r'<form method="post" action="([^"]+)"', main)
+    assert action, main
+    assert action.group(1) == "/personnes"
+
+    member = web.submit(action.group(1), {
+        "display_name": "Noa",
+        "relationship": "enfant",
+    }, follow=False)
+    assert member.status_code == 302
+    assert "Méthode refusée" not in member.data.decode()
+    followed = web.get(member.headers["Location"])
+    assert followed.status_code == 200
+    assert "La personne est ajoutée." in followed.data.decode()
+    assert "Noa" in followed.data.decode()
+
+    web.get("/personnes/ajouter")
+    mismatch = web.submit(action.group(1), {
+        "display_name": "Inès",
+        "relationship": "amie",
+        "with_account": "oui",
+        "username": "ines",
+        "password": PASSWORD,
+        "password_confirm": "autre-phrase-99",
+    }, follow=False)
+    assert mismatch.status_code == 400
+    assert "Les deux saisies diffèrent." in mismatch.data.decode()
+    assert "Méthode refusée" not in mismatch.data.decode()
+
+    created = web.submit(action.group(1), {
+        "display_name": "Inès",
+        "relationship": "amie",
+        "with_account": "oui",
+        "username": "ines",
+        "password": PASSWORD,
+        "password_confirm": PASSWORD,
+    }, follow=False)
+    assert created.status_code == 302
+    people = _json(web.api("GET", "/api/people"))["items"]
+    noa = next(p for p in people if p["display_name"] == "Noa")
+    ines = next(p for p in people if p["display_name"] == "Inès")
+    assert noa["relationship"] == "enfant"
+    assert noa["has_account"] is False
+    assert noa["active"] is True
+    assert ines["relationship"] == "amie"
+    assert ines["has_account"] is True
+    guest = Web(app)
+    assert guest.login("ines").status_code == 200
 
 
 def test_droits_separes_revocation_et_retrait(world):
