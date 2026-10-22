@@ -288,36 +288,6 @@ def test_private_photos_never_leak_to_other_members(world):
     assert [row["archived"] for row in _photo_rows(home)] == [0, 0, 0]
 
 
-def test_photos_scoped_to_active_household(world):
-    web, app, home, clock = world
-    item_id = _item(web, "Tondeuse")
-    work_id = _work(web, "Film du foyer 1")
-    web.get("/inventaire")
-    _send(web, f"/inventaire/{item_id}/photo", "t.png", _png())
-    _send(web, f"/mediatheque/oeuvres/{work_id}/affiche", "f.png", _png())
-
-    web.submit("/foyers/creer", {"household_name": "Chalet", "timezone": "Europe/Zurich", "display_name": "Roger chalet"})
-    assert web.get(f"/inventaire/{item_id}/photo").status_code == 404
-    assert web.get(f"/mediatheque/oeuvres/{work_id}/affiche").status_code == 404
-    web.get("/inventaire")
-    assert _send(web, f"/inventaire/{item_id}/photo", "x.png", _png()).status_code == 404
-    assert web.submit(f"/inventaire/{item_id}/photo/retirer", {}).status_code == 404
-    chalet_item = _item(web, "Luge")
-    web.get("/inventaire")
-    _send(web, f"/inventaire/{chalet_item}/photo", "l.png", _png())
-    gallery = web.get("/inventaire")
-    assert f"/inventaire/{chalet_item}/photo".encode() in gallery.data
-    assert f"/inventaire/{item_id}/photo".encode() not in gallery.data
-    households = {row["object_id"]: row["household_id"] for row in _photo_rows(home) if row["object_type"] == "inventory_item"}
-    assert households[item_id] == 1 and households[chalet_item] != 1
-
-    listed = web.api("GET", "/api/households").get_json()["items"]
-    first = next(item["household_id"] for item in listed if item["household_name"] == "Foyer")
-    web.submit("/foyers/basculer", {"household_id": str(first), "next": "/inventaire"})
-    assert web.get(f"/inventaire/{item_id}/photo").status_code == 200
-    assert web.get(f"/inventaire/{chalet_item}/photo").status_code == 404
-
-
 def test_backup_and_restore_include_photos(world, tmp_path):
     web, app, home, clock = world
     item_id = _item(web, "Piano")

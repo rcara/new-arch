@@ -103,7 +103,8 @@ def test_enhanced_widgets_keep_no_js_fallbacks(world):
     web, _app, _home = world
     home = web.get("/").data.decode()
     assert '<details class="menu create-menu">' in home and '<details class="menu user-menu">' in home
-    assert '<details class="foyer-switcher">' in home
+    assert "Nouveau foyer" not in home
+    assert 'class="foyer-name"' in home
     assert 'href="#ajout-tache"' in home and 'href="#ajout-evenement"' in home
     assert home.count('class="quick-close" href="#contenu"') == 2
     assert 'class="quick-backdrop" href="#contenu"' in home
@@ -113,10 +114,8 @@ def test_enhanced_widgets_keep_no_js_fallbacks(world):
 
 def test_drop_zone_posts_native_form_to_active_household(world):
     web, _app, home = world
-    web.api("POST", "/api/milestones", {"name": "Bail foyer 1", "category": "Logement"})
-    web.submit("/foyers/creer", {"household_name": "Chalet", "timezone": "Europe/Zurich", "display_name": "Roger chalet"})
     holder = next(p for p in web.api("GET", "/api/people").get_json()["items"] if p["is_principal"])["id"]
-    mid = web.api("POST", "/api/milestones", {"name": "Bail chalet", "category": "Logement", "holder_id": holder}).get_json()["id"]
+    mid = web.api("POST", "/api/milestones", {"name": "Bail", "category": "Logement", "holder_id": holder}).get_json()["id"]
 
     page = web.get("/coffre").data.decode()
     form = page[page.index('id="depot"'):page.index("</form>", page.index('id="depot"'))]
@@ -124,20 +123,17 @@ def test_drop_zone_posts_native_form_to_active_household(world):
     assert 'name="csrf_token"' in form and 'class="drop-zone"' in form
     assert re.search(r'<input type="file" name="file"[^>]*required', form)
     assert 'name="confirm" value="oui"' in form
-    assert "Bail chalet" in form and "Bail foyer 1" not in form
+    assert "Bail" in form
 
-    assert web.upload("/coffre", "chalet.pdf", PDF, milestone_id=str(mid), confirm="oui").status_code == 200
+    assert web.upload("/coffre", "bail.pdf", PDF, milestone_id=str(mid), confirm="oui").status_code == 200
     conn = connect(home / "data" / "metadata.sqlite")
     rows = conn.execute(
         "SELECT h.name FROM stored_file f JOIN milestone m ON m.id=f.milestone_id "
-        "JOIN household h ON h.id=m.household_id WHERE f.original_name='chalet.pdf'"
+        "JOIN household h ON h.id=m.household_id WHERE f.original_name='bail.pdf'"
     ).fetchall()
     conn.close()
-    assert [r[0] for r in rows] == ["Chalet"]
-
-    foyer = next(i["household_id"] for i in web.api("GET", "/api/households").get_json()["items"] if i["household_name"] == "Foyer")
-    web.submit("/foyers/basculer", {"household_id": str(foyer), "next": "/coffre"})
-    assert "chalet.pdf" not in web.get("/coffre").data.decode()
+    assert [r[0] for r in rows] == ["Foyer"]
+    assert "bail.pdf" in web.get("/coffre").data.decode()
 
 
 def test_drop_upload_still_requires_csrf(world):
@@ -152,21 +148,3 @@ def test_drop_upload_still_requires_csrf(world):
     web.get("/coffre")
     assert "x.pdf" not in web.get("/coffre").data.decode()
 
-
-def test_vault_files_are_scoped_to_active_household(world):
-    web, _app, _home = world
-    me = next(p for p in web.api("GET", "/api/people").get_json()["items"] if p["is_principal"])["id"]
-    mine = web.api("POST", "/api/milestones", {"name": "Bail foyer 1", "category": "Logement", "holder_id": me}).get_json()["id"]
-    web.get("/coffre")
-    web.upload("/coffre", "foyer1.pdf", PDF, milestone_id=str(mine), confirm="oui")
-    file_id = next(i["id"] for i in web.api("GET", "/api/files").get_json()["items"] if i["original_name"] == "foyer1.pdf")
-
-    web.submit("/foyers/creer", {"household_name": "Chalet", "timezone": "Europe/Zurich", "display_name": "Roger chalet"})
-    web.get("/coffre")
-    assert "foyer1.pdf" not in web.get("/coffre").data.decode()
-    assert all(i["id"] != file_id for i in web.api("GET", "/api/files").get_json()["items"])
-    assert web.get(f"/coffre/{file_id}/ouvrir").status_code == 404
-    assert web.api("GET", f"/api/files/{file_id}/content").status_code == 404
-    assert web.api("DELETE", f"/api/files/{file_id}", {"confirm": True}).status_code == 404
-    assert web.get(f"/coffre/{file_id}/remplacer").status_code == 404
-    assert web.upload("/coffre", "intrus.pdf", PDF, milestone_id=str(mine), confirm="oui").status_code == 404

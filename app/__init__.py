@@ -202,13 +202,9 @@ def create_app(home=None, clock=None, testing=False, port=8765):
         else:
             nav = ""
         nav_modules = set()
-        memberships = []
         if g.get("household") is not None and g.get("person") is not None and g.get("db") is not None:
-            from .services import households as households_svc
             from .services import modules as modules_svc
-            ctx = current_ctx()
-            nav_modules = modules_svc.enabled_keys(ctx)
-            memberships = households_svc.list_memberships(ctx)
+            nav_modules = modules_svc.enabled_keys(current_ctx())
         from .navigation import build as build_navigation
         return {
             "shell": build_navigation(g.get("person"), nav_modules, nav, request.path if request.method == "GET" else "/", sub),
@@ -216,7 +212,6 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             "next_url": safe_next(request.values.get("next")) if request.values.get("next") else "",
             "person": g.get("person"),
             "household": g.get("household"),
-            "memberships": memberships,
             "csrf_token": g.get("setup_token") or g.get("csrf_token") or "",
             "message": g.get("message") or "",
             "nav": nav,

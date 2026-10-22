@@ -233,26 +233,3 @@ def test_data_preserved_after_off_and_on(alex, demo):
     assert "Dentiste" in alex.get("/calendrier").data.decode()
     assert "Sortir les poubelles" in html.unescape(alex.get("/organisation").data.decode())
 
-
-def test_settings_are_isolated_per_household(alex, demo):
-    _app, home = demo
-    alex.get("/")
-    created = alex.submit("/foyers/creer", {
-        "household_name": "Chalet", "timezone": "Europe/Zurich", "display_name": "Alex chalet",
-    })
-    assert created.status_code == 200
-    second = alex.api("GET", "/api/me").get_json()["household_id"]
-    assert second != 1
-
-    _set(alex, *_without("finances", "inventaire"))
-    assert _state(home, second)["finances"] is False
-    assert _state(home, 1)["finances"] is True
-    assert alex.get("/finances").status_code == 404
-
-    alex.submit("/foyers/basculer", {"household_id": "1", "next": "/"})
-    assert alex.get("/finances").status_code == 200
-    assert alex.get("/inventaire").status_code == 200
-    assert 'value="finances" checked' in alex.get("/parametres").data.decode()
-
-    alex.submit("/foyers/basculer", {"household_id": str(second), "next": "/"})
-    assert alex.get("/finances").status_code == 404

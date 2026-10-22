@@ -136,18 +136,6 @@ def test_member_and_title_filters_apply_to_occurrences(world):
     assert "Sport partagé" in found and "Sport Roger" not in found
 
 
-def test_occurrences_stay_in_their_household(world):
-    web, _home = world
-    series = _event(web, "Secret hebdo foyer 1", "2027-01-04", "weekly")
-    web.submit("/foyers/creer", {"household_name": "Chalet", "timezone": "Europe/Zurich", "display_name": "Roger chalet"})
-    for path in ("/", "/calendrier?vue=mois&date=2027-02-01", "/calendrier?vue=liste&date=2027-02-01"):
-        assert "Secret hebdo foyer 1" not in web.get(path).data.decode()
-    assert web.get(f"/calendrier/{series}?occurrence=2027-02-15").status_code == 404
-    other = _event(web, "Chalet mensuel", "2027-01-31", "monthly")
-    month = web.get("/calendrier?vue=mois&date=2027-02-01").data.decode()
-    assert re.findall(rf'/calendrier/{other}\?occurrence=([0-9-]+)', month) == ["2027-02-28"]
-
-
 def test_disabled_module_and_archived_series_show_nothing(world):
     web, home = world
     series = _event(web, "Réunion mensuelle", "2027-01-15", "monthly")

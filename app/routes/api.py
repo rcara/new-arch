@@ -5,7 +5,7 @@ from flask import Blueprint, g, jsonify, request
 from .. import current_ctx
 from ..errors import AppError
 from ..http import json_body
-from ..services import auth, decisions, events, finance, home, households, inventory, links, media, milestones, modules, people, search, tasks, vault
+from ..services import auth, decisions, events, finance, home, inventory, links, media, milestones, modules, people, search, tasks, vault
 
 api = Blueprint("api", __name__)
 
@@ -63,42 +63,6 @@ def logout():
     response.status_code = 204
     response.delete_cookie("foyer_session", path="/")
     return response
-
-
-@api.get("/households")
-def households_list():
-    actor()
-    return jsonify({"items": households.list_memberships(current_ctx())})
-
-
-@api.post("/households/switch")
-def households_switch():
-    actor()
-    data = json_body({"household_id"})
-    result = households.switch_household(
-        current_ctx(),
-        request.cookies.get("foyer_session"),
-        data.get("household_id"),
-    )
-    return jsonify(result)
-
-
-@api.post("/households")
-def households_create():
-    person = actor()
-    data = json_body({"household_name", "timezone", "display_name"})
-    created = households.create_household(
-        current_ctx(),
-        data.get("household_name"),
-        data.get("timezone") or "Europe/Zurich",
-        data.get("display_name") or person.get("display_name"),
-    )
-    households.switch_household(
-        current_ctx(),
-        request.cookies.get("foyer_session"),
-        created["household_id"],
-    )
-    return jsonify(created), 201
 
 
 @api.get("/me")

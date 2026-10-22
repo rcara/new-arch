@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var MENUS = "details.menu, details.foyer-switcher";
+  var MENUS = "details.menu";
   var FOCUSABLE = "a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
   function closeMenus(except) {
