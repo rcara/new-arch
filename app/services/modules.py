@@ -65,6 +65,7 @@ ROUTE_PREFIXES = (
     ("/organisation", "organisation"),
     ("/a-faire", "organisation"),
     ("/calendrier", "calendrier"),
+    ("/sejours", "calendrier"),
     ("/agenda", "calendrier"),
     ("/recherche", "recherche"),
     ("/finances", "finances"),

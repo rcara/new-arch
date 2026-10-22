@@ -10,7 +10,7 @@ from ..errors import AppError
 from .milestones import require_index
 
 ALLOWED_TYPES = frozenset({
-    "milestone", "decision", "stored_file", "person", "task", "calendar_event",
+    "milestone", "decision", "stored_file", "person", "task", "calendar_event", "sejour",
     "inventory_item", "inventory_place", "finance_transaction",
     "media_work", "media_asset",
 })
@@ -89,6 +89,12 @@ def can_see_object(ctx, person, object_type, object_id):
     if object_type == "calendar_event":
         row = ctx.conn.execute(
             f'SELECT id FROM calendar_event WHERE id=? AND household_id={hh(ctx)} AND archived=0',
+            (object_id,),
+        ).fetchone()
+        return row is not None
+    if object_type == "sejour":
+        row = ctx.conn.execute(
+            f'SELECT id FROM sejour WHERE id=? AND household_id={hh(ctx)} AND archived=0',
             (object_id,),
         ).fetchone()
         return row is not None

@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% from "_ui.html" import page_header %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block content %}
+{% call page_header("Agenda", item.title, item.destination or "Séjour du foyer") %}
+<a class="btn" href="{{ url_for('pages.sejour_edit', sejour_id=item.id) }}">Modifier</a>
+{% endcall %}
+{% if errors.form %}<p class="error" role="alert">{{ errors.form }}</p>{% endif %}
+
+<dl>
+  <dt>Destination</dt><dd>{{ item.destination or '—' }}</dd>
+  <dt>Début</dt><dd>{{ item.start_date|frdate }}</dd>
+  <dt>Fin</dt><dd>{{ item.end_date|frdate }}</dd>
+  <dt>Devise</dt><dd>{{ item.currency }}</dd>
+  <dt>Participants</dt>
+  <dd>
+    {% if item.participants %}{{ item.participants|map(attribute='display_name')|join(', ') }}{% else %}Aucun pour l'instant{% endif %}
+    <span class="muted"> — le séjour reste ouvert à tout le foyer.</span>
+  </dd>
+</dl>
+
+<section class="sejour-panel" aria-labelledby="enveloppe">
+  <h2 id="enveloppe">Enveloppe</h2>
+  <p class="muted">Prévu, dépensé et reste par poste. Seules les dépenses que vous pouvez voir sont comptées : une dépense privée d'un autre membre n'apparaît pas et ne change pas votre reste.</p>
+  <ul class="budget-list">
+    {% for line in item.lines %}
+    <li>
+      <div class="budget-head">
+        <b>{{ line.label }}</b>
+        <span class="muted">Prévu {{ line.amount_label }}</span>
+      </div>
+      <meter min="0" max="{{ [line.amount_minor, 1]|max }}" low="{{ (line.amount_minor * 0.8)|int }}" high="{{ line.amount_minor }}" optimum="0" value="{{ [line.spent_minor, line.amount_minor]|min }}" aria-label="{{ line.label }} : {{ line.spent_label }} dépensés sur {{ line.amount_label }}"></meter>
+      <div class="budget-foot">
+        <span>Dépensé {{ line.spent_label }}</span>
+        <span class="{% if line.remaining_minor < 0 %}is-late{% else %}muted{% endif %}">{% if line.remaining_minor < 0 %}Dépassé de {{ line.remaining_label|replace('-', '') }}{% else %}Reste {{ line.remaining_label }}{% endif %}</span>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  <dl>
+    <dt>Enveloppe</dt><dd>{{ item.envelope_label }}</dd>
+    <dt>Dépensé</dt><dd>{{ item.spent_label }}</dd>
+    <dt>Reste</dt><dd class="{% if item.remaining_minor < 0 %}is-late{% endif %}">{% if item.remaining_minor < 0 %}Dépassé de {{ item.remaining_label|replace('-', '') }}{% else %}{{ item.remaining_label }}{% endif %}</dd>
+  </dl>
+</section>
+
+<section class="sejour-panel" aria-labelledby="depenses">
+  <h2 id="depenses">Dépenses rattachées</h2>
+  {% if item.expenses %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <caption class="sr-only">Dépenses rattachées à ce séjour</caption>
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Libellé</th>
+          <th scope="col">Poste</th>
+          <th scope="col" class="num">Montant</th>
+          <th scope="col"><span class="sr-only">Action</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for exp in item.expenses %}
+        <tr>
+          <td data-label="Date">{{ exp.txn_date|frdate }}</td>
+          <td data-label="Libellé"><b>{{ exp.label }}</b>{% if exp.visibility == 'private' %} <span class="chip">Privée</span>{% endif %}{% if exp.payer_name %} <span class="muted">· {{ exp.payer_name }}</span>{% endif %}</td>
+          <td data-label="Poste">{{ exp.line_label }}</td>
+          <td data-label="Montant" class="num">{{ exp.amount_label }}</td>
+          <td data-label="Action">
+            {% if finances_on %}
+            <form method="post" action="{{ url_for('pages.sejour_detach', sejour_id=item.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="attachment_id" value="{{ exp.attachment_id }}">
+              <button type="submit" class="secondary">Retirer</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">Aucune dépense visible n'est rattachée.</p>
+  {% endif %}
+
+  {% if finances_on %}
+  {% if attachable %}
+  <form class="form-card" method="post" action="{{ url_for('pages.sejour_attach', sejour_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h3>Rattacher une dépense du foyer</h3>
+    <p class="muted">Uniquement les dépenses en {{ item.currency }} que vous pouvez voir.</p>
+    <label>Dépense
+      <select name="transaction_id" required {% if errors.transaction_id %}aria-invalid="true"{% endif %}>
+        <option value="">Choisir</option>
+        {% for txn in attachable %}
+        <option value="{{ txn.id }}" {% if spend_form.get('transaction_id')==txn.id|string %}selected{% endif %}>{{ txn.txn_date|frdate }} — {{ txn.label }} — {{ txn.amount_label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if errors.transaction_id %}<p class="error">{{ errors.transaction_id }}</p>{% endif %}
+    <label>Poste de l'enveloppe
+      <select name="line_key" required>
+        {% for line in item.lines %}
+        <option value="{{ line.key }}" {% if spend_form.get('line_key')==line.key %}selected{% endif %}>{{ line.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if errors.line_key %}<p class="error">{{ errors.line_key }}</p>{% endif %}
+    <div class="form-actions">
+      <button type="submit">Rattacher</button>
+    </div>
+  </form>
+  {% else %}
+  <p class="muted">Aucune dépense en {{ item.currency }} n'est disponible à rattacher.</p>
+  {% endif %}
+
+  <form class="form-card" method="post" action="{{ url_for('pages.sejour_spend', sejour_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h3>Enregistrer une dépense</h3>
+    <p class="muted">Elle est créée dans Finances, en {{ item.currency }}, puis rattachée à ce séjour.</p>
+    <label>Libellé <input name="label" required maxlength="200" value="{{ spend_form.get('label','') }}" {% if errors.label %}aria-invalid="true"{% endif %}></label>
+    {% if errors.label %}<p class="error">{{ errors.label }}</p>{% endif %}
+    <div class="form-row">
+      <label>Montant <input name="amount" required inputmode="decimal" placeholder="12,50" value="{{ spend_form.get('amount','') }}" {% if errors.amount %}aria-invalid="true"{% endif %}></label>
+      <label>Date <input type="date" name="txn_date" required value="{{ spend_form.get('txn_date','') }}" {% if errors.txn_date %}aria-invalid="true"{% endif %}></label>
+    </div>
+    {% if errors.amount %}<p class="error">{{ errors.amount }}</p>{% endif %}
+    {% if errors.txn_date %}<p class="error">{{ errors.txn_date }}</p>{% endif %}
+    <div class="form-row">
+      <label>Catégorie
+        <select name="category_id" required {% if errors.category_id %}aria-invalid="true"{% endif %}>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {% if spend_form.get('category_id')==c.id|string %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Poste de l'enveloppe
+        <select name="line_key" required {% if errors.line_key %}aria-invalid="true"{% endif %}>
+          <option value="">Choisir</option>
+          {% for line in item.lines %}
+          <option value="{{ line.key }}" {% if spend_form.get('line_key')==line.key %}selected{% endif %}>{{ line.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    {% if errors.category_id %}<p class="error">{{ errors.category_id }}</p>{% endif %}
+    {% if errors.line_key %}<p class="error">{{ errors.line_key }}</p>{% endif %}
+    <label>Payée par
+      <select name="payer_id">
+        {% for p in people %}
+        <option value="{{ p.id }}" {% if spend_form.get('payer_id', person.id|string)==p.id|string %}selected{% endif %}>{{ p.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if errors.payer_id %}<p class="error">{{ errors.payer_id }}</p>{% endif %}
+    {% if errors.ledger_account_id %}<p class="error">{{ errors.ledger_account_id }}</p>{% endif %}
+    <details class="more" {% if errors.visibility or errors.splits or errors.split_person_ids %}open{% endif %}>
+      <summary>Plus d'options : répartition et visibilité</summary>
+      <fieldset>
+        <legend>Personnes qui partagent</legend>
+        {% set selected = spend_form.get('split_person_ids') %}
+        {% for p in people %}
+        <label class="permission">
+          <input type="checkbox" name="split_person_ids" value="{{ p.id }}"
+            {% if selected is none %}checked{% elif (p.id|string) in selected or p.id in selected %}checked{% endif %}>
+          {{ p.display_name }}
+        </label>
+        {% endfor %}
+      </fieldset>
+      {% if errors.splits %}<p class="error">{{ errors.splits }}</p>{% endif %}
+      {% if errors.split_person_ids %}<p class="error">{{ errors.split_person_ids }}</p>{% endif %}
+      <label>Visibilité
+        <select name="visibility">
+          <option value="household" {% if spend_form.get('visibility','household')=='household' %}selected{% endif %}>Foyer</option>
+          <option value="private" {% if spend_form.get('visibility')=='private' %}selected{% endif %}>Privée (participants de la dépense seulement)</option>
+        </select>
+      </label>
+      {% if errors.visibility %}<p class="error">{{ errors.visibility }}</p>{% endif %}
+    </details>
+    <div class="form-actions">
+      <button type="submit">Enregistrer la dépense</button>
+    </div>
+  </form>
+  {% else %}
+  <p class="muted">Le module Finances est masqué : l'enveloppe reste visible, sans dépenses rattachées.</p>
+  {% endif %}
+</section>
+
+<p><a href="{{ url_for('pages.sejours_get') }}">Séjours</a> · <a href="{{ url_for('pages.events_get', vue='mois', date=item.start_date) }}">Agenda</a></p>
+{% endblock %}

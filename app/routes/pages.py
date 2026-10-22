@@ -9,7 +9,7 @@ from ..errors import AppError
 from ..money import format_minor
 from ..http import THEMES, cookie_message, cookie_onboarding, cookie_session, cookie_setup, cookie_theme, safe_next
 from ..security import new_token
-from ..services import agenda, auth, decisions, events, finance, home, inventory, links, media, milestones, modules, people, photos, search, tasks, vault
+from ..services import agenda, auth, decisions, events, finance, home, inventory, links, media, milestones, modules, people, photos, search, sejours, tasks, vault
 from ..validate import text_value
 
 pages = Blueprint("pages", __name__)
@@ -482,6 +482,187 @@ def event_update(event_id):
             ), 400
         raise
     return _go("event_saved", "pages.event_get", event_id=event_id)
+
+
+def _sejour_payload(form):
+    form = dict(form)
+    form["participant_ids"] = request.form.getlist("participant_ids")
+    return form
+
+
+def _sejour_form_from_item(item):
+    form = {
+        "title": item["title"],
+        "destination": item["destination"],
+        "start_date": item["start_date"],
+        "end_date": item["end_date"],
+        "currency": item["currency"],
+        "participant_ids": [str(person["id"]) for person in item["participants"]],
+    }
+    for line in item["lines"]:
+        form[f"envelope_{line['key']}"] = _minor_form(line["amount_minor"]) if line["amount_minor"] else ""
+    return form
+
+
+def _all_expenses(person, currency):
+    found, page = [], 1
+    while page <= 20:
+        listed = finance.list_transactions(
+            current_ctx(), person, kind="expense", currency=currency, page=page,
+        )
+        found.extend(listed["items"])
+        if page * listed["page_size"] >= listed["total"] or not listed["items"]:
+            break
+        page += 1
+    return found
+
+
+def _sejour_detail(person, item, *, spend_form=None, errors=None, status=200):
+    finances_on = "finances" in modules.enabled_keys(current_ctx())
+    attachable, categories = [], []
+    if finances_on:
+        finance.seed_defaults(current_ctx(), person)
+        linked = {expense["id"] for expense in item["expenses"]}
+        attachable = [txn for txn in _all_expenses(person, item["currency"]) if txn["id"] not in linked]
+        categories = finance.list_categories(current_ctx(), person, kind="expense")["items"]
+    if spend_form is None:
+        spend_form = {
+            "txn_date": _today_iso(),
+            "visibility": "household",
+            "currency": item["currency"],
+            "payer_id": str(person["id"]),
+        }
+    body = render_template(
+        "sejour.html",
+        item=item,
+        people=_members(),
+        finances_on=finances_on,
+        attachable=attachable,
+        categories=categories,
+        spend_form=spend_form,
+        errors=errors or {},
+    )
+    return body if status == 200 else (body, status)
+
+
+def _sejour_error(exc):
+    fields = dict(exc.fields)
+    fields.setdefault("form", exc.message)
+    return fields
+
+
+@pages.get("/sejours")
+def sejours_get():
+    person = _need()
+    modules.require_module(current_ctx(), "calendrier")
+    listed = sejours.list_sejours(current_ctx(), person)
+    return render_template("sejours.html", items=listed["items"])
+
+
+@pages.get("/sejours/nouveau")
+def sejour_new():
+    _need()
+    modules.require_module(current_ctx(), "calendrier")
+    return render_template(
+        "sejour_form.html",
+        form={"currency": "CHF", "participant_ids": []},
+        errors={}, people=_members(), editing=False,
+    )
+
+
+@pages.post("/sejours")
+def sejour_create():
+    person = _need()
+    form = _sejour_payload(request.form.to_dict())
+    try:
+        sejour_id = sejours.create_sejour(current_ctx(), person, form)
+    except AppError as exc:
+        if exc.status == 400:
+            return render_template(
+                "sejour_form.html", form=form, errors=exc.fields, people=_members(), editing=False,
+            ), 400
+        raise
+    return _go("sejour_saved", "pages.sejour_get", sejour_id=sejour_id)
+
+
+@pages.get("/sejours/<int:sejour_id>")
+def sejour_get(sejour_id):
+    person = _need()
+    item = sejours.get_sejour(current_ctx(), person, sejour_id)
+    return _sejour_detail(person, item)
+
+
+@pages.get("/sejours/<int:sejour_id>/modifier")
+def sejour_edit(sejour_id):
+    person = _need()
+    item = sejours.get_sejour(current_ctx(), person, sejour_id)
+    return render_template(
+        "sejour_form.html",
+        form=_sejour_form_from_item(item),
+        errors={}, people=_members(), editing=True, sejour_id=sejour_id,
+    )
+
+
+@pages.post("/sejours/<int:sejour_id>")
+def sejour_update(sejour_id):
+    person = _need()
+    form = _sejour_payload(request.form.to_dict())
+    try:
+        sejours.update_sejour(current_ctx(), person, sejour_id, form)
+    except AppError as exc:
+        if exc.status == 400:
+            current = sejours.get_sejour(current_ctx(), person, sejour_id)
+            form["currency"] = current["currency"]
+            return render_template(
+                "sejour_form.html", form=form, errors=exc.fields, people=_members(),
+                editing=True, sejour_id=sejour_id,
+            ), 400
+        raise
+    return _go("sejour_saved", "pages.sejour_get", sejour_id=sejour_id)
+
+
+@pages.post("/sejours/<int:sejour_id>/rattacher")
+def sejour_attach(sejour_id):
+    person = _need()
+    modules.require_module(current_ctx(), "finances")
+    try:
+        sejours.attach_expense(
+            current_ctx(), person, sejour_id,
+            request.form.get("transaction_id"), request.form.get("line_key"),
+        )
+    except AppError as exc:
+        if exc.status in {400, 409}:
+            item = sejours.get_sejour(current_ctx(), person, sejour_id)
+            return _sejour_detail(person, item, errors=_sejour_error(exc), status=exc.status)
+        raise
+    return _go("sejour_expense", "pages.sejour_get", sejour_id=sejour_id)
+
+
+@pages.post("/sejours/<int:sejour_id>/depense")
+def sejour_spend(sejour_id):
+    person = _need()
+    modules.require_module(current_ctx(), "finances")
+    form = request.form.to_dict()
+    form["split_person_ids"] = request.form.getlist("split_person_ids")
+    item = sejours.get_sejour(current_ctx(), person, sejour_id)
+    form["currency"] = item["currency"]
+    form["ledger_account_id"] = _account_for_currency(person, form)
+    try:
+        sejours.record_expense(current_ctx(), person, sejour_id, form)
+    except AppError as exc:
+        if exc.status in {400, 409}:
+            item = sejours.get_sejour(current_ctx(), person, sejour_id)
+            return _sejour_detail(person, item, spend_form=form, errors=_sejour_error(exc), status=exc.status)
+        raise
+    return _go("sejour_expense", "pages.sejour_get", sejour_id=sejour_id)
+
+
+@pages.post("/sejours/<int:sejour_id>/retirer")
+def sejour_detach(sejour_id):
+    person = _need()
+    modules.require_module(current_ctx(), "finances")
+    sejours.detach_expense(current_ctx(), person, sejour_id, request.form.get("attachment_id"))
+    return _go("sejour_detached", "pages.sejour_get", sejour_id=sejour_id)
 
 
 @pages.get("/recherche")
