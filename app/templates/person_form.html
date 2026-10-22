@@ -4,7 +4,7 @@
 <h1>Ajouter quelqu'un</h1>
 {% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
 {% if errors.with_account %}<p class="error">{{ errors.with_account }}</p>{% endif %}
-<form method="post">
+<form method="post" action="{{ url_for('pages.person_create') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>Nom <input name="display_name" required value="{{ form.get('display_name', '') }}"></label>
   {% if errors.display_name %}<p class="error">{{ errors.display_name }}</p>{% endif %}
