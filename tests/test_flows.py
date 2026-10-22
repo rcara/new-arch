@@ -258,8 +258,9 @@ def test_ajout_membre_depuis_le_formulaire(world):
     assert page.status_code == 200
     html = page.data.decode()
     assert "Ajouter quelqu'un" in html
-    action = re.search(r'<form method="post" action="([^"]+)"', html)
-    assert action, html
+    main = html.split('id="contenu"', 1)[1]
+    action = re.search(r'<form method="post" action="([^"]+)"', main)
+    assert action, main
     assert action.group(1) == "/personnes"
 
     member = web.submit(action.group(1), {
