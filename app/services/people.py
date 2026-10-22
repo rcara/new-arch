@@ -15,9 +15,10 @@ from ..validate import password_value, text_value, username_value
 def list_people(ctx, person):
     require_principal(person)
     rows = ctx.conn.execute(
-        """SELECT p.id, p.display_name, p.relationship, p.is_principal, p.active, p.can_view_index,
+        f"""SELECT p.id, p.display_name, p.relationship, p.is_principal, p.active, p.can_view_index,
                   a.username IS NOT NULL AS has_account
            FROM person p LEFT JOIN account a ON a.person_id=p.id
+           WHERE p.household_id={hh(ctx)}
            ORDER BY p.is_principal DESC, p.id"""
     ).fetchall()
     return [_public_person(row) for row in rows]
