@@ -371,6 +371,43 @@ a:hover{color:var(--accent);text-decoration-color:var(--accent)}
 .global-search input{margin:0;max-width:none;border-radius:999px;padding-left:16px}
 .global-search button{min-height:42px;padding:8px 16px}
 .topbar-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+.theme-toggle{margin:0}
+.theme-toggle-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:var(--touch);
+  min-width:var(--touch);
+  padding:8px 12px;
+  border:1px solid var(--border-strong);
+  border-radius:999px;
+  background:var(--surface);
+  color:var(--text-primary);
+  box-shadow:none;
+  font-family:var(--font-display);
+  font-size:.8125rem;
+  font-weight:600;
+}
+.theme-toggle-btn:hover,
+.theme-toggle-btn:focus-visible{
+  background:var(--surface-elevated);
+  border-color:var(--brand-petrol);
+  color:var(--text-primary);
+}
+html[data-theme=dark] .theme-toggle-btn,
+html[data-theme=dark] .theme-toggle-btn:hover,
+html[data-theme=dark] .theme-toggle-btn:focus-visible{
+  color:var(--text-primary);
+  background:var(--surface);
+  border-color:var(--border-strong);
+}
+html[data-theme=dark] .theme-toggle-btn:hover,
+html[data-theme=dark] .theme-toggle-btn:focus-visible{
+  border-color:var(--brand-sand);
+}
+.theme-icon{display:block;flex:0 0 auto}
+.theme-toggle-label{line-height:1}
 
 /* Menus déroulants sans JS (<details>) */
 .menu{position:relative}
@@ -1243,6 +1280,8 @@ td.is-today .day-num{background:var(--nav-active-bg);color:var(--nav-active-fg)}
   .global-search{order:3;flex-basis:100%;max-width:none}
   .global-search button{display:none}
   .user-name{display:none}
+  .theme-toggle-label{display:none}
+  .theme-toggle-btn{padding:8px}
   .user-menu>summary{padding:4px}
   .shell-main main{padding:20px 16px 112px}
   .tabbar{
