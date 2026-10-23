@@ -31,7 +31,7 @@ def test_migration_mediatheque(tmp_path):
     db_path = tmp_path / "metadata.sqlite"
     init_db(db_path)
     conn = connect(db_path)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert conn.execute("PRAGMA user_version").fetchone()[0] >= 8
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"media_work", "media_progress", "media_asset", "media_list"} <= tables
     conn.close()

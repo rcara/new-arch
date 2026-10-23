@@ -173,6 +173,8 @@ def create_app(home=None, clock=None, testing=False, port=8765):
             nav = "organisation"
         elif name.startswith("event"):
             nav = "calendrier"
+        elif name.startswith("sejour"):
+            nav = "sejours"
         elif name.startswith("search"):
             nav = "recherche"
         elif name.startswith("foyer"):

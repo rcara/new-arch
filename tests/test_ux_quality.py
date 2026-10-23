@@ -149,7 +149,7 @@ def test_search_skips_disabled_modules(demo):
 # CSP : uniquement des scripts locaux /static/js, aucun script ni style inline
 
 PAGES = [
-    "/", "/calendrier", "/calendrier?vue=semaine", "/calendrier?vue=liste", "/organisation",
+    "/", "/calendrier", "/calendrier?vue=semaine", "/calendrier?vue=liste", "/sejours", "/sejours/nouveau", "/organisation",
     "/finances", "/finances?vue=transactions", "/finances?vue=budgets", "/finances?vue=comptes",
     "/finances?vue=repartition", "/inventaire", "/inventaire?vue=liste", "/coffre", "/mediatheque",
     "/decisions", "/reperes", "/recherche?q=fa", "/parametres", "/organisation/nouvelle",

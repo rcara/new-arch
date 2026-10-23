@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Modifier le séjour{% else %}Nouveau séjour{% endif %}{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Agenda</p>
+    <h1>{% if editing %}Modifier le séjour{% else %}Nouveau séjour{% endif %}</h1>
+    <p class="muted">Le séjour reste visible pour chaque membre du foyer, qu'il participe ou non.</p>
+  </div>
+</header>
+<form class="form-card" method="post" action="{% if editing %}{{ url_for('pages.sejour_update', sejour_id=sejour_id) }}{% else %}{{ url_for('pages.sejour_create') }}{% endif %}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% include "_next.html" %}
+  <label>Titre <input name="title" required maxlength="200" value="{{ form.get('title','') }}" {% if errors.title %}aria-invalid="true"{% endif %} autofocus></label>
+  {% if errors.title %}<p class="error">{{ errors.title }}</p>{% endif %}
+  <label>Destination <input name="destination" maxlength="200" value="{{ form.get('destination','') }}" {% if errors.destination %}aria-invalid="true"{% endif %}></label>
+  {% if errors.destination %}<p class="error">{{ errors.destination }}</p>{% endif %}
+  <div class="form-row">
+    <label>Date de début <input type="date" name="start_date" required value="{{ form.get('start_date','') }}" {% if errors.start_date %}aria-invalid="true"{% endif %}></label>
+    <label>Date de fin <input type="date" name="end_date" required value="{{ form.get('end_date','') }}" {% if errors.end_date %}aria-invalid="true"{% endif %}></label>
+  </div>
+  {% if errors.start_date %}<p class="error">{{ errors.start_date }}</p>{% endif %}
+  {% if errors.end_date %}<p class="error">{{ errors.end_date }}</p>{% endif %}
+  {% if editing %}
+  <p>Devise <strong>{{ form.currency }}</strong></p>
+  <p class="muted">La devise est fixée à la création. Les montants restent dans cette devise, sans conversion.</p>
+  {% else %}
+  <label>Devise
+    <select name="currency">
+      <option value="CHF" {% if form.get('currency','CHF')=='CHF' %}selected{% endif %}>CHF</option>
+      <option value="EUR" {% if form.get('currency')=='EUR' %}selected{% endif %}>EUR</option>
+    </select>
+  </label>
+  {% if errors.currency %}<p class="error">{{ errors.currency }}</p>{% endif %}
+  <p class="muted">Une seule devise pour tout le séjour. CHF et EUR ne se convertissent pas.</p>
+  {% endif %}
+  <fieldset>
+    <legend>Participants</legend>
+    <p class="muted">Qui part. Ce choix ne cache pas le séjour aux autres membres.</p>
+    {% set selected = form.get('participant_ids') or [] %}
+    {% for p in people %}
+    <label class="permission">
+      <input type="checkbox" name="participant_ids" value="{{ p.id }}"
+        {% if (p.id|string) in selected or p.id in selected %}checked{% endif %}>
+      {{ p.display_name }}
+    </label>
+    {% endfor %}
+    {% if errors.participant_ids %}<p class="error">{{ errors.participant_ids }}</p>{% endif %}
+  </fieldset>
+  <fieldset>
+    <legend>Enveloppe</legend>
+    <p class="muted">Montant prévu par poste, dans la devise du séjour. Laissez vide pour zéro.</p>
+    <div class="form-row">
+      <label>Transport <input name="envelope_transport" inputmode="decimal" placeholder="0,00" value="{{ form.get('envelope_transport','') }}" {% if errors.envelope_transport %}aria-invalid="true"{% endif %}></label>
+      <label>Logement <input name="envelope_logement" inputmode="decimal" placeholder="0,00" value="{{ form.get('envelope_logement','') }}" {% if errors.envelope_logement %}aria-invalid="true"{% endif %}></label>
+    </div>
+    <div class="form-row">
+      <label>Repas <input name="envelope_repas" inputmode="decimal" placeholder="0,00" value="{{ form.get('envelope_repas','') }}" {% if errors.envelope_repas %}aria-invalid="true"{% endif %}></label>
+      <label>Activités <input name="envelope_activites" inputmode="decimal" placeholder="0,00" value="{{ form.get('envelope_activites','') }}" {% if errors.envelope_activites %}aria-invalid="true"{% endif %}></label>
+    </div>
+    <label>Divers <input name="envelope_divers" inputmode="decimal" placeholder="0,00" value="{{ form.get('envelope_divers','') }}" {% if errors.envelope_divers %}aria-invalid="true"{% endif %}></label>
+    {% for key in ['envelope_transport','envelope_logement','envelope_repas','envelope_activites','envelope_divers'] %}
+    {% if errors[key] %}<p class="error">{{ errors[key] }}</p>{% endif %}
+    {% endfor %}
+  </fieldset>
+  <div class="form-actions">
+    <button type="submit">Enregistrer</button>
+    <a class="btn" href="{{ next_url or url_for('pages.sejours_get') }}">Annuler</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_ui.html" import page_header, empty_state %}
+{% block title %}Séjours{% endblock %}
+{% block content %}
+{% call page_header("Agenda", "Séjours", "Visibles par tout le foyer. Les participants indiquent qui part : ils n'empêchent personne d'ouvrir la page.") %}
+<a class="btn btn--primary" href="{{ url_for('pages.sejour_new') }}">+ Nouveau séjour</a>
+{% endcall %}
+
+{% if not items %}
+{{ empty_state("Aucun séjour", "Un séjour porte ses dates, sa destination et une enveloppe. Il apparaît sur l'agenda, à côté des événements.", url_for('pages.sejour_new'), "Créer un séjour", example="« Bretagne » du 10 au 12 juillet, enveloppe transport 200,00 CHF.") }}
+{% else %}
+<div class="table-wrap">
+  <table class="data-table">
+    <caption class="sr-only">Séjours du foyer</caption>
+    <thead>
+      <tr>
+        <th scope="col">Séjour</th>
+        <th scope="col">Dates</th>
+        <th scope="col">Participants</th>
+        <th scope="col" class="num">Enveloppe</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td data-label="Séjour">
+          <b><a href="{{ url_for('pages.sejour_get', sejour_id=item.id) }}">{{ item.title }}</a></b>
+          {% if item.destination %}<span class="muted"> · {{ item.destination }}</span>{% endif %}
+        </td>
+        <td data-label="Dates">{{ item.start_date|frdate }} – {{ item.end_date|frdate }}</td>
+        <td data-label="Participants">{{ item.participants|map(attribute='display_name')|join(', ') or '—' }}</td>
+        <td data-label="Enveloppe" class="num">{{ item.envelope_label }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

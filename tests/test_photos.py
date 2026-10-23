@@ -298,7 +298,7 @@ def test_backup_and_restore_include_photos(world, tmp_path):
     archive = create_backup(Ctx(conn, clock, home, app.config["LOCK"], app.config["DUMMY_HASH"]))
     conn.close()
     manifest = json.loads((archive / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == 8
+    assert manifest["schema_version"] == 9
     assert key in {item["storage_key"] for item in manifest["media_files"]}
     dest = tmp_path / "restaure"
     restore_archive(archive, dest, clock)
@@ -351,12 +351,14 @@ def test_migration_008_on_copy_of_existing_v7_database(tmp_path):
 
     init_db(copy)
     after = _snapshot(copy)
-    assert set(after) == set(before) | {"object_photo"}
-    assert after["object_photo"] == []
+    added = {"object_photo", "sejour", "sejour_participant", "sejour_envelope_line", "sejour_expense"}
+    assert set(after) == set(before) | added
+    for table in added:
+        assert after[table] == []
     for table, rows in before.items():
         assert after[table] == rows, table
     conn = sqlite3.connect(copy)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 9
     assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
     with pytest.raises(sqlite3.IntegrityError):
@@ -371,9 +373,10 @@ def test_migration_008_on_copy_of_existing_v7_database(tmp_path):
     init_db(copy)
     assert _snapshot(copy) == after
 
-    rollback = Path(MIGRATIONS / "rollback" / "008_object_photo_down.sql").read_text(encoding="utf-8")
     conn = sqlite3.connect(copy)
-    conn.executescript(rollback)
+    conn.executescript((MIGRATIONS / "rollback" / "009_sejour_down.sql").read_text(encoding="utf-8"))
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 8
+    conn.executescript((MIGRATIONS / "rollback" / "008_object_photo_down.sql").read_text(encoding="utf-8"))
     assert conn.execute("PRAGMA user_version").fetchone()[0] == 7
     conn.close()
     assert _snapshot(copy) == before

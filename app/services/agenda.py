@@ -1,4 +1,4 @@
-"""Agenda : vues mois, semaine et liste (lecture seule, au-dessus de events et milestones).
+"""Agenda : vues mois, semaine et liste (lecture seule, au-dessus de events, séjours et milestones).
 
 Les événements récurrents apparaissent comme autant d'occurrences, calculées à la lecture sur la période.
 
@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from ..clock import civil_today
 from ..db import require_household
 from ..tenancy import hh
-from . import events, milestones, modules
+from . import events, milestones, modules, sejours
 
 VIEWS = ("mois", "semaine", "liste")
 LIST_DAYS = 60
@@ -67,6 +67,10 @@ def _deadlines(ctx, person, start, end):
         page += 1
 
 
+def _sejours(ctx, person, start, end, q=""):
+    return sejours.overlapping(ctx, person, start.isoformat(), end.isoformat(), q=q)
+
+
 def _entries(ctx, person, start, end, member_id, q):
     entries = []
     for item in _events(ctx, person, start, end, q):
@@ -76,6 +80,13 @@ def _entries(ctx, person, start, end, member_id, q):
             "who": item["responsible_name"], "people": {item["responsible_id"]},
             "recurrence": item["recurrence"], "recurrence_label": item["recurrence_label"],
             "occurrence": item["start_date"] if item["is_occurrence"] else None,
+        })
+    for item in _sejours(ctx, person, start, end, q):
+        entries.append({
+            "kind": "sejour", "id": item["id"], "title": item["title"],
+            "start": item["start_date"], "end": item["end_date"],
+            "who": item["destination"], "people": set(item["participant_ids"]),
+            "span": True,
         })
     for item in [] if q else _deadlines(ctx, person, start, end):
         entries.append({
@@ -94,7 +105,7 @@ def _by_day(entries, start, end, *, span=True):
     days = {}
     for entry in entries:
         first = max(date.fromisoformat(entry["start"]), start)
-        last = min(date.fromisoformat(entry["end"]), end) if span else first
+        last = min(date.fromisoformat(entry["end"]), end) if span or entry.get("span") else first
         day = first
         while day <= last:
             days.setdefault(day.isoformat(), []).append(entry)

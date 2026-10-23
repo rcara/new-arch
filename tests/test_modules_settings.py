@@ -20,7 +20,7 @@ TOGGLEABLE = [key for key in NAV_ORDER if key not in LOCKED]
 PAGES = {
     "finances": ["/finances", "/finances/depense", "/finances/export.csv"],
     "inventaire": ["/inventaire", "/inventaire/nouveau", "/maison"],
-    "calendrier": ["/calendrier", "/calendrier/nouveau", "/agenda"],
+    "calendrier": ["/calendrier", "/calendrier/nouveau", "/agenda", "/sejours", "/sejours/nouveau"],
     "organisation": ["/organisation", "/organisation/nouvelle", "/a-faire"],
     "coffre": ["/coffre"],
     "decisions": ["/decisions", "/decisions/nouvelle"],

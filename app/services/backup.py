@@ -13,7 +13,7 @@ from ..errors import AppError
 from .media import asset_path, ensure_media_layout
 from .vault import HEX, object_path
 
-ACCEPTED_SCHEMA = frozenset({2, 3, 4, 5, 6, 7, 8})
+ACCEPTED_SCHEMA = frozenset({2, 3, 4, 5, 6, 7, 8, 9})
 
 
 def _copy_hashed_objects(home, rows, source_resolver, dest_dir, crypto=None):

@@ -10,6 +10,7 @@ from flask import url_for
 ACTIVE = {
     "today": ("aujourdhui", None),
     "calendrier": ("agenda", "calendrier"),
+    "sejours": ("agenda", "sejours"),
     "reperes": ("agenda", "reperes"),
     "organisation": ("afaire", "taches"),
     "finances": ("finances", "finances"),
@@ -60,6 +61,7 @@ def build(person, enabled, nav, here="/", sub=""):
         ]),
         _group("agenda", "Agenda", "Agenda", [
             on("calendrier") and _entry("calendrier", "Calendrier", "pages.events_get"),
+            on("calendrier") and _entry("sejours", "Séjours", "pages.sejours_get"),
             on("reperes") and index and _entry("reperes", "Repères et échéances", "pages.milestones_get"),
         ]),
         _group("afaire", "À faire", "À faire", [
@@ -96,6 +98,7 @@ def build(person, enabled, nav, here="/", sub=""):
     create = [
         on("finances") and _entry("depense", "Dépense", "pages.finance_expense_new", **back),
         on("calendrier") and dict(_entry("evenement", "Événement", "pages.event_new", **back), panel="ajout-evenement"),
+        on("calendrier") and _entry("sejour", "Séjour", "pages.sejour_new", **back),
         on("organisation") and dict(_entry("tache", "Tâche", "pages.task_new", **back), panel="ajout-tache"),
         on("inventaire") and _entry("bien", "Bien", "pages.inventory_item_new", **back),
         principal and on("coffre") and _entry("document", "Document", "pages.vault_get", _anchor="depot"),
