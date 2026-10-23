@@ -124,6 +124,22 @@ def test_theme_cookie_and_settings(world):
     assert b"Th\xc3\xa8me enregistr" in posted.data or b"enregistr" in posted.data
 
 
+def test_theme_toggle_in_topbar(world):
+    web, _app, _home, _clock = world
+    home = web.get("/")
+    assert home.status_code == 200
+    assert b'class="theme-toggle"' in home.data
+    assert b"Passer en mode sombre" in home.data
+    toggled = web.submit("/parametres/theme", {"theme": "dark", "next": "/"}, follow=True)
+    assert toggled.status_code == 200
+    assert b'data-theme="dark"' in toggled.data
+    assert b"Passer en mode clair" in toggled.data
+    back = web.submit("/parametres/theme", {"theme": "light", "next": "/"}, follow=True)
+    assert back.status_code == 200
+    assert b'data-theme="light"' in back.data
+    assert b"Passer en mode sombre" in back.data
+
+
 def test_inventory_csv_export(world):
     web, _app, _home, _clock = world
     place = web.api("POST", "/api/inventory/places", {"name": "Cave"}).get_json()

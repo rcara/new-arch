@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="color-scheme" content="{{ theme|default('light') }}">
-  <meta name="theme-color" content="#24364A">
+  <meta name="theme-color" content="{{ '#1A2430' if (theme|default('light')) == 'dark' else '#24364A' }}">
   <title>{% block title %}Accueil{% endblock %} · New Arch</title>
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='brand/favicon-32.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='brand/apple-touch-icon.png') }}">
@@ -66,6 +66,27 @@
         </form>
         {% endif %}
         <div class="topbar-actions">
+          {% set current_theme = theme|default('light') %}
+          {% set next_theme = 'light' if current_theme == 'dark' else 'dark' %}
+          <form class="theme-toggle" method="post" action="{{ url_for('pages.settings_theme_post') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="theme" value="{{ next_theme }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="theme-toggle-btn" aria-label="{% if current_theme == 'dark' %}Passer en mode clair{% else %}Passer en mode sombre{% endif %}" title="{% if current_theme == 'dark' %}Mode clair{% else %}Mode sombre{% endif %}">
+              {% if current_theme == 'dark' %}
+              <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.75"/>
+                <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/>
+              </svg>
+              <span class="theme-toggle-label">Clair</span>
+              {% else %}
+              <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" d="M18.5 14.2A7.2 7.2 0 0 1 9.8 5.5 7.4 7.4 0 1 0 18.5 14.2z"/>
+              </svg>
+              <span class="theme-toggle-label">Sombre</span>
+              {% endif %}
+            </button>
+          </form>
           {% if shell.create %}
           <details class="menu create-menu">
             <summary class="btn btn--primary"><span aria-hidden="true">+</span> Ajouter</summary>

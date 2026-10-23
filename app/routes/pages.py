@@ -751,7 +751,7 @@ def settings_theme_post():
     theme = (request.form.get("theme") or "").strip()
     if theme not in THEMES:
         raise AppError(400, "validation", "Thème inconnu.")
-    response = redirect(url_for("pages.settings_get"))
+    response = redirect(_next_target() or url_for("pages.settings_get"))
     cookie_theme(response, theme)
     return cookie_message(response, "theme_saved")
 
