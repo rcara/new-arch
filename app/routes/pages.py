@@ -756,7 +756,7 @@ def settings_theme_post():
     return cookie_message(response, "theme_saved")
 
 
-FINANCE_VIEWS = ("apercu", "transactions", "budgets", "comptes", "repartition")
+FINANCE_VIEWS = ("apercu", "transactions", "budgets", "comptes")
 
 
 @pages.get("/finances")
@@ -785,7 +785,6 @@ def finance_get():
             months=months,
             current=months[-1],
             budgets=finance.list_budgets(ctx, person, currency=currency, year=today.year, month=today.month)["items"],
-            balances=finance.person_balances(ctx, person, currency=currency),
             transactions=finance.list_transactions(ctx, person, currency=currency)["items"][:8],
         )
     elif view == "transactions":
@@ -797,8 +796,6 @@ def finance_get():
         data.update(budgets=finance.list_budgets(ctx, person, currency=currency)["items"])
     elif view == "comptes":
         data.update(accounts=finance.list_ledger_accounts(ctx, person)["items"])
-    else:
-        data.update(balances=finance.person_balances(ctx, person, currency=currency))
     return render_template("finance.html", **data)
 
 
@@ -811,7 +808,6 @@ def finance_expense_new():
         form={
             "currency": "CHF",
             "visibility": "household",
-            "split_method": "equal",
             "txn_date": _today_iso(),
         },
         errors={},
@@ -826,7 +822,8 @@ def finance_expense_create():
     person = _need()
     form = request.form.to_dict()
     form["kind"] = "expense"
-    form["split_person_ids"] = request.form.getlist("split_person_ids")
+    form["split_method"] = "equal"
+    form["split_person_ids"] = [member["id"] for member in _members()]
     form["ledger_account_id"] = _account_for_currency(person, form)
     try:
         finance.create_transaction(current_ctx(), person, form)
@@ -843,44 +840,6 @@ def finance_expense_create():
             ), 400
         raise
     return _done("finance_saved", "pages.finance_get")
-
-
-@pages.get("/finances/remboursement")
-def finance_reimburse_new():
-    person = _need()
-    finance.seed_defaults(current_ctx(), person)
-    return render_template(
-        "finance_reimburse_form.html",
-        form={"currency": "CHF", "txn_date": "", "visibility": "household"},
-        errors={},
-        accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
-        people=_members(),
-        expenses=[
-            item for item in finance.list_transactions(current_ctx(), person, kind="expense")["items"]
-        ],
-    )
-
-
-@pages.post("/finances/remboursement")
-def finance_reimburse_create():
-    person = _need()
-    form = request.form.to_dict()
-    form["kind"] = "reimbursement"
-    try:
-        finance.create_transaction(current_ctx(), person, form)
-    except AppError as exc:
-        if exc.status == 400:
-            finance.seed_defaults(current_ctx(), person)
-            return render_template(
-                "finance_reimburse_form.html",
-                form=form,
-                errors=exc.fields or {"form": exc.message},
-                accounts=finance.list_ledger_accounts(current_ctx(), person)["items"],
-                people=_members(),
-                expenses=finance.list_transactions(current_ctx(), person, kind="expense")["items"],
-            ), 400
-        raise
-    return _go("finance_saved", "pages.finance_get")
 
 
 @pages.get("/finances/budget")

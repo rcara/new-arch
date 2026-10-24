@@ -179,7 +179,7 @@ def test_finance_sections_and_currencies(alex, camille):
     _expense(alex, "Péage EUR", "20,00", "EUR", me)
     _expense(alex, "Cadeau secret", "99,00", "CHF", me, visibility="private")
 
-    for vue in ("", "transactions", "budgets", "comptes", "repartition", "nimporte"):
+    for vue in ("", "transactions", "budgets", "comptes", "nimporte"):
         assert alex.get(f"/finances?vue={vue}").status_code == 200, vue
 
     overview = alex.get("/finances").data.decode()
@@ -207,8 +207,11 @@ def test_finance_sidebar_matches_tabs(alex):
     sidebar = page[page.index('<aside class="sidebar"'):page.index("</aside>")]
     assert 'href="/finances?vue=budgets" aria-current="page">Budgets' in sidebar
     assert "Nouvelle dépense" not in sidebar
-    reimburse = alex.get("/finances/remboursement").data.decode()
-    assert 'href="/finances?vue=repartition" aria-current="page">Répartition' in reimburse
+    assert "Répartition" not in sidebar
+    overview = alex.get("/finances").data.decode()
+    assert "Répartition" not in overview
+    assert "Qui doit quoi" not in overview
+    assert alex.get("/finances/remboursement").status_code == 404
 
 
 def test_finance_month_total_respects_visibility(alex, camille):
