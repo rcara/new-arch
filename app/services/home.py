@@ -65,13 +65,6 @@ def dashboard(ctx, person):
     if "finances" in enabled:
         from . import finance
         finance.seed_defaults(ctx, person)
-        balances = finance.person_balances(ctx, person, currency="CHF")
-        payload["finance_balances"] = balances
-        mine_entry = next(
-            (item for item in balances.get("entries", []) if item["person_id"] == person["id"]),
-            None,
-        )
-        payload["mine"]["balance"] = mine_entry
 
     if "inventaire" in enabled:
         from . import inventory
@@ -121,20 +114,14 @@ def _daily(ctx, person, enabled, payload):
     if "finances" in enabled:
         from . import finance
         budgets = []
-        balances = []
         for currency in sorted(CURRENCIES):
             listed = finance.list_budgets(ctx, person, year=today.year, month=today.month, currency=currency)
             budgets.extend(item for item in listed["items"] if item["period"] == "month")
-            entries = finance.person_balances(ctx, person, currency=currency).get("entries", [])
-            open_entries = [item for item in entries if item.get("net_minor")]
-            if open_entries:
-                balances.append({"currency": currency, "entries": open_entries})
         payload["finance_month"] = {
             "year": today.year,
             "month": today.month,
             "spending": finance.month_spending(ctx, person, year=today.year, month=today.month),
             "budgets": budgets,
-            "balances": balances,
         }
 
     payload["recent"] = _recent(ctx, person, enabled)

@@ -47,20 +47,9 @@
 </ul>
 {% endmacro %}
 
-{% macro balance_list(balances) %}
-<ul class="plain-list balances">
-  {% for item in balances.entries %}
-  <li><b>{{ item.display_name }}</b> <span class="{% if item.net_minor < 0 %}is-late{% elif item.net_minor > 0 %}is-positive{% else %}muted{% endif %}">{{ item.net_label }} · {{ item.meaning }}</span></li>
-  {% else %}
-  <li class="muted">Aucun membre actif.</li>
-  {% endfor %}
-</ul>
-{% endmacro %}
-
 {% block content %}
 {% call page_header("Finances", "Finances", "Montants exacts en " ~ currency ~ " · CHF et EUR restent séparés, sans conversion.") %}
 <a class="btn btn--primary" href="{{ url_for('pages.finance_expense_new', next=request.path) }}">+ Dépense</a>
-<a class="btn" href="{{ url_for('pages.finance_reimburse_new') }}">Remboursement</a>
 {% endcall %}
 
 <div class="list-toolbar">
@@ -69,7 +58,6 @@
     ('transactions', 'Transactions', fin('transactions')),
     ('budgets', 'Budgets', fin('budgets')),
     ('comptes', 'Comptes', fin('comptes')),
-    ('repartition', 'Répartition', fin('repartition')),
   ], view, "Sections des finances") }}
   {% if view != 'comptes' %}
   {{ subnav([('CHF', 'CHF', fin(view, 'CHF')), ('EUR', 'EUR', fin(view, 'EUR'))], currency, "Devise") }}
@@ -99,11 +87,6 @@
     {% else %}
     <div class="empty-inline"><p>Aucun budget pour {{ MONTHS[today.month - 1] }} en {{ currency }}.</p><a class="btn btn--small" href="{{ url_for('pages.finance_budget_new') }}">Fixer un budget</a></div>
     {% endif %}
-  </section>
-  <section class="dash-card" aria-labelledby="fin-soldes">
-    <h2 id="fin-soldes">Qui doit quoi</h2>
-    {{ balance_list(balances) }}
-    <p><a href="{{ fin('repartition') }}">Voir la répartition</a></p>
   </section>
   <section class="dash-card dash-card--wide" aria-labelledby="fin-recent">
     <h2 id="fin-recent">Dernières transactions</h2>
@@ -140,7 +123,7 @@
 {% elif kind %}
 {{ empty_state("Aucune transaction de ce type", "Aucune transaction « " ~ KINDS.get(kind, kind) ~ " » en " ~ currency ~ ".", fin('transactions'), "Voir toutes les transactions", kind="search") }}
 {% else %}
-{{ empty_state("Aucune transaction en " ~ currency, "Enregistrez les dépenses du foyer : la répartition entre membres et les budgets se calculent automatiquement.", url_for('pages.finance_expense_new', next=request.path), "Ajouter une dépense", example="« Courses Migros », 84,20 CHF, payé par Alex, partagé à parts égales.") }}
+{{ empty_state("Aucune transaction en " ~ currency, "Enregistrez les dépenses du foyer : les budgets se calculent automatiquement.", url_for('pages.finance_expense_new', next=request.path), "Ajouter une dépense", example="« Courses Migros », 84,20 CHF, payé par Alex.") }}
 {% endif %}
 
 {% elif view == 'budgets' %}
@@ -160,16 +143,6 @@
     <p><span class="badge">{{ item.currency }}</span> <span class="muted">{{ {'checking': 'Compte courant', 'savings': 'Épargne', 'cash': 'Espèces', 'credit': 'Crédit', 'other': 'Autre'}.get(item.account_kind, item.account_kind) }} · {{ item.owner_name or 'Foyer' }}</span></p>
   </section>
   {% endfor %}
-</div>
-
-{% else %}
-<div class="dash-grid">
-  <section class="dash-card" aria-labelledby="fin-rep">
-    <h2 id="fin-rep">Soldes en {{ currency }}</h2>
-    {{ balance_list(balances) }}
-    <p class="muted">Positif : la personne a avancé plus que sa part. Les remboursements réduisent l'écart sans recompter la dépense.</p>
-    <p><a class="btn btn--primary" href="{{ url_for('pages.finance_reimburse_new') }}">Enregistrer un remboursement</a></p>
-  </section>
 </div>
 {% endif %}
 {% endblock %}

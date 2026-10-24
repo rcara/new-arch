@@ -175,18 +175,6 @@
       {% endfor %}
     </ul>
     {% endif %}
-    {% if fm.balances %}
-    <h3 class="list-title">Soldes entre membres</h3>
-    {% for group in fm.balances %}
-    {% for item in group.entries %}
-    <div class="row row--today">
-      <b>{{ item.display_name }}</b>
-      <span class="amount">{{ item.net_label }}</span>
-      <span class="muted">{{ item.meaning }}</span>
-    </div>
-    {% endfor %}
-    {% endfor %}
-    {% endif %}
     <p class="card-foot"><a class="btn btn--small" href="{{ url_for('pages.finance_expense_new') }}">+ Ajouter une dépense</a></p>
   </section>
   {% endif %}

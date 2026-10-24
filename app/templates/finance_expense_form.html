@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Finances</p>
     <h1>Nouvelle dépense</h1>
-    <p class="muted">Par défaut : partagée à parts égales entre les membres, visible du foyer. Un remboursement ultérieur ne recompte pas la dépense.</p>
+    <p class="muted">Visible du foyer par défaut. Les budgets se mettent à jour automatiquement.</p>
   </div>
 </header>
 {% if errors.form %}<p class="error" role="alert">{{ errors.form }}</p>
@@ -46,8 +46,8 @@
     </select>
   </label>
   {% if errors.payer_id %}<p class="error">{{ errors.payer_id }}</p>{% endif %}
-  <details class="more" {% if errors.ledger_account_id or errors.splits or errors.split_method or errors.split_person_ids or errors.visibility or errors.notes %}open{% endif %}>
-    <summary>Plus d'options : compte, répartition, visibilité</summary>
+  <details class="more" {% if errors.ledger_account_id or errors.visibility or errors.notes %}open{% endif %}>
+    <summary>Plus d'options : compte, visibilité</summary>
     <label>Compte débité
       <select name="ledger_account_id">
         <option value="">Automatique (premier compte de la devise)</option>
@@ -57,30 +57,6 @@
       </select>
     </label>
     {% if errors.ledger_account_id %}<p class="error">{{ errors.ledger_account_id }}</p>{% endif %}
-    <label>Répartition
-      <select name="split_method">
-        <option value="equal" {% if form.get('split_method','equal')=='equal' %}selected{% endif %}>Égale (ex. 50/50)</option>
-        <option value="income_prorata" {% if form.get('split_method')=='income_prorata' %}selected{% endif %}>Prorata des revenus</option>
-      </select>
-    </label>
-    {% if errors.split_method %}<p class="error">{{ errors.split_method }}</p>{% endif %}
-    <fieldset>
-      <legend>Personnes qui partagent</legend>
-      {% set selected = form.get('split_person_ids') %}
-      {% for p in people %}
-      <label class="permission">
-        <input type="checkbox" name="split_person_ids" value="{{ p.id }}"
-          {% if selected is sequence and selected is not string %}
-            {% if (p.id|string) in selected or p.id in selected %}checked{% endif %}
-          {% else %}
-            checked
-          {% endif %}>
-        {{ p.display_name }}
-      </label>
-      {% endfor %}
-    </fieldset>
-    {% if errors.splits %}<p class="error">{{ errors.splits }}</p>{% endif %}
-    {% if errors.split_person_ids %}<p class="error">{{ errors.split_person_ids }}</p>{% endif %}
     <label>Visibilité
       <select name="visibility">
         <option value="household" {% if form.get('visibility','household')=='household' %}selected{% endif %}>Foyer</option>

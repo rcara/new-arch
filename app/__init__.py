@@ -191,8 +191,6 @@ def create_app(home=None, clock=None, testing=False, port=8765):
                 sub = request.args.get("vue") or "apercu"
             elif name.startswith("finance_budget"):
                 sub = "budgets"
-            elif name.startswith("finance_reimburse"):
-                sub = "repartition"
             else:
                 sub = "transactions"
         elif name.startswith("inventory") or name.startswith("inventaire"):

@@ -73,7 +73,6 @@ def build(person, enabled, nav, here="/", sub=""):
             on("finances") and _entry("transactions", "Transactions", "pages.finance_get", vue="transactions"),
             on("finances") and _entry("budgets", "Budgets", "pages.finance_get", vue="budgets"),
             on("finances") and _entry("comptes", "Comptes", "pages.finance_get", vue="comptes"),
-            on("finances") and _entry("repartition", "Répartition", "pages.finance_get", vue="repartition"),
         ]),
         _group("maison", "Maison", "Maison", [
             on("inventaire") and _entry("inventaire", "Inventaire", "pages.inventory_get"),

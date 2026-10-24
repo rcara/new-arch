@@ -151,7 +151,7 @@ def test_search_skips_disabled_modules(demo):
 PAGES = [
     "/", "/calendrier", "/calendrier?vue=semaine", "/calendrier?vue=liste", "/sejours", "/sejours/nouveau", "/organisation",
     "/finances", "/finances?vue=transactions", "/finances?vue=budgets", "/finances?vue=comptes",
-    "/finances?vue=repartition", "/inventaire", "/inventaire?vue=liste", "/coffre", "/mediatheque",
+    "/finances?vue=comptes", "/inventaire", "/inventaire?vue=liste", "/coffre", "/mediatheque",
     "/decisions", "/reperes", "/recherche?q=fa", "/parametres", "/organisation/nouvelle",
     "/finances/depense", "/page-qui-n-existe-pas",
 ]
