@@ -4,6 +4,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Exception produit : sync Google Calendar (serveur → Google uniquement, CSP form-action 'self').
+_GOOGLE_HTTPS_ALLOW = (
+    "https://accounts.google.com/o/oauth2/v2/auth",
+    "https://oauth2.googleapis.com/token",
+    "https://oauth2.googleapis.com/revoke",
+    "https://openidconnect.googleapis.com/v1/userinfo",
+    "https://www.googleapis.com/calendar/v3",
+    "https://www.googleapis.com/auth/calendar",
+)
+
 
 def test_pas_de_reseau_externe_ni_d_exposition():
     texts = []
@@ -13,8 +23,11 @@ def test_pas_de_reseau_externe_ni_d_exposition():
     texts.append((ROOT / "launcher.py").read_text(encoding="utf-8"))
     blob = "\n".join(texts)
     assert "0.0.0.0" not in blob
-    assert "https://" not in blob
-    assert "http://" not in blob.replace("http://127.0.0.1", "")
+    scrubbed = blob
+    for url in _GOOGLE_HTTPS_ALLOW:
+        scrubbed = scrubbed.replace(url, "")
+    assert "https://" not in scrubbed
+    assert "http://" not in scrubbed.replace("http://127.0.0.1", "")
     assert "index_projection" not in blob
     assert "SELECT *" not in blob and "SELECT f.*" not in blob
 

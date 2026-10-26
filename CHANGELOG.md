@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0] — 2026-10-26
+
+### Ajouté
+- Sync bidirectionnel Google Calendar (compte foyer `rcara.home@gmail.com`)
+- Migration `010_google_calendar.sql` (`user_version=10`) : OAuth link, event map, overlay
+- Routes `/parametres/google/*` + `/oauth/google/callback` (principal, CSRF)
+- Calendrier Google dédié « New Arch » (two-way) ; autres calendriers en overlay Agenda
+- `events.archive_event` ; tests `tests/test_google_calendar.py`
+
+### Sécurité
+- Secrets client via env `FOYER_GOOGLE_*` uniquement (jamais en dépôt)
+- Jetons scellés avec `crypto.seal` si chiffrement foyer actif
+
 ## [0.10.0] — 2026-10-21
 
 ### Ajouté

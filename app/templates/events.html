@@ -8,7 +8,7 @@
 {{ url_for('pages.events_get', vue=view, date=day, membre=member or None, q=q or None) }}
 {%- endmacro %}
 {% macro entry_link(entry) -%}
-{% if entry.kind == 'event' %}{{ url_for('pages.event_get', event_id=entry.id, occurrence=entry.occurrence) }}{% elif entry.kind == 'sejour' %}{{ url_for('pages.sejour_get', sejour_id=entry.id) }}{% else %}{{ url_for('pages.milestone_get', milestone_id=entry.id) }}{% endif %}
+{% if entry.kind == 'event' %}{{ url_for('pages.event_get', event_id=entry.id, occurrence=entry.occurrence) }}{% elif entry.kind == 'sejour' %}{{ url_for('pages.sejour_get', sejour_id=entry.id) }}{% elif entry.kind == 'google-external' %}{{ url_for('pages.settings_get') }}{% else %}{{ url_for('pages.milestone_get', milestone_id=entry.id) }}{% endif %}
 {%- endmacro %}
 
 {% call page_header("Agenda", "Calendrier", "Événements du foyer, séjours et échéances des repères.") %}
@@ -69,8 +69,12 @@
         {% if day.entries %}
         <ul class="day-entries">
           {% for entry in day.entries %}
-          <li class="agenda-entry agenda-entry--{{ entry.kind }}">
+          <li class="agenda-entry agenda-entry--{{ entry.kind|replace('-', '_') }}">
+            {% if entry.kind == 'google-external' %}
+            <span title="Google · {{ entry.calendar_name }} (lecture seule)">{% if entry.who %}<span class="sr-only">Google ({{ entry.who }}) : </span>{% endif %}{{ entry.title }}</span>
+            {% else %}
             <a href="{{ entry_link(entry) }}">{% if entry.kind == 'milestone' %}<span class="sr-only">Échéance : </span>{% elif entry.kind == 'sejour' %}<span class="sr-only">Séjour : </span>{% endif %}{% if entry.occurrence %}<span class="recur-mark" title="{{ entry.recurrence_label }}" aria-hidden="true">↻</span> {% endif %}{{ entry.title }}{% if entry.occurrence %}<span class="sr-only"> ({{ entry.recurrence_label|lower }})</span>{% endif %}</a>
+            {% endif %}
           </li>
           {% endfor %}
         </ul>
@@ -88,12 +92,16 @@
     <h3><span>{{ group.weekday }}</span> {{ group.iso|frdate }}{% if group.is_today %} <span class="chip chip--a_jour">Aujourd'hui</span>{% endif %}</h3>
     <ul>
       {% for entry in group.entries %}
-      <li class="agenda-entry agenda-entry--{{ entry.kind }}">
+      <li class="agenda-entry agenda-entry--{{ entry.kind|replace('-', '_') }}">
+        {% if entry.kind == 'google-external' %}
+        <span>{{ entry.title }}</span>
+        {% else %}
         <a href="{{ entry_link(entry) }}">{{ entry.title }}</a>
+        {% endif %}
         <span class="muted">
-          {% if entry.kind == 'milestone' %}Échéance de repère{% elif entry.kind == 'sejour' %}Séjour{% else %}Événement{% endif %}
+          {% if entry.kind == 'milestone' %}Échéance de repère{% elif entry.kind == 'sejour' %}Séjour{% elif entry.kind == 'google-external' %}Google · {{ entry.calendar_name }} (lecture seule){% else %}Événement{% endif %}
           {% if entry.end != entry.start %} · jusqu'au {{ entry.end|frdate }}{% endif %}
-          {% if entry.who %} · {{ entry.who }}{% endif %}
+          {% if entry.who and entry.kind != 'google-external' %} · {{ entry.who }}{% endif %}
           {% if entry.occurrence %} · <span class="recur-mark" aria-hidden="true">↻</span> {{ entry.recurrence_label }}{% endif %}
         </span>
       </li>
@@ -103,5 +111,5 @@
   {% endfor %}
 </ol>
 {% endif %}
-<p class="muted agenda-legend"><span class="legend legend--event"></span> Événement · <span class="legend legend--sejour"></span> Séjour · <span class="legend legend--milestone"></span> Échéance de repère{% if not person.can_view_index %} (non accordées à votre compte){% endif %} · <span class="recur-mark" aria-hidden="true">↻</span> Occurrence d'un événement récurrent</p>
+<p class="muted agenda-legend"><span class="legend legend--event"></span> Événement · <span class="legend legend--sejour"></span> Séjour · <span class="legend legend--milestone"></span> Échéance de repère{% if not person.can_view_index %} (non accordées à votre compte){% endif %} · <span class="legend legend--google_external"></span> Google (lecture seule) · <span class="recur-mark" aria-hidden="true">↻</span> Occurrence d'un événement récurrent</p>
 {% endblock %}

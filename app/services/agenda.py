@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from ..clock import civil_today
 from ..db import require_household
 from ..tenancy import hh
-from . import events, milestones, modules, sejours
+from . import events, google_calendar, milestones, modules, sejours
 
 VIEWS = ("mois", "semaine", "liste")
 LIST_DAYS = 60
@@ -95,6 +95,10 @@ def _entries(ctx, person, start, end, member_id, q):
             "who": item["responsible_name"] or item["holder_name"],
             "people": {item["responsible_id"], item["holder_id"]}, "status": item["status"],
         })
+    # Overlay Google (autres calendriers) : lecture seule, pas de filtre membre.
+    if not member_id:
+        for item in google_calendar.overlay_entries(ctx, start=start, end=end, q=q):
+            entries.append(item)
     if member_id:
         entries = [entry for entry in entries if member_id in entry["people"]]
     entries.sort(key=lambda entry: (entry["start"], entry["kind"] != "event", entry["title"].lower()))
@@ -135,6 +139,7 @@ def build(ctx, person, *, view="mois", anchor="", member_id=None, q=""):
     view = view if view in VIEWS else "mois"
     day = _anchor(anchor, today)
     start, end = _range(view, day)
+    google_calendar.maybe_sync(ctx, person)
     entries = _entries(ctx, person, start, end, member_id, q.strip())
     days = _by_day(entries, start, end, span=view != "liste")
     weeks = []

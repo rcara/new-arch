@@ -54,7 +54,10 @@ def init_db(path):
         if version == 8:
             conn.executescript((MIGRATIONS / "009_sejour.sql").read_text(encoding="utf-8"))
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-        if version != 9:
+        if version == 9:
+            conn.executescript((MIGRATIONS / "010_google_calendar.sql").read_text(encoding="utf-8"))
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version != 10:
             raise RuntimeError("schema incompatible")
     finally:
         conn.close()

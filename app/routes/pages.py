@@ -9,7 +9,7 @@ from ..errors import AppError
 from ..money import format_minor
 from ..http import THEMES, cookie_message, cookie_onboarding, cookie_session, cookie_setup, cookie_theme, safe_next
 from ..security import new_token
-from ..services import agenda, auth, decisions, events, finance, home, inventory, links, media, milestones, modules, people, photos, search, sejours, tasks, vault
+from ..services import agenda, auth, decisions, events, finance, google_calendar, home, inventory, links, media, milestones, modules, people, photos, search, sejours, tasks, vault
 from ..validate import text_value
 
 pages = Blueprint("pages", __name__)
@@ -699,7 +699,59 @@ def settings_get():
         household=g.household,
         theme=resolve_theme(request.cookies.get("foyer_theme")),
         onboarding_hidden=request.cookies.get("foyer_onboarding") == "hidden",
+        google=google_calendar.status(current_ctx(), person),
     )
+
+
+@pages.post("/parametres/google/connect")
+def google_connect_post():
+    person = _need()
+    modules.require_module(current_ctx(), "parametres")
+    origin = current_app.config.get("EXPECTED_ORIGIN")
+    url = google_calendar.start_connect(current_ctx(), person, origin=origin)
+    return redirect(url)
+
+
+@pages.get("/oauth/google/callback")
+def google_oauth_callback():
+    person = _need()
+    modules.require_module(current_ctx(), "parametres")
+    if request.args.get("error"):
+        return _go("google_refused", "pages.settings_get")
+    origin = current_app.config.get("EXPECTED_ORIGIN")
+    try:
+        google_calendar.complete_connect(
+            current_ctx(),
+            person,
+            code=request.args.get("code") or "",
+            state=request.args.get("state") or "",
+            origin=origin,
+        )
+    except AppError as exc:
+        if exc.status in (403, 400):
+            return _go("google_refused", "pages.settings_get")
+        raise
+    try:
+        google_calendar.sync_now(current_ctx(), person, force=True)
+    except AppError:
+        pass
+    return _go("google_linked", "pages.settings_get")
+
+
+@pages.post("/parametres/google/disconnect")
+def google_disconnect_post():
+    person = _need()
+    modules.require_module(current_ctx(), "parametres")
+    google_calendar.disconnect(current_ctx(), person)
+    return _go("google_unlinked", "pages.settings_get")
+
+
+@pages.post("/parametres/google/sync-now")
+def google_sync_now_post():
+    person = _need()
+    modules.require_module(current_ctx(), "parametres")
+    google_calendar.sync_now(current_ctx(), person, force=True)
+    return _go("google_synced", "pages.settings_get")
 
 
 @pages.get("/parametres/avance")
