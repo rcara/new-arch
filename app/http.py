@@ -41,6 +41,10 @@ MESSAGES = {
     "modules_saved": "Modules mis à jour. Les données des modules masqués sont conservées.",
     "profile_saved": "Profil mis à jour.",
     "password_changed": "Mot de passe modifié.",
+    "google_linked": "Google Calendar est connecté.",
+    "google_unlinked": "Google Calendar est déconnecté.",
+    "google_synced": "Synchronisation Google Calendar terminée.",
+    "google_refused": "Compte Google refusé. Utilisez le compte foyer.",
 }
 
 THEMES = frozenset({"dark", "light"})

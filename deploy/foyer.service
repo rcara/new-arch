@@ -22,6 +22,11 @@ Environment=FOYER_NO_BROWSER=1
 # Host/Origin vus par l'app via le Tunnel (sinon « Hôte refusé »). Adapter le domaine.
 Environment=FOYER_PUBLIC_HOST=new-arch.arscodicis.net
 Environment=FOYER_PUBLIC_ORIGIN=https://new-arch.arscodicis.net
+# Google Calendar OAuth : NE PAS mettre CLIENT_ID/SECRET ici (secrets).
+# Drop-in recommandé : /etc/systemd/system/foyer.service.d/google-oauth.conf
+#   Environment=FOYER_GOOGLE_CLIENT_ID=…
+#   Environment=FOYER_GOOGLE_CLIENT_SECRET=…
+#   Environment=FOYER_GOOGLE_REDIRECT_URI=https://new-arch.arscodicis.net/oauth/google/callback
 ExecStart=/opt/foyer/.venv/bin/python /opt/foyer/launcher.py
 Restart=on-failure
 RestartSec=3

@@ -96,8 +96,9 @@ def list_events(ctx, person, *, from_date=None, to_date=None, q="", page=1):
     }
 
 
-def get_event(ctx, person, event_id):
-    require_module(ctx, "calendrier")
+def get_event(ctx, person, event_id, *, check_module=True):
+    if check_module:
+        require_module(ctx, "calendrier")
     row = ctx.conn.execute(f"{SELECT} WHERE e.id=? AND e.household_id={hh(ctx)}", (event_id,)).fetchone()
     if row is None or row["archived"]:
         raise AppError(404, "not_found", "Événement introuvable.")
@@ -180,8 +181,9 @@ def create_event(ctx, person, data, *, check_module=True):
     return event_id
 
 
-def update_event(ctx, person, event_id, data):
-    require_module(ctx, "calendrier")
+def update_event(ctx, person, event_id, data, *, check_module=True):
+    if check_module:
+        require_module(ctx, "calendrier")
     household = require_household(ctx.conn, hh(ctx))
     existing = ctx.conn.execute(
         f"""SELECT id, household_id, public_id, title, notes, all_day, start_date, end_date,
@@ -216,7 +218,27 @@ def update_event(ctx, person, event_id, data):
             ),
         )
     audit(ctx.home, ctx.clock, "event_update", "ok", person["id"], "calendar_event", event_id)
-    return get_event(ctx, person, event_id)
+    return get_event(ctx, person, event_id, check_module=check_module)
+
+
+def archive_event(ctx, person, event_id, *, check_module=True):
+    """Soft-delete : archived=1 (le trigger refuse DELETE)."""
+    if check_module:
+        require_module(ctx, "calendrier")
+    existing = ctx.conn.execute(
+        f"SELECT id FROM calendar_event WHERE id=? AND household_id={hh(ctx)} AND archived=0",
+        (event_id,),
+    ).fetchone()
+    if existing is None:
+        raise AppError(404, "not_found", "Événement introuvable.")
+    moment = iso_utc(ctx.clock.now())
+    with write_tx(ctx):
+        ctx.conn.execute(
+            "UPDATE calendar_event SET archived=1, updated_at=? WHERE id=?",
+            (moment, event_id),
+        )
+    audit(ctx.home, ctx.clock, "event_archive", "ok", person["id"], "calendar_event", event_id)
+    return True
 
 
 def _nth(first, recurrence, n):

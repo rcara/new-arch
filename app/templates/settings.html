@@ -64,6 +64,43 @@
   </form>
 </section>
 
+<section class="today-panel" aria-labelledby="google-title">
+  <h2 id="google-title">Google Calendar</h2>
+  <p class="muted">Miroir bidirectionnel sur le calendrier Google « New Arch » du compte foyer {{ google.allowed_email }}. Les autres calendriers du compte apparaissent en lecture seule dans l'Agenda.</p>
+  {% if not google.configured %}
+  <p class="muted">OAuth non configuré sur ce serveur (variables <code>FOYER_GOOGLE_CLIENT_ID</code> / <code>FOYER_GOOGLE_CLIENT_SECRET</code>).</p>
+  {% elif google.linked %}
+  <p>Connecté : <strong>{{ google.email }}</strong>
+    {% if google.last_sync_at %} · dernière sync {{ google.last_sync_at|frtime }}{% endif %}
+  </p>
+  {% if google.last_sync_error %}<p class="muted">Dernière erreur : {{ google.last_sync_error }}</p>{% endif %}
+  {% if google.sync_skip_count %}<p class="muted">{{ google.sync_skip_count }} événement{% if google.sync_skip_count > 1 %}s{% endif %} Google non mappable{% if google.sync_skip_count > 1 %}s{% endif %} (récurrence riche) — non écrasé{% if google.sync_skip_count > 1 %}s{% endif %} localement.</p>{% endif %}
+  {% if person.is_principal %}
+  <div class="form-actions">
+    <form method="post" action="{{ url_for('pages.google_sync_now_post') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary">Synchroniser maintenant</button>
+    </form>
+    <form method="post" action="{{ url_for('pages.google_disconnect_post') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary">Déconnecter</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">Seul le compte principal peut connecter ou déconnecter Google.</p>
+  {% endif %}
+  {% else %}
+  {% if person.is_principal %}
+  <form method="post" action="{{ url_for('pages.google_connect_post') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">Connecter Google Calendar</button>
+  </form>
+  {% else %}
+  <p class="muted">Pas encore connecté. Demandez au compte principal de lier {{ google.allowed_email }}.</p>
+  {% endif %}
+  {% endif %}
+</section>
+
 {% if person.is_principal %}
 <section class="today-panel" aria-labelledby="ops-title">
   <h2 id="ops-title">Administration avancée</h2>

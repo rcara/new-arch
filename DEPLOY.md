@@ -149,8 +149,31 @@ sudo FOYER_APP_DIR=/opt/foyer /opt/foyer/deploy/deploy.sh
 | `FOYER_NO_BROWSER` | — | `1` en prod (systemd) |
 | `FOYER_PUBLIC_HOST` | `127.0.0.1:{port}` | valeur attendue de l’en-tête `Host` (domaine Tunnel, sans `https://`) |
 | `FOYER_PUBLIC_ORIGIN` | `http://127.0.0.1:{port}` | valeur attendue de `Origin` sur POST (ex. `https://new-arch.arscodicis.net`) |
+| `FOYER_GOOGLE_CLIENT_ID` | — | OAuth Web client (Google Calendar) — **drop-in systemd**, jamais en git |
+| `FOYER_GOOGLE_CLIENT_SECRET` | — | Secret OAuth — idem |
+| `FOYER_GOOGLE_REDIRECT_URI` | `{ORIGIN}/oauth/google/callback` | Prod : `https://new-arch.arscodicis.net/oauth/google/callback` |
 
 L’écoute reste `127.0.0.1` dans `launcher.py` — **ne pas** binder `0.0.0.0` pour publier le service.
+
+### Google Calendar (après merge de la feature)
+
+Préférer un drop-in (survit à un re-`install` du template `deploy/foyer.service`) :
+
+```bash
+sudo mkdir -p /etc/systemd/system/foyer.service.d
+sudo install -m 600 /dev/null /etc/systemd/system/foyer.service.d/google-oauth.conf
+sudo tee /etc/systemd/system/foyer.service.d/google-oauth.conf >/dev/null <<'EOF'
+[Service]
+Environment=FOYER_GOOGLE_CLIENT_ID=PASTE_CLIENT_ID
+Environment=FOYER_GOOGLE_CLIENT_SECRET=PASTE_CLIENT_SECRET
+Environment=FOYER_GOOGLE_REDIRECT_URI=https://new-arch.arscodicis.net/oauth/google/callback
+EOF
+sudo chmod 600 /etc/systemd/system/foyer.service.d/google-oauth.conf
+sudo systemctl daemon-reload
+sudo systemctl restart foyer
+```
+
+Puis Paramètres → **Connecter Google Calendar** (compte principal, `rcara.home@gmail.com`).
 
 ---
 
